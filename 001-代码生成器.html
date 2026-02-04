@@ -43,6 +43,46 @@
         .editor-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #409EFF; font-size: 18px; }
         h2 { margin-bottom: 20px; color: #333; }
         p { margin: 10px 0; }
+        /* 响应式布局：小屏幕下改为上下布局 */
+        @media (max-width: 1024px) {
+            .layout-container {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+            }
+            .left-panel {
+                flex: none;
+                height: auto;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+            .right-panel {
+                flex: 1;
+                height: 50vh;
+                min-height: 400px;
+            }
+        }
+        /* 超小屏幕进一步优化 */
+        @media (max-width: 768px) {
+            .left-panel {
+                max-height: 40vh;
+                padding: 15px;
+            }
+            .right-panel {
+                height: 60vh;
+                min-height: 300px;
+            }
+            .module-input input {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 5px;
+            }
+            button {
+                padding: 8px 12px;
+                font-size: 14px;
+                margin-right: 5px;
+            }
+        }
     </style>
     <!-- CDN引入Monaco Editor（稳定版本0.44.0） -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
@@ -68,7 +108,7 @@
                     </div>
                     <div class="tab-item">
                         <input type="radio" name="codeType" id="backend" value="backend">
-                        <label for="backend">后端Java代码（renren-fast）</label>
+                        <label for="backend">后端Java代码</label>
                     </div>
                 </div>
             </div>
@@ -628,7 +668,11 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                     lineNumbers: 'on',
                     minimap: { enabled: false },
                     wordWrap: 'on',
-                    tabSize: 2
+                    tabSize: 2,
+                    // 禁用语法校验和红色下划线
+                    diagnostics: 'off',
+                    renderValidationDecorations: 'off',
+                    hideMarkersInOverviewRuler: true
                 });
                 // 编辑器自适应窗口大小
                 window.addEventListener('resize', () => monacoEditor?.layout());
@@ -812,9 +856,9 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
 
         // ========== 原有功能：更新按钮文字 ==========
         function updateBtnPickText() {
-            btnPick.innerText = currentCodeType === 'frontend' 
-                ? '📂 1. 选择src文件夹（前端Vue代码）' 
-                : '📂 1. 选择项目根目录（后端Java代码，renren-fast）';
+            btnPick.innerText = currentCodeType === 'frontend'
+                ? '📂 1. 选择src文件夹（前端Vue代码）'
+                : '📂 1. 选择项目根目录（后端Java代码）';
         }
 
         // ========== 原有功能：命名格式转换 ==========
@@ -927,10 +971,10 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
 
 > 原始输入：${moduleRaw}
 > 标准化处理：纯大驼峰【${moduleCamel}】→ 小写【${moduleLower}】
-> 代码类型：后端Java（renren-fast）| 强制大驼峰命名
+> 代码类型：后端Java | 强制大驼峰命名
 > 模板状态：已加载6个后端原始模板，支持独立编辑
 > 生成规则：所有文件均由右侧编辑的原始模板渲染生成
-> 路径说明：无src重复，完全匹配renren-fast真实项目结构`;
+> 路径说明：无src重复，完全匹配真实项目结构`;
             }
         }
 
@@ -1031,7 +1075,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         // ========== 核心：生成代码（基于编辑后的原始模板渲染） ==========
         btnWrite.addEventListener('click', async () => {
             if (!targetDirHandle || !moduleDir) return;
-            const codeTypeText = currentCodeType === 'frontend' ? '前端Vue' : '后端Java（renren-fast）';
+            const codeTypeText = currentCodeType === 'frontend' ? '前端Vue' : '后端Java';
             const templateCount = currentCodeType === 'frontend' ? 4 : 6;
 
             try {
