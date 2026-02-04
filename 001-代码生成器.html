@@ -31,7 +31,7 @@
         .tab-item label { margin: 0; cursor: pointer; font-weight: 500; }
         .tab-item:has(input:checked) { background: #409eff; color: #fff; }
         .tab-item:has(input:checked) label { color: #fff; }
-        /* 命名规范容器隐藏/显示控制 */
+        /* 命名规范容器隐藏/显示控制（默认隐藏，仅前端显示） */
         .name-rule { display: none; }
         .name-rule.show { display: block; }
         /* 模板文件Tab栏：右侧面板顶部，独占一行 */
@@ -113,7 +113,7 @@
                 </div>
             </div>
 
-            <!-- 命名规范容器：仅前端显示，后端隐藏 -->
+            <!-- 命名规范容器：仅前端显示，后端强制隐藏 -->
             <div class="name-rule show" id="nameRuleContainer">
                 <label>文件命名规范（仅前端可用）：</label>
                 <input type="radio" name="nameRule" id="camelCase" value="camel" checked>
@@ -734,7 +734,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             document.querySelector(`input[name="templateFile"][value="${defaultTpl}"]`).checked = true;
             // 切换编辑器模板
             switchTemplateTab(defaultTpl);
-            // 更新命名规范容器
+            // ✅ 修复1：强制控制命名规则面板显示/隐藏（前端显示、后端隐藏）
             toggleNameRuleContainer();
             // 更新按钮文字
             updateBtnPickText();
@@ -760,9 +760,12 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                         Array.from(codeTypeRadios).forEach(radio => radio.checked = radio.value === codeType);
                     }
 
+                    // ✅ 修复2：本地存储恢复命名规则时，强制同步Radio选中状态
                     if (nameRule && ['camel', 'kebab'].includes(nameRule)) {
                         currentNameRule = nameRule;
-                        Array.from(nameRuleRadios).forEach(radio => radio.checked = radio.value === nameRule);
+                        Array.from(nameRuleRadios).forEach(radio => {
+                            radio.checked = radio.value === nameRule;
+                        });
                     }
 
                     if (moduleName) {
@@ -785,7 +788,6 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             }
             updateBtnWriteState();
         }
-
         // ========== 核心：模板渲染（将原始模板替换为实际模块名生成代码） ==========
         function renderTemplate(tplContent) {
             if (!moduleRaw || !moduleCamel) return tplContent;
@@ -845,7 +847,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             return 'camel';
         }
 
-        // ========== 原有功能：控制命名规范显示 ==========
+        // ========== ✅ 修复3：重构命名规则面板控制（强制前端显示、后端隐藏） ==========
         function toggleNameRuleContainer() {
             if (currentCodeType === 'frontend') {
                 nameRuleContainer.classList.add('show');
