@@ -753,29 +753,30 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             if (savedConfig) {
                 try {
                     const { moduleName, codeType, nameRule } = JSON.parse(savedConfig);
+
+                    // 1. 优先恢复所有状态变量
+                    if (codeType && ['frontend', 'backend'].includes(codeType)) {
+                        currentCodeType = codeType;
+                        Array.from(codeTypeRadios).forEach(radio => radio.checked = radio.value === codeType);
+                    }
+
+                    if (nameRule && ['camel', 'kebab'].includes(nameRule)) {
+                        currentNameRule = nameRule;
+                        Array.from(nameRuleRadios).forEach(radio => radio.checked = radio.value === nameRule);
+                    }
+
                     if (moduleName) {
                         moduleNameInput.value = moduleName;
                         moduleRaw = moduleName;
-                        const standardRes = standardizeModuleName(moduleName);
-                        if (standardRes.valid) {
-                            updateModuleState(standardRes);
-                            updateDirTree();
+                        // 预先检查有效性以启用按钮
+                        if (standardizeModuleName(moduleName).valid) {
                             btnPick.disabled = false;
                         }
                     }
-                    if (codeType && ['frontend', 'backend'].includes(codeType)) {
-                        currentCodeType = codeType;
-                        Array.from(codeTypeRadios).forEach(radio => {
-                            radio.checked = radio.value === codeType;
-                        });
-                        switchCodeType(codeType);
-                    }
-                    if (nameRule && ['camel', 'kebab'].includes(nameRule) && currentCodeType === 'frontend') {
-                        currentNameRule = nameRule;
-                        Array.from(nameRuleRadios).forEach(radio => {
-                            radio.checked = radio.value === currentNameRule;
-                        });
-                    }
+
+                    // 2. 统一触发状态更新（会使用上面恢复的 currentCodeType 和 currentNameRule）
+                    switchCodeType(currentCodeType);
+
                     log(`✅ 本地配置已回显：模块名【${moduleName || '无'}】| 代码类型【${currentCodeType === 'frontend' ? '前端Vue' : '后端Java'}】${currentCodeType === 'frontend' ? '| 命名规范【' + (currentNameRule === 'camel' ? '大驼峰' : '短横线') + '】' : ''}`, false);
                 } catch (e) {
                     localStorage.removeItem(STORAGE_KEY);
