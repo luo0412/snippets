@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>renren-fast 前后端CRUD代码生成器（多Tab模板编辑版）</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; line-height: 1.6; height: 100vh; overflow: hidden; }
+        /* 核心：左右两栏弹性布局，占满视口 */
+        .layout-container { display: flex; width: 100vw; height: 100vh; gap: 1px; background: #e4e7ed; }
+        .left-panel { flex: 1; padding: 20px; background: #fff; overflow-y: auto; height: 100%; }
+        .right-panel { flex: 1; height: 100%; background: #f5f7fa; display: none; flex-direction: column; }
+        /* 原有样式保留并适配 */
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px; }
+        button:disabled { cursor: not-allowed; opacity: 0.6; }
+        .log, .dir-tree { background: #f4f4f4; padding: 10px; margin-top: 10px; border-radius: 4px; min-height: 50px; font-family: monospace; }
+        .module-input, .tab-container, .name-rule { margin: 15px 0; }
+        .module-input input { padding: 8px 12px; font-size: 16px; width: 300px; margin-left: 10px; }
+        .name-rule, .tab-container { width: auto; margin: 10px 0; }
+        .name-rule input, .tab-container input { width: auto; margin: 0 5px 0 20px; }
+        label { font-weight: 500; }
+        .dir-tree { min-height: 120px; white-space: pre; color: #333; line-height: 1.8; }
+        .dir-tree-title { font-weight: bold; margin-bottom: 5px; color: #409EFF; }
+        .generated { color: #67C23A; font-weight: 500; }
+        .tip { color: #909399; font-size: 14px; margin-top: 5px; }
+        /* 全局Tab切换样式（前后端+模板文件） */
+        .tab-group { display: flex; align-items: center; gap: 10px; padding: 5px; border-radius: 6px; background: #f5f7fa; border: 1px solid #e4e7ed; flex-wrap: wrap; }
+        .tab-item { display: flex; align-items: center; cursor: pointer; padding: 8px 16px; border-radius: 4px; transition: all 0.2s; }
+        .tab-item input { display: none; }
+        .tab-item label { margin: 0; cursor: pointer; font-weight: 500; }
+        .tab-item:has(input:checked) { background: #409eff; color: #fff; }
+        .tab-item:has(input:checked) label { color: #fff; }
+        /* 命名规范容器隐藏/显示控制 */
+        .name-rule { display: none; }
+        .name-rule.show { display: block; }
+        /* 模板文件Tab栏：右侧面板顶部，独占一行 */
+        #templateTabGroup { background: #e4e7ed; border-radius: 0; border: 0; border-bottom: 1px solid #dcdfe6; gap: 0; padding: 0; }
+        #templateTabGroup .tab-item { border-radius: 0; padding: 10px 20px; }
+        /* Monaco编辑器容器：占满右侧面板剩余高度 */
+        #monacoContainer { flex: 1; width: 100%; }
+        /* 编辑器加载提示 */
+        .editor-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #409EFF; font-size: 18px; }
+        h2 { margin-bottom: 20px; color: #333; }
+        p { margin: 10px 0; }
+    </style>
+    <!-- CDN引入Monaco Editor（稳定版本0.44.0） -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+</head>
+<body>
+    <!-- 左右两栏核心布局 -->
+    <div class="layout-container">
+        <!-- 左侧：原有操作界面 -->
+        <div class="left-panel">
+            <h2>renren-fast 前后端CRUD代码生成器（多Tab模板编辑版）</h2>
+            <div class="module-input">
+                <label>模块名(支持任意格式)：</label>
+                <input type="text" id="moduleName" placeholder="如userInfo / UserInfo / user-info / 商品订单(空格)" autocomplete="off">
+            </div>
+
+            <!-- 前后端Tab切换：默认选中前端Vue代码 -->
+            <div class="tab-container">
+                <label>生成代码类型：</label>
+                <div class="tab-group">
+                    <div class="tab-item">
+                        <input type="radio" name="codeType" id="frontend" value="frontend" checked>
+                        <label for="frontend">前端Vue代码</label>
+                    </div>
+                    <div class="tab-item">
+                        <input type="radio" name="codeType" id="backend" value="backend">
+                        <label for="backend">后端Java代码（renren-fast）</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 命名规范容器：仅前端显示，后端隐藏 -->
+            <div class="name-rule show" id="nameRuleContainer">
+                <label>文件命名规范（仅前端可用）：</label>
+                <input type="radio" name="nameRule" id="camelCase" value="camel" checked>
+                <label for="camelCase">大驼峰（PascalCase）</label>
+                <input type="radio" name="nameRule" id="kebabCase" value="kebab">
+                <label for="kebabCase">短横线（kebab-case）</label>
+            </div>
+
+            <div class="dir-tree-container">
+                <div class="dir-tree-title">📁 生成代码目录结构预览（实时更新）</div>
+                <div class="dir-tree" id="dirTreeArea">请输入任意格式模块名，自动标准化处理并展示目录结构...</div>
+            </div>
+            
+            <p>
+                <button id="btnPick" disabled>📂 1. 选择src文件夹（前端）/ 项目根目录（后端）</button>
+                <button id="btnWrite" disabled>💾 2. 手动生成CRUD代码</button>
+            </p>
+
+            <div class="log" id="logArea">等待操作...请先输入模块名 | 右侧可编辑原始模板，修改后全局生效</div>
+        </div>
+
+        <!-- 右侧：模板Tab栏 + Monaco编辑器面板（默认隐藏，编辑器加载成功后显示） -->
+        <div class="right-panel" id="rightPanel">
+            <!-- 模板文件Tab切换：前端/后端自动切换对应文件 -->
+            <div class="tab-group" id="templateTabGroup">
+                <!-- 前端模板Tab（默认显示） -->
+                <div class="tab-item template-tab frontend-tab">
+                    <input type="radio" name="templateFile" id="tpl-api" value="api" checked>
+                    <label for="tpl-api">API模板 (api.js)</label>
+                </div>
+                <div class="tab-item template-tab frontend-tab">
+                    <input type="radio" name="templateFile" id="tpl-router" value="router">
+                    <label for="tpl-router">路由模板 (router.js)</label>
+                </div>
+                <div class="tab-item template-tab frontend-tab">
+                    <input type="radio" name="templateFile" id="tpl-index" value="index">
+                    <label for="tpl-index">列表模板 (index.vue)</label>
+                </div>
+                <div class="tab-item template-tab frontend-tab">
+                    <input type="radio" name="templateFile" id="tpl-form" value="form">
+                    <label for="tpl-form">表单模板 (form.vue)</label>
+                </div>
+                <!-- 后端模板Tab（默认隐藏） -->
+                <div class="tab-item template-tab backend-tab" style="display: none;">
+                    <input type="radio" name="templateFile" id="tpl-entity" value="entity" checked>
+                    <label for="tpl-entity">实体模板 (entity.java)</label>
+                </div>
+                <div class="tab-item template-tab backend-tab" style="display: none;">
+                    <input type="radio" name="templateFile" id="tpl-controller" value="controller">
+                    <label for="tpl-controller">控制器模板 (controller.java)</label>
+                </div>
+                <div class="tab-item template-tab backend-tab" style="display: none;">
+                    <input type="radio" name="templateFile" id="tpl-service" value="service">
+                    <label for="tpl-service">服务接口模板 (service.java)</label>
+                </div>
+                <div class="tab-item template-tab backend-tab" style="display: none;">
+                    <input type="radio" name="templateFile" id="tpl-serviceImpl" value="serviceImpl">
+                    <label for="tpl-serviceImpl">服务实现模板 (serviceImpl.java)</label>
+                </div>
+                <div class="tab-item template-tab backend-tab" style="display: none;">
+                    <input type="radio" name="templateFile" id="tpl-mapper" value="mapper">
+                    <label for="tpl-mapper">Mapper模板 (mapper.java)</label>
+                </div>
+                <div class="tab-item template-tab backend-tab" style="display: none;">
+                    <input type="radio" name="templateFile" id="tpl-mapperXml" value="mapperXml">
+                    <label for="tpl-mapperXml">MapperXML模板 (mapper.xml)</label>
+                </div>
+            </div>
+            <!-- 编辑器加载提示 -->
+            <div class="editor-loading" id="editorLoading">📝 正在加载代码编辑器...（离线环境将自动隐藏）</div>
+            <!-- Monaco编辑器容器 -->
+            <div id="monacoContainer" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let targetDirHandle = null; // 目标目录句柄（前端=src，后端=项目根目录）
+        const logArea = document.getElementById('logArea');
+        const dirTreeArea = document.getElementById('dirTreeArea');
+        const btnPick = document.getElementById('btnPick');
+        const btnWrite = document.getElementById('btnWrite');
+        const moduleNameInput = document.getElementById('moduleName');
+        const codeTypeRadios = document.getElementsByName('codeType');
+        const nameRuleRadios = document.getElementsByName('nameRule');
+        const nameRuleContainer = document.getElementById('nameRuleContainer');
+        const rightPanel = document.getElementById('rightPanel');
+        const editorLoading = document.getElementById('editorLoading');
+        const monacoContainer = document.getElementById('monacoContainer');
+        const templateFileRadios = document.getElementsByName('templateFile');
+        const frontendTabs = document.querySelectorAll('.frontend-tab');
+        const backendTabs = document.querySelectorAll('.backend-tab');
+        // Monaco编辑器实例
+        let monacoEditor = null;
+        // 核心：原始模板存储对象（所有编辑操作基于此，修改后全局生效）
+        const TEMPLATES = {
+            // 前端原始模板（无模块名，纯可复用模板）
+            frontend: {
+                api: `import request from '@/utils/request'
+
+// 【模块名】CRUD接口模板
+export default {
+  list(query) {
+    return request({
+      url: '/【模块标识】/list',
+      method: 'get',
+      params: query
+    })
+  },
+  info(id) {
+    return request({
+      url: '/【模块标识】/info/' + id,
+      method: 'get'
+    })
+  },
+  save(data) {
+    return request({
+      url: '/【模块标识】/save',
+      method: 'post',
+      data: data
+    })
+  },
+  update(data) {
+    return request({
+      url: '/【模块标识】/update',
+      method: 'put',
+      data: data
+    })
+  },
+  delete(ids) {
+    return request({
+      url: '/【模块标识】/delete',
+      method: 'delete',
+      data: ids
+    })
+  }
+}`,
+                router: `import Layout from '@/layout'
+
+// 【模块名】路由模板
+const 【大驼峰模块名】Router = {
+  path: '/【模块标识】',
+  component: Layout,
+  redirect: '/【模块标识】/index',
+  name: '【大驼峰模块名】',
+  meta: { title: '【模块名】管理', icon: 'user' },
+  children: [
+    {
+      path: 'index',
+      component: () => import('@/views/【首单词模块名】/index'),
+      name: '【大驼峰模块名】Index',
+      meta: { title: '【模块名】列表', noCache: true }
+    }
+  ]
+}
+
+export default 【大驼峰模块名】Router`,
+                index: `<template>
+  <div class="app-container">
+    <el-form :inline="true" :model="queryParams" class="search-form" @keyup.enter.native="handleQuery">
+      <el-form-item label="【模块名】名称">
+        <el-input v-model="queryParams.name" placeholder="请输入名称" clearable @clear="handleQuery"/>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
+        <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
+        <el-button type="success" icon="el-icon-plus" @click="handleAdd">新增</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-table v-loading="loading" :data="list" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55" align="center"/>
+      <el-table-column label="ID" prop="id" width="80" align="center"/>
+      <el-table-column label="【模块名】名称" prop="name" align="center"/>
+      <el-table-column label="创建时间" prop="createTime" width="180" align="center"/>
+      <el-table-column label="操作" width="160" align="center">
+        <template slot-scope="scope">
+          <el-button type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)">编辑</el-button>
+          <el-button type="text" icon="el-icon-delete" @click="handleDelete(scope.row.id)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="queryParams.pageNum"
+      :page-sizes="[10,20,30,50]"
+      :page-size="queryParams.pageSize"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="total"
+      style="margin-top: 20px; text-align:right;">
+    </el-pagination>
+
+    <el-dialog :title="dialogTitle" :visible.sync="open" width="500px" append-to-body>
+      <Form ref="form" :form="form" :isAdd="isAdd" @success="getList"/>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import Form from './comp/form'
+import 【大驼峰模块名】Api from './api/api'
+
+export default {
+  name: '【大驼峰模块名】Index',
+  components: { Form },
+  data() {
+    return {
+      loading: false,
+      list: [],
+      total: 0,
+      open: false,
+      isAdd: true,
+      dialogTitle: '',
+      form: {},
+      queryParams: {
+        pageNum: 1,
+        pageSize: 10,
+        name: null
+      },
+      ids: []
+    }
+  },
+  created() {
+    this.getList()
+  },
+  methods: {
+    getList() {
+      this.loading = true
+      【大驼峰模块名】Api.list(this.queryParams).then(res => {
+        this.list = res.rows
+        this.total = res.total
+        this.loading = false
+      }).catch(() => this.loading = false)
+    },
+    handleQuery() {
+      this.queryParams.pageNum = 1
+      this.getList()
+    },
+    resetQuery() {
+      this.queryParams = { pageNum: 1, pageSize: 10, name: null }
+      this.getList()
+    },
+    handleSizeChange(val) {
+      this.queryParams.pageSize = val
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.queryParams.pageNum = val
+      this.getList()
+    },
+    handleSelectionChange(val) {
+      this.ids = val.map(item => item.id)
+    },
+    handleAdd() {
+      this.form = {}
+      this.isAdd = true
+      this.dialogTitle = "添加【模块名】"
+      this.open = true
+    },
+    handleUpdate(row) {
+      this.form = { ...row }
+      this.isAdd = false
+      this.dialogTitle = "修改【模块名】"
+      this.open = true
+    },
+    handleDelete(id) {
+      this.$modal.confirm('是否确认删除该数据？').then(() => {
+        return 【大驼峰模块名】Api.delete([id])
+      }).then(() => {
+        this.$modal.msgSuccess("删除成功")
+        this.getList()
+      }).catch(() => {})
+    }
+  }
+}
+<\/script>
+
+<style scoped>
+.search-form {
+  padding: 20px;
+  background: #fbfbfb;
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+}
+</style>`,
+                form: `<template>
+  <el-form ref="form" :model="form" :rules="rules" label-width="100px">
+    <el-form-item label="【模块名】名称" prop="name">
+      <el-input v-model="form.name" placeholder="请输入【模块名】名称"/>
+    </el-form-item>
+    <el-form-item label="备注" prop="remark">
+      <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入备注"/>
+    </el-form-item>
+    <el-form-item align="center">
+      <el-button type="primary" @click="submitForm">确 定</el-button>
+      <el-button @click="cancel">取 消</el-button>
+    </el-form-item>
+  </el-form>
+</template>
+
+<script>
+import 【大驼峰模块名】Api from '../api/api'
+
+export default {
+  name: "【大驼峰模块名】Form",
+  props: {
+    form: { type: Object, default: () => {} },
+    isAdd: { type: Boolean, default: true }
+  },
+  data() {
+    return {
+      rules: {
+        name: [{ required: true, message: "【模块名】名称不能为空", trigger: "blur" }]
+      }
+    }
+  },
+  methods: {
+    submitForm() {
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          const apiFunc = this.isAdd ? 【大驼峰模块名】Api.save : 【大驼峰模块名】Api.update
+          apiFunc(this.form).then(() => {
+            this.$modal.msgSuccess(this.isAdd ? "新增成功" : "修改成功");
+            this.$emit("success");
+            this.closeDialog();
+          })
+        }
+      })
+    },
+    cancel() {
+      this.closeDialog()
+    },
+    closeDialog() {
+      this.$refs.form.resetFields();
+      this.$emit("update:visible", false);
+    }
+  }
+}
+<\/script>`
+            },
+            // 后端原始模板（无模块名，纯可复用模板）
+            backend: {
+                entity: `package com.renren.modular.【大驼峰模块名】.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+import java.io.Serializable;
+import java.util.Date;
+
+/**
+ * 【模块名】实体类
+ * 纯可复用模板，生成时自动替换模块名
+ */
+@Data
+@TableName("【小写模块名】")
+public class 【大驼峰模块名】 implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 主键ID
+     */
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    /**
+     * 【模块名】名称
+     */
+    private String name;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
+     * 创建时间
+     */
+    private Date createTime;
+
+    /**
+     * 更新时间
+     */
+    private Date updateTime;
+
+    /**
+     * 删除标记（0=正常，1=删除）
+     */
+    private Integer delFlag;
+}`,
+                controller: `package com.renren.modular.【大驼峰模块名】.controller;
+
+import com.renren.modular.【大驼峰模块名】.entity.【大驼峰模块名】;
+import com.renren.modular.【大驼峰模块名】.service.【大驼峰模块名】Service;
+import com.renren.common.utils.R;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.List;
+
+/**
+ * 【模块名】控制器
+ * 纯可复用模板，生成时自动替换模块名
+ */
+@RestController
+@RequestMapping("/【小写模块名】")
+public class 【大驼峰模块名】Controller {
+
+    @Autowired
+    private 【大驼峰模块名】Service 【小写模块名】Service;
+
+    /**
+     * 分页查询【模块名】列表
+     */
+    @GetMapping("/list")
+    public R list(@RequestParam(defaultValue = "1") Integer pageNum,
+                  @RequestParam(defaultValue = "10") Integer pageSize,
+                  【大驼峰模块名】 【小写模块名】) {
+        Page<【大驼峰模块名】> page = new Page<>(pageNum, pageSize);
+        Page<【大驼峰模块名】> result = 【小写模块名】Service.page(page, null);
+        return R.ok().put("page", result);
+    }
+
+    /**
+     * 根据ID查询【模块名】详情
+     */
+    @GetMapping("/info/{id}")
+    public R info(@PathVariable Long id) {
+        【大驼峰模块名】 【小写模块名】 = 【小写模块名】Service.getById(id);
+        return R.ok().put("【小写模块名】", 【小写模块名】);
+    }
+
+    /**
+     * 新增【模块名】
+     */
+    @PostMapping("/save")
+    public R save(@RequestBody 【大驼峰模块名】 【小写模块名】) {
+        【小写模块名】Service.save(【小写模块名】);
+        return R.ok();
+    }
+
+    /**
+     * 修改【模块名】
+     */
+    @PutMapping("/update")
+    public R update(@RequestBody 【大驼峰模块名】 【小写模块名】) {
+        【小写模块名】Service.updateById(【小写模块名】);
+        return R.ok();
+    }
+
+    /**
+     * 批量删除【模块名】
+     */
+    @DeleteMapping("/delete")
+    public R delete(@RequestBody List<Long> ids) {
+        【小写模块名】Service.removeByIds(ids);
+        return R.ok();
+    }
+}`,
+                service: `package com.renren.modular.【大驼峰模块名】.service;
+
+import com.renren.modular.【大驼峰模块名】.entity.【大驼峰模块名】;
+import com.baomidou.mybatisplus.extension.service.IService;
+
+/**
+ * 【模块名】服务接口
+ * 纯可复用模板，生成时自动替换模块名
+ */
+public interface 【大驼峰模块名】Service extends IService<【大驼峰模块名】> {
+}`,
+                serviceImpl: `package com.renren.modular.【大驼峰模块名】.service.impl;
+
+import com.renren.modular.【大驼峰模块名】.entity.【大驼峰模块名】;
+import com.renren.modular.【大驼峰模块名】.mapper.【大驼峰模块名】Mapper;
+import com.renren.modular.【大驼峰模块名】.service.【大驼峰模块名】Service;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.stereotype.Service;
+
+/**
+ * 【模块名】服务实现类
+ * 纯可复用模板，生成时自动替换模块名
+ */
+@Service
+public class 【大驼峰模块名】ServiceImpl extends ServiceImpl<【大驼峰模块名】Mapper, 【大驼峰模块名】> implements 【大驼峰模块名】Service {
+}`,
+                mapper: `package com.renren.modular.【大驼峰模块名】.mapper;
+
+import com.renren.modular.【大驼峰模块名】.entity.【大驼峰模块名】;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
+/**
+ * 【模块名】Mapper接口
+ * 纯可复用模板，生成时自动替换模块名
+ */
+public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰模块名】> {
+}`,
+                mapperXml: `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.renren.modular.【大驼峰模块名】.mapper.【大驼峰模块名】Mapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.renren.modular.【大驼峰模块名】.entity.【大驼峰模块名】">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="remark" property="remark" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, name, remark, create_time, update_time, del_flag
+    </sql>
+
+</mapper>`
+            }
+        };
+        // 本地存储key（语义化）
+        const STORAGE_KEY = 'renrenFastCodeGenConfig';
+        // 全局状态（默认前端Vue代码）
+        let moduleRaw = ''; 
+        let moduleDir = '';    // 模块标识（kebab-case/小写）
+        let moduleCamel = '';  // 大驼峰模块名
+        let moduleKebab = '';  // 短横线模块名
+        let moduleLower = '';  // 小写模块名
+        let viewFolder = '';   // 前端视图文件夹（首单词）
+        let currentCodeType = 'frontend'; // 默认选中前端Vue
+        let currentNameRule = 'camel';
+        let currentTemplateFile = 'api'; // 默认编辑API模板
+
+        // ========== 核心：Monaco Editor初始化（修复blob语法错误+CDN+离线兼容） ==========
+        function initMonacoEditor() {
+            // 配置Monaco加载路径（CDN）
+            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+            // ✅ 修复核心：给blob://添加单引号，返回合法字符串，解决语法错误
+            window.MonacoEnvironment = { getWorkerUrl: () => 'blob://' };
+
+            require(['vs/editor/editor.main'], () => {
+                // 编辑器加载成功：显示右侧面板+编辑器，隐藏加载提示
+                rightPanel.style.display = 'flex';
+                editorLoading.style.display = 'none';
+                monacoContainer.style.display = 'block';
+                // 初始化编辑器
+                monacoEditor = monaco.editor.create(monacoContainer, {
+                    value: TEMPLATES.frontend[currentTemplateFile],
+                    language: getTemplateLanguage(currentTemplateFile, currentCodeType),
+                    theme: 'vs-light',
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    minimap: { enabled: false },
+                    wordWrap: 'on',
+                    tabSize: 2
+                });
+                // 编辑器自适应窗口大小
+                window.addEventListener('resize', () => monacoEditor?.layout());
+                // 监听编辑器内容变化，实时更新原始模板
+                monacoEditor.onDidChangeModelContent(() => {
+                    TEMPLATES[currentCodeType][currentTemplateFile] = monacoEditor.getValue();
+                });
+                log('✅ 代码编辑器加载成功，可编辑原始模板（修改后全局生效）', false);
+            }, (err) => {
+                // 加载失败（离线/CDN不可用）：隐藏整个右侧面板，无报错提示
+                rightPanel.style.display = 'none';
+                console.log('ℹ️ 离线环境，代码编辑器已自动隐藏', err);
+            });
+        }
+        // 页面加载后立即初始化Monaco
+        window.addEventListener('DOMContentLoaded', initMonacoEditor);
+
+        // ========== 核心：根据模板类型和代码类型获取语法高亮语言 ==========
+        function getTemplateLanguage(tplFile, codeType) {
+            if (codeType === 'backend') {
+                return tplFile === 'mapperXml' ? 'xml' : 'java';
+            }
+            return tplFile.includes('vue') ? 'vue' : 'javascript';
+        }
+
+        // ========== 核心：切换模板Tab（更新编辑器内容和语法） ==========
+        function switchTemplateTab(tplFile) {
+            currentTemplateFile = tplFile;
+            if (!monacoEditor) return;
+            // 更新编辑器内容（原始模板）和语法高亮
+            monacoEditor.setValue(TEMPLATES[currentCodeType][tplFile]);
+            monacoEditor.setModelLanguage(
+                monacoEditor.getModel(),
+                getTemplateLanguage(tplFile, currentCodeType)
+            );
+            // 编辑器自适应
+            monacoEditor.layout();
+            log(`✅ 切换至【${getTemplateFileName(tplFile, currentCodeType)}】原始模板编辑`, false);
+        }
+
+        // ========== 核心：获取模板对应的文件名（用于提示） ==========
+        function getTemplateFileName(tplFile, codeType) {
+            const nameMap = {
+                frontend: { api: 'api.js', router: 'router.js', index: 'index.vue', form: 'form.vue' },
+                backend: { entity: 'entity.java', controller: 'controller.java', service: 'service.java', serviceImpl: 'serviceImpl.java', mapper: 'mapper.java', mapperXml: 'mapper.xml' }
+            };
+            return nameMap[codeType][tplFile];
+        }
+
+        // ========== 核心：切换前后端代码类型（同步模板Tab和编辑器） ==========
+        function switchCodeType(codeType) {
+            currentCodeType = codeType;
+            // 切换模板Tab显示/隐藏
+            frontendTabs.forEach(tab => tab.style.display = codeType === 'frontend' ? 'flex' : 'none');
+            backendTabs.forEach(tab => tab.style.display = codeType === 'backend' ? 'flex' : 'none');
+            // 获取当前代码类型的默认模板
+            const defaultTpl = codeType === 'frontend' ? 'api' : 'entity';
+            // 选中默认模板Radio
+            document.querySelector(`input[name="templateFile"][value="${defaultTpl}"]`).checked = true;
+            // 切换编辑器模板
+            switchTemplateTab(defaultTpl);
+            // 更新命名规范容器
+            toggleNameRuleContainer();
+            // 更新按钮文字
+            updateBtnPickText();
+            // 重新标准化模块名（若有输入）
+            if (moduleRaw) {
+                const standardRes = standardizeModuleName(moduleRaw);
+                if (standardRes.valid) updateModuleState(standardRes);
+            }
+            // 更新目录树
+            updateDirTree();
+        }
+
+        // ========== 原有功能：本地存储初始化 ==========
+        function initFromLocalStorage() {
+            const savedConfig = localStorage.getItem(STORAGE_KEY);
+            if (savedConfig) {
+                try {
+                    const { moduleName, codeType, nameRule } = JSON.parse(savedConfig);
+                    if (moduleName) {
+                        moduleNameInput.value = moduleName;
+                        moduleRaw = moduleName;
+                        const standardRes = standardizeModuleName(moduleName);
+                        if (standardRes.valid) {
+                            updateModuleState(standardRes);
+                            updateDirTree();
+                            btnPick.disabled = false;
+                        }
+                    }
+                    if (codeType && ['frontend', 'backend'].includes(codeType)) {
+                        currentCodeType = codeType;
+                        Array.from(codeTypeRadios).forEach(radio => {
+                            radio.checked = radio.value === codeType;
+                        });
+                        switchCodeType(codeType);
+                    }
+                    if (nameRule && ['camel', 'kebab'].includes(nameRule) && currentCodeType === 'frontend') {
+                        currentNameRule = nameRule;
+                        Array.from(nameRuleRadios).forEach(radio => {
+                            radio.checked = radio.value === currentNameRule;
+                        });
+                    }
+                    log(`✅ 本地配置已回显：模块名【${moduleName || '无'}】| 代码类型【${currentCodeType === 'frontend' ? '前端Vue' : '后端Java'}】${currentCodeType === 'frontend' ? '| 命名规范【' + (currentNameRule === 'camel' ? '大驼峰' : '短横线') + '】' : ''}`, false);
+                } catch (e) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    log('⚠️ 本地配置损坏，已自动清除', false);
+                }
+            }
+            updateBtnWriteState();
+        }
+
+        // ========== 核心：模板渲染（将原始模板替换为实际模块名生成代码） ==========
+        function renderTemplate(tplContent) {
+            if (!moduleRaw || !moduleCamel) return tplContent;
+            // 模板替换映射表
+            const replaceMap = {
+                '【模块名】': moduleRaw,
+                '【模块标识】': moduleDir,
+                '【大驼峰模块名】': moduleCamel,
+                '【短横线模块名】': moduleKebab,
+                '【小写模块名】': moduleLower,
+                '【首单词模块名】': viewFolder
+            };
+            // 批量替换模板占位符
+            return Object.keys(replaceMap).reduce((content, key) => {
+                return content.replace(new RegExp(key, 'g'), replaceMap[key]);
+            }, tplContent);
+        }
+
+        // ========== 原有功能：保存配置到本地存储 ==========
+        function saveToLocalStorage() {
+            const config = {
+                moduleName: moduleRaw,
+                codeType: currentCodeType,
+                nameRule: currentNameRule
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+        }
+
+        // ========== 原有功能：日志函数 ==========
+        function log(msg, isError = false) {
+            logArea.innerText = msg;
+            logArea.style.color = isError ? 'red' : '#27ae60';
+            console.log(msg);
+        }
+
+        // ========== 原有功能：更新模块状态（新增小写模块名） ==========
+        function updateModuleState(standardRes) {
+            moduleDir = currentCodeType === 'backend' ? standardRes.camel.toLowerCase() : (currentNameRule === 'camel' ? standardRes.camel : standardRes.kebab);
+            moduleCamel = standardRes.camel;
+            moduleKebab = standardRes.kebab;
+            moduleLower = standardRes.camel.toLowerCase(); // 新增：小写模块名
+            viewFolder = standardRes.viewFolder;
+        }
+
+        // ========== 原有功能：获取当前选择 ==========
+        function getCurrentCodeType() {
+            for (let radio of codeTypeRadios) {
+                if (radio.checked) return radio.value;
+            }
+            return 'frontend';
+        }
+
+        function getCurrentNameRule() {
+            for (let radio of nameRuleRadios) {
+                if (radio.checked) return radio.value;
+            }
+            return 'camel';
+        }
+
+        // ========== 原有功能：控制命名规范显示 ==========
+        function toggleNameRuleContainer() {
+            if (currentCodeType === 'frontend') {
+                nameRuleContainer.classList.add('show');
+            } else {
+                nameRuleContainer.classList.remove('show');
+                currentNameRule = 'camel';
+            }
+        }
+
+        // ========== 原有功能：更新按钮文字 ==========
+        function updateBtnPickText() {
+            btnPick.innerText = currentCodeType === 'frontend' 
+                ? '📂 1. 选择src文件夹（前端Vue代码）' 
+                : '📂 1. 选择项目根目录（后端Java代码，renren-fast）';
+        }
+
+        // ========== 原有功能：命名格式转换 ==========
+        function camelToKebab(str) {
+            return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+        }
+
+        function toPascalCase(str) {
+            str = str.replace(/[^a-zA-Z0-9]/g, ' ');
+            return str.split(' ').filter(word => word).map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join('');
+        }
+
+        function getFirstWord(standardKebab) {
+            return standardKebab.split('-')[0].toLowerCase();
+        }
+
+        // ========== 原有功能：获取文件名 ==========
+        function getFileName(type) {
+            const frontendSuffix = {
+                camel: { api: 'Api.js', router: 'Router.js', index: 'Index.vue', form: 'Form.vue' },
+                kebab: { api: '-api.js', router: '-router.js', index: '-index.vue', form: '-form.vue' }
+            };
+            const backendSuffix = {
+                camel: { 
+                    entity: '.java', controller: 'Controller.java', 
+                    service: 'Service.java', serviceImpl: 'ServiceImpl.java',
+                    mapper: 'Mapper.java', mapperXml: 'Mapper.xml'
+                }
+            };
+            const prefix = currentCodeType === 'backend' ? moduleCamel : (currentNameRule === 'camel' ? moduleCamel : moduleKebab);
+            const suffixMap = currentCodeType === 'backend' ? backendSuffix.camel : frontendSuffix[currentNameRule];
+            return prefix + suffixMap[type];
+        }
+
+        // ========== 原有功能：模块名标准化（新增小写模块名处理） ==========
+        function standardizeModuleName(rawName) {
+            if (!rawName.trim()) return { valid: false };
+            const camel = toPascalCase(rawName);
+            if (!camel) return { valid: false };
+            const kebab = camelToKebab(camel);
+            const viewFolder = getFirstWord(kebab);
+            return {
+                valid: true,
+                dir: currentCodeType === 'backend' ? camel.toLowerCase() : (currentNameRule === 'camel' ? camel : kebab),
+                camel: camel,
+                kebab: kebab,
+                viewFolder: viewFolder
+            };
+        }
+
+        // ========== 原有功能：生成目录树 ==========
+        function generateDirTree() {
+            if (!moduleRaw) return '请输入任意格式模块名，自动标准化处理并展示目录结构...\\n\\n右侧可编辑原始模板，所有生成操作均基于修改后的模板执行！';
+            if (!moduleDir) return '模块名无效！请输入字母/数字/空格/驼峰格式，避免仅输入特殊字符';
+
+            if (currentCodeType === 'frontend') {
+                const apiFile = getFileName('api');
+                const routerFile = getFileName('router');
+                const indexFile = getFileName('index');
+                const formFile = getFileName('form');
+                return `src/
+├── router/
+│   └── modules/
+│       └── ${routerFile}  # 路由文件
+└── views/
+    └── ${viewFolder}/     # 视图文件夹
+        ├── api/           # API文件夹
+        │   └── ${apiFile}
+        ├── comp/          # 组件文件夹
+        │   └── ${formFile} # 表单组件
+        └── ${indexFile}    # 列表页面
+
+> 原始输入：${moduleRaw}
+> 标准化处理：【${moduleDir}】→ 大驼峰【${moduleCamel}】→ 短横线【${moduleKebab}】
+> 代码类型：前端Vue | 命名规范：${currentNameRule === 'camel' ? '大驼峰（PascalCase）' : '短横线（kebab-case）'}
+> 模板状态：已加载4个前端原始模板，支持独立编辑
+> 生成规则：所有文件均由右侧编辑的原始模板渲染生成`;
+            }
+
+            if (currentCodeType === 'backend') {
+                const entityFile = getFileName('entity');
+                const controllerFile = getFileName('controller');
+                const serviceFile = getFileName('service');
+                const serviceImplFile = getFileName('serviceImpl');
+                const mapperFile = getFileName('mapper');
+                const xmlFile = getFileName('mapperXml');
+                return `项目根目录/
+└── main/
+    ├── java/
+    │   └── com/
+    │       └── renren/
+    │           └── modular/
+    │               └── ${moduleLower}/  # 模块包
+    │                   ├── entity/
+    │                   │   └── ${entityFile}  # 实体类
+    │                   ├── controller/
+    │                   │   └── ${controllerFile}  # 控制器
+    │                   ├── service/
+    │                   │   ├── ${serviceFile}     # 服务接口
+    │                   │   └── impl/
+    │                   │       └── ${serviceImplFile}  # 服务实现
+    │                   └── mapper/
+    │                       └── ${mapperFile}  # Mapper接口
+    └── resources/
+        └── mapper/
+            └── ${moduleLower}/  # MapperXML文件夹
+                └── ${xmlFile}  # MapperXML文件
+
+> 原始输入：${moduleRaw}
+> 标准化处理：纯大驼峰【${moduleCamel}】→ 小写【${moduleLower}】
+> 代码类型：后端Java（renren-fast）| 强制大驼峰命名
+> 模板状态：已加载6个后端原始模板，支持独立编辑
+> 生成规则：所有文件均由右侧编辑的原始模板渲染生成
+> 路径说明：无src重复，完全匹配renren-fast真实项目结构`;
+            }
+        }
+
+        function updateDirTree() {
+            dirTreeArea.innerText = generateDirTree();
+        }
+
+        // ========== 原有功能：更新按钮状态 ==========
+        function updateBtnWriteState() {
+            btnWrite.disabled = !targetDirHandle || !moduleDir;
+        }
+
+        // ========== 事件监听：模块名输入 ==========
+        moduleNameInput.addEventListener('input', () => {
+            const rawName = moduleNameInput.value;
+            moduleRaw = rawName;
+            const standardRes = standardizeModuleName(rawName);
+            if (standardRes.valid) {
+                updateModuleState(standardRes);
+                updateDirTree();
+                btnPick.disabled = false;
+                updateBtnWriteState();
+                log(`${currentCodeType === 'backend' ? '后端模块名标准化成功' : '前端模块名标准化成功'}：【${rawName}】→ 【${moduleDir}】，可生成代码`, false);
+            } else {
+                btnPick.disabled = true;
+                btnWrite.disabled = true;
+                moduleDir = '';
+                moduleCamel = '';
+                moduleKebab = '';
+                moduleLower = '';
+                viewFolder = '';
+                if (rawName) {
+                    log('模块名无效！请输入字母/数字/空格/驼峰格式，避免仅输入特殊字符', true);
+                    dirTreeArea.innerText = '模块名处理后为空！请输入有效格式的模块名（字母/数字/空格/驼峰）';
+                } else {
+                    log('等待操作...请先输入模块名 | 右侧可编辑原始模板，修改后全局生效', false);
+                    dirTreeArea.innerText = generateDirTree();
+                }
+            }
+        });
+
+        // ========== 事件监听：前后端代码类型切换 ==========
+        codeTypeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                switchCodeType(radio.value);
+                log(`已切换代码类型：${currentCodeType === 'frontend' ? '前端Vue代码（4个模板）' : '后端Java代码（6个模板）'}`, false);
+                updateBtnWriteState();
+                saveToLocalStorage();
+            });
+        });
+
+        // ========== 事件监听：命名规范切换 ==========
+        nameRuleRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (currentCodeType !== 'frontend') return;
+                currentNameRule = radio.value;
+                const standardRes = standardizeModuleName(moduleRaw);
+                if (standardRes.valid) {
+                    updateModuleState(standardRes);
+                    updateDirTree();
+                }
+                log(`已切换前端命名规范：${currentNameRule === 'camel' ? '大驼峰（PascalCase）' : '短横线（kebab-case）'}`, false);
+                updateBtnWriteState();
+                saveToLocalStorage();
+            });
+        });
+
+        // ========== 事件监听：模板文件Tab切换 ==========
+        templateFileRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                switchTemplateTab(radio.value);
+            });
+        });
+
+        // ========== 事件监听：选择目录 ==========
+        btnPick.addEventListener('click', async () => {
+            try {
+                if (!window.showDirectoryPicker) {
+                    return log("你的浏览器不支持 File System Access API，请使用Chrome/Edge/Firefox最新版", true);
+                }
+                targetDirHandle = await window.showDirectoryPicker();
+                if (currentCodeType === 'frontend' && targetDirHandle.name !== 'src') {
+                    log('前端代码生成请选择项目的src文件夹！', true);
+                    targetDirHandle = null;
+                    return;
+                }
+                if (currentCodeType === 'backend') {
+                    log(`✅ 已获取后端项目根目录授权，将使用编辑后的原始模板生成代码`, false);
+                } else {
+                    log(`✅ 已获取前端src目录授权，将使用编辑后的原始模板生成代码`, false);
+                }
+                updateBtnWriteState();
+            } catch (err) {
+                log(`用户取消或目录选择失败: ${err.message}`, true);
+            }
+        });
+
+        // ========== 核心：生成代码（基于编辑后的原始模板渲染） ==========
+        btnWrite.addEventListener('click', async () => {
+            if (!targetDirHandle || !moduleDir) return;
+            const codeTypeText = currentCodeType === 'frontend' ? '前端Vue' : '后端Java（renren-fast）';
+            const templateCount = currentCodeType === 'frontend' ? 4 : 6;
+
+            try {
+                log(`正在生成【${moduleCamel}】模块${codeTypeText}代码（共${templateCount}个文件，使用编辑后的原始模板）...`, false);
+                if (currentCodeType === 'frontend') {
+                    await generateFrontendCode();
+                } else {
+                    await generateBackendCode();
+                }
+                const highlightStr = currentCodeType === 'frontend' ? 'src/' : '项目根目录/';
+                dirTreeArea.innerHTML = generateDirTree().replace(highlightStr, `<span class="generated">${highlightStr}</span>`);
+                saveToLocalStorage();
+                log(`✅ 【${moduleCamel}】模块${codeTypeText}代码生成成功！共${templateCount}个文件，均由原始模板渲染`, false);
+            } catch (err) {
+                log(`❌ 代码生成失败: ${err.message}`, true);
+                console.error(err);
+            }
+        });
+
+        // ========== 前端代码生成（基于原始模板渲染） ==========
+        async function generateFrontendCode() {
+            const apiFile = getFileName('api');
+            const routerFile = getFileName('router');
+            const indexFile = getFileName('index');
+            const formFile = getFileName('form');
+            // 渲染原始模板为实际代码
+            const apiContent = renderTemplate(TEMPLATES.frontend.api);
+            const routerContent = renderTemplate(TEMPLATES.frontend.router);
+            const indexContent = renderTemplate(TEMPLATES.frontend.index);
+            const formContent = renderTemplate(TEMPLATES.frontend.form);
+            // 写入文件
+            await writeFile(targetDirHandle, `router/modules/${routerFile}`, routerContent);
+            await writeFile(targetDirHandle, `views/${viewFolder}/api/${apiFile}`, apiContent);
+            await writeFile(targetDirHandle, `views/${viewFolder}/${indexFile}`, indexContent);
+            await writeFile(targetDirHandle, `views/${viewFolder}/comp/${formFile}`, formContent);
+        }
+
+        // ========== 后端代码生成（基于原始模板渲染） ==========
+        async function generateBackendCode() {
+            const entityFile = getFileName('entity');
+            const controllerFile = getFileName('controller');
+            const serviceFile = getFileName('service');
+            const serviceImplFile = getFileName('serviceImpl');
+            const mapperFile = getFileName('mapper');
+            const xmlFile = getFileName('mapperXml');
+            // 渲染原始模板为实际代码
+            const entityContent = renderTemplate(TEMPLATES.backend.entity);
+            const controllerContent = renderTemplate(TEMPLATES.backend.controller);
+            const serviceContent = renderTemplate(TEMPLATES.backend.service);
+            const serviceImplContent = renderTemplate(TEMPLATES.backend.serviceImpl);
+            const mapperContent = renderTemplate(TEMPLATES.backend.mapper);
+            const mapperXmlContent = renderTemplate(TEMPLATES.backend.mapperXml);
+            // 基础路径
+            const baseJavaPath = `main/java/com/renren/modular/${moduleLower}`;
+            const baseXmlPath = `main/resources/mapper/${moduleLower}`;
+            // 写入文件
+            await writeFile(targetDirHandle, `${baseJavaPath}/entity/${entityFile}`, entityContent);
+            await writeFile(targetDirHandle, `${baseJavaPath}/controller/${controllerFile}`, controllerContent);
+            await writeFile(targetDirHandle, `${baseJavaPath}/service/${serviceFile}`, serviceContent);
+            await writeFile(targetDirHandle, `${baseJavaPath}/service/impl/${serviceImplFile}`, serviceImplContent);
+            await writeFile(targetDirHandle, `${baseJavaPath}/mapper/${mapperFile}`, mapperContent);
+            await writeFile(targetDirHandle, `${baseXmlPath}/${xmlFile}`, mapperXmlContent);
+        }
+
+        // ========== 原有功能：文件/目录操作 ==========
+        async function writeFile(dirHandle, path, content) {
+            const parts = path.split('/').filter(Boolean);
+            const fileName = parts.pop();
+            const targetDirHandle = await ensureDir(dirHandle, parts);
+            const fileHandle = await targetDirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+        }
+
+        async function ensureDir(root, pathSegments) {
+            let current = root;
+            for (const segment of pathSegments) {
+                current = await current.getDirectoryHandle(segment, { create: true });
+            }
+            return current;
+        }
+
+        // 初始化
+        window.addEventListener('load', initFromLocalStorage);
+    </script>
+</body>
+</html>
