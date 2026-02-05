@@ -237,8 +237,9 @@
         const btnExportTpl = document.getElementById('btnExportTpl');
         const fileInput = document.getElementById('fileInput');
 
-        // Monaco编辑器实例
+        // Monaco编辑器实例和模型缓存
         let monacoEditor = null;
+        let editorModel = null;
         // 核心：原始模板存储对象（定义默认值，用于重置）
         const DEFAULT_TEMPLATES = {
             // 前端原始模板（无模块名，纯可复用模板）
@@ -747,6 +748,8 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                     renderValidationDecorations: 'off',
                     hideMarkersInOverviewRuler: true
                 });
+                // 缓存编辑器模型
+                editorModel = monacoEditor.getModel();
                 // 编辑器自适应窗口大小
                 window.addEventListener('resize', () => monacoEditor?.layout());
                 // 监听编辑器内容变化，实时更新原始模板
@@ -797,12 +800,13 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             
             // 如果Monaco编辑器已初始化
             if (monacoEditor) {
-                // 更新编辑器内容（原始模板）和语法高亮
+                // 更新编辑器内容（原始模板）
                 monacoEditor.setValue(TEMPLATES[currentCodeType][tplFile]);
-                monacoEditor.setModelLanguage(
-                    monacoEditor.getModel(),
-                    getTemplateLanguage(tplFile, currentCodeType)
-                );
+                // 正确设置语法高亮语言
+                const language = getTemplateLanguage(tplFile, currentCodeType);
+                if (editorModel) {
+                    monaco.editor.setModelLanguage(editorModel, language);
+                }
                 // 编辑器自适应
                 monacoEditor.layout();
                 log(`✅ 切换至【${getTemplateFileName(tplFile, currentCodeType)}】原始模板编辑`, false);
@@ -843,7 +847,8 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             // 获取当前代码类型的默认模板
             const defaultTpl = codeType === 'frontend' ? 'api' : 'entity';
             // 选中默认模板Radio
-            document.querySelector(`input[name="templateFile"][value="${defaultTpl}"]`).checked = true;
+            const tplInput = document.querySelector(`input[name="templateFile"][value="${defaultTpl}"]`);
+            if (tplInput) tplInput.checked = true;
             // 切换编辑器模板
             switchTemplateTab(defaultTpl);
             // ✅ 修复1：强制控制命名规则面板显示/隐藏（前端显示、后端隐藏）
@@ -859,53 +864,50 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             updateDirTree();
         }
 
-        // ========== 升级功能：本地存储初始化（包含模板） ==========
+        // ========== 升级功能：本地存储初始化（包含模板，防御性处理） ==========
         function initFromLocalStorage() {
             const savedConfig = StorageUtils.get(STORAGE_KEY);
-            if (savedConfig) {
-                try {
-                    const { moduleName, codeType, nameRule, templates } = savedConfig;
+            if (!savedConfig || typeof savedConfig !== 'object') {
+                updateBtnWriteState();
+                return;
+            }
+            const { moduleName, codeType, nameRule, templates } = savedConfig;
 
-                    // 0. 优先恢复模板内容（如果存在）
-                    if (templates) {
-                        if (templates.frontend) Object.assign(TEMPLATES.frontend, templates.frontend);
-                        if (templates.backend) Object.assign(TEMPLATES.backend, templates.backend);
-                        log('✅ 已从本地存储恢复自定义模板内容', false);
-                    }
+            // 优先恢复模板内容（存在且结构正确时）
+            if (templates && typeof templates === 'object') {
+                if (templates.frontend && typeof templates.frontend === 'object') {
+                    Object.assign(TEMPLATES.frontend, templates.frontend);
+                }
+                if (templates.backend && typeof templates.backend === 'object') {
+                    Object.assign(TEMPLATES.backend, templates.backend);
+                }
+                log('✅ 已从本地存储恢复自定义模板内容', false);
+            }
 
-                    // 1. 恢复状态变量
-                    if (codeType && ['frontend', 'backend'].includes(codeType)) {
-                        currentCodeType = codeType;
-                        Array.from(codeTypeRadios).forEach(radio => radio.checked = radio.value === codeType);
-                    }
+            // 恢复状态变量
+            if (codeType && ['frontend', 'backend'].includes(codeType)) {
+                currentCodeType = codeType;
+                Array.from(codeTypeRadios).forEach(radio => (radio.checked = radio.value === codeType));
+            }
 
-                    // ✅ 修复2：本地存储恢复命名规则时，强制同步Radio选中状态
-                    if (nameRule && ['camel', 'kebab'].includes(nameRule)) {
-                        currentNameRule = nameRule;
-                        Array.from(nameRuleRadios).forEach(radio => {
-                            radio.checked = radio.value === nameRule;
-                        });
-                    }
+            if (nameRule && ['camel', 'kebab'].includes(nameRule)) {
+                currentNameRule = nameRule;
+                Array.from(nameRuleRadios).forEach(radio => (radio.checked = radio.value === nameRule));
+            }
 
-                    if (moduleName) {
-                        moduleNameInput.value = moduleName;
-                        moduleRaw = moduleName;
-                        // 预先检查有效性以启用按钮
-                        if (standardizeModuleName(moduleName).valid) {
-                            btnPick.disabled = false;
-                        }
-                    }
-
-                    // 2. 统一触发状态更新（会使用上面恢复的 currentCodeType 和 currentNameRule）
-                    switchCodeType(currentCodeType);
-
-                    log(`✅ 本地配置已回显：模块名【${moduleName || '无'}】| 代码类型【${currentCodeType === 'frontend' ? '前端Vue' : '后端Java'}】${currentCodeType === 'frontend' ? '| 命名规范【' + (currentNameRule === 'camel' ? '大驼峰' : '短横线') + '】' : ''}`, false);
-                } catch (e) {
-                    localStorage.removeItem(STORAGE_KEY);
-                    log('⚠️ 本地配置损坏，已自动清除', false);
+            if (moduleName) {
+                moduleNameInput.value = moduleName;
+                moduleRaw = moduleName;
+                const standardRes = standardizeModuleName(moduleName);
+                if (standardRes && standardRes.valid) {
+                    btnPick.disabled = false;
                 }
             }
+
+            // 统一触发状态更新
+            switchCodeType(currentCodeType);
             updateBtnWriteState();
+            log(`✅ 本地配置已回显：模块名【${moduleName || '无'}】| 代码类型【${currentCodeType === 'frontend' ? '前端Vue' : '后端Java'}】${currentCodeType === 'frontend' ? '| 命名规范【' + (currentNameRule === 'camel' ? '大驼峰' : '短横线') + '】' : ''}`, false);
         }
         // ========== 核心：模板渲染（将原始模板替换为实际模块名生成代码） ==========
         function renderTemplate(tplContent) {
