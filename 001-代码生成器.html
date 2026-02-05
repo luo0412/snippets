@@ -254,15 +254,15 @@ export default {
 
 // 【模块名】路由模板
 const 【大驼峰模块名】Router = {
-  path: '/【模块标识】',
+  path: '/【斜线模块名】',
   component: Layout,
-  redirect: '/【模块标识】/index',
+  redirect: '/【斜线模块名】/index',
   name: '【大驼峰模块名】',
   meta: { title: '【模块名】管理', icon: 'user' },
   children: [
     {
       path: 'index',
-      component: () => import('@/views/【首单词模块名】/index'),
+      component: () => import('@/views/【首单词模块名】/【列表文件名】'),
       name: '【大驼峰模块名】Index',
       meta: { title: '【模块名】列表', noCache: true }
     }
@@ -314,8 +314,8 @@ export default 【大驼峰模块名】Router`,
 </template>
 
 <script>
-import Modal from './comp/modal'
-import 【大驼峰模块名】Api from './api/api'
+import Modal from './comp/【Modal文件名】'
+import 【大驼峰模块名】Api from './api/【API文件名】'
 
 export default {
   name: '【大驼峰模块名】Index',
@@ -416,7 +416,7 @@ export default {
 </template>
 
 <script>
-import 【大驼峰模块名】Api from '../api/api'
+import 【大驼峰模块名】Api from '../api/【API文件名】'
 
 export default {
   name: "【大驼峰模块名】Modal",
@@ -640,9 +640,12 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         let moduleRaw = ''; 
         let moduleDir = '';    // 模块标识（kebab-case/小写）
         let moduleCamel = '';  // 大驼峰模块名
+        let moduleLowerCamel = ''; // 小驼峰模块名
         let moduleKebab = '';  // 短横线模块名
+        let moduleSlash = '';  // 斜线模块名
         let moduleLower = '';  // 小写模块名
         let viewFolder = '';   // 前端视图文件夹（首单词）
+        let viewFolderUpper = ''; // 全大写首单词模块名
         let currentCodeType = 'frontend'; // 默认选中前端Vue
         let currentNameRule = 'camel';
         let currentTemplateFile = 'api'; // 默认编辑API模板
@@ -791,14 +794,31 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         // ========== 核心：模板渲染（将原始模板替换为实际模块名生成代码） ==========
         function renderTemplate(tplContent) {
             if (!moduleRaw || !moduleCamel) return tplContent;
+            
+            // 辅助函数：获取不带后缀的文件名（用于import引用）
+            const getImportName = (type) => {
+                const fileName = getFileName(type);
+                // Vue文件保留后缀，其他文件去除后缀
+                if (fileName.endsWith('.vue')) return fileName;
+                return fileName.replace(/\.(js|vue|java|xml)$/, '');
+            };
+
             // 模板替换映射表
             const replaceMap = {
                 '【模块名】': moduleRaw,
                 '【模块标识】': moduleDir,
                 '【大驼峰模块名】': moduleCamel,
+                '【小驼峰模块名】': moduleLowerCamel,
                 '【短横线模块名】': moduleKebab,
+                '【斜线模块名】': moduleSlash,
                 '【小写模块名】': moduleLower,
-                '【首单词模块名】': viewFolder
+                '【首单词模块名】': viewFolder,
+                '【全大写首单词模块名】': viewFolderUpper,
+                // 文件引用占位符（自动去除后缀）
+                '【API文件名】': getImportName('api'),
+                '【Modal文件名】': getImportName('modal'),
+                '【列表文件名】': getImportName('index'),
+                '【路由文件名】': getImportName('router')
             };
             // 批量替换模板占位符
             return Object.keys(replaceMap).reduce((content, key) => {
@@ -827,9 +847,12 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         function updateModuleState(standardRes) {
             moduleDir = currentCodeType === 'backend' ? standardRes.camel.toLowerCase() : (currentNameRule === 'camel' ? standardRes.camel : standardRes.kebab);
             moduleCamel = standardRes.camel;
+            moduleLowerCamel = standardRes.camel.charAt(0).toLowerCase() + standardRes.camel.slice(1);
             moduleKebab = standardRes.kebab;
+            moduleSlash = standardRes.kebab.replace(/-/g, '/');
             moduleLower = standardRes.camel.toLowerCase(); // 新增：小写模块名
             viewFolder = standardRes.viewFolder;
+            viewFolderUpper = standardRes.viewFolder.toUpperCase();
         }
 
         // ========== 原有功能：获取当前选择 ==========
