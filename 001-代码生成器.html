@@ -39,6 +39,21 @@
         #templateTabGroup .tab-item { border-radius: 0; padding: 10px 20px; }
         /* Monaco编辑器容器：占满右侧面板剩余高度 */
         #monacoContainer { flex: 1; width: 100%; }
+        /* 降级文本域：样式与Monaco容器一致 */
+        #fallbackEditor {
+            flex: 1;
+            width: 100%;
+            resize: none;
+            border: none;
+            padding: 10px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background: #fff;
+            color: #333;
+            outline: none;
+            display: none; /* 默认隐藏 */
+        }
         /* 编辑器加载提示 */
         .editor-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #409EFF; font-size: 18px; }
         h2 { margin-bottom: 20px; color: #333; }
@@ -186,6 +201,8 @@
             <div class="editor-loading" id="editorLoading">📝 正在加载代码编辑器...（离线环境将自动隐藏）</div>
             <!-- Monaco编辑器容器 -->
             <div id="monacoContainer" style="display: none;"></div>
+            <!-- 降级文本域（当Monaco加载失败时显示） -->
+            <textarea id="fallbackEditor" spellcheck="false"></textarea>
         </div>
     </div>
 
@@ -202,6 +219,7 @@
         const rightPanel = document.getElementById('rightPanel');
         const editorLoading = document.getElementById('editorLoading');
         const monacoContainer = document.getElementById('monacoContainer');
+        const fallbackEditor = document.getElementById('fallbackEditor');
         const templateFileRadios = document.getElementsByName('templateFile');
         const frontendTabs = document.querySelectorAll('.frontend-tab');
         const backendTabs = document.querySelectorAll('.backend-tab');
@@ -652,6 +670,11 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
 
         // ========== 核心：Monaco Editor初始化（修复blob语法错误+CDN+离线兼容） ==========
         function initMonacoEditor() {
+            // 检查require是否定义（CDN是否加载成功）
+            if (typeof require === 'undefined') {
+                return enableFallbackEditor();
+            }
+
             // 配置Monaco加载路径（CDN）
             require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
             // ✅ 修复核心：给blob://添加单引号，返回合法字符串，解决语法错误
@@ -685,10 +708,28 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                 });
                 log('✅ 代码编辑器加载成功，可编辑原始模板（修改后全局生效）', false);
             }, (err) => {
-                // 加载失败（离线/CDN不可用）：隐藏整个右侧面板，无报错提示
-                rightPanel.style.display = 'none';
-                console.log('ℹ️ 离线环境，代码编辑器已自动隐藏', err);
+                // 加载失败（离线/CDN不可用）：启用降级模式
+                console.log('Monaco Editor加载失败，切换至降级模式', err);
+                enableFallbackEditor();
             });
+        }
+
+        // 启用降级文本域编辑器
+        function enableFallbackEditor() {
+            rightPanel.style.display = 'flex';
+            editorLoading.style.display = 'none';
+            monacoContainer.style.display = 'none';
+            fallbackEditor.style.display = 'block';
+            
+            // 初始化内容
+            fallbackEditor.value = TEMPLATES[currentCodeType][currentTemplateFile];
+            
+            // 监听输入
+            fallbackEditor.addEventListener('input', () => {
+                TEMPLATES[currentCodeType][currentTemplateFile] = fallbackEditor.value;
+            });
+            
+            log('ℹ️ 离线环境或CDN加载失败，已切换至简易文本编辑模式', false);
         }
         // 页面加载后立即初始化Monaco
         window.addEventListener('DOMContentLoaded', initMonacoEditor);
@@ -704,16 +745,23 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         // ========== 核心：切换模板Tab（更新编辑器内容和语法） ==========
         function switchTemplateTab(tplFile) {
             currentTemplateFile = tplFile;
-            if (!monacoEditor) return;
-            // 更新编辑器内容（原始模板）和语法高亮
-            monacoEditor.setValue(TEMPLATES[currentCodeType][tplFile]);
-            monacoEditor.setModelLanguage(
-                monacoEditor.getModel(),
-                getTemplateLanguage(tplFile, currentCodeType)
-            );
-            // 编辑器自适应
-            monacoEditor.layout();
-            log(`✅ 切换至【${getTemplateFileName(tplFile, currentCodeType)}】原始模板编辑`, false);
+            
+            // 如果Monaco编辑器已初始化
+            if (monacoEditor) {
+                // 更新编辑器内容（原始模板）和语法高亮
+                monacoEditor.setValue(TEMPLATES[currentCodeType][tplFile]);
+                monacoEditor.setModelLanguage(
+                    monacoEditor.getModel(),
+                    getTemplateLanguage(tplFile, currentCodeType)
+                );
+                // 编辑器自适应
+                monacoEditor.layout();
+                log(`✅ 切换至【${getTemplateFileName(tplFile, currentCodeType)}】原始模板编辑`, false);
+            } else if (fallbackEditor.style.display === 'block') {
+                // 如果处于降级模式，更新textarea
+                fallbackEditor.value = TEMPLATES[currentCodeType][tplFile];
+                log(`✅ 切换至【${getTemplateFileName(tplFile, currentCodeType)}】原始模板编辑（简易模式）`, false);
+            }
         }
 
         // ========== 核心：获取模板对应的文件名（用于提示） ==========
