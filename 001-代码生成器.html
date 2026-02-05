@@ -1185,15 +1185,39 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         btnWrite.addEventListener('click', async () => {
             if (!targetDirHandle || !moduleDir) return;
             const codeTypeText = currentCodeType === 'frontend' ? '前端Vue' : '后端Java';
-            const templateCount = currentCodeType === 'frontend' ? 4 : 6;
+            
+            // 定义生成配置（路径生成函数依赖最新的全局变量）
+            const GENERATION_CONFIG = {
+                frontend: [
+                    { key: 'router', path: () => `router/modules` },
+                    { key: 'api', path: () => `views/${viewFolder}/api` },
+                    { key: 'index', path: () => `views/${viewFolder}` },
+                    { key: 'modal', path: () => `views/${viewFolder}/comp` }
+                ],
+                backend: [
+                    { key: 'entity', path: () => `main/java/com/renren/modular/${moduleLower}/entity` },
+                    { key: 'controller', path: () => `main/java/com/renren/modular/${moduleLower}/controller` },
+                    { key: 'service', path: () => `main/java/com/renren/modular/${moduleLower}/service` },
+                    { key: 'serviceImpl', path: () => `main/java/com/renren/modular/${moduleLower}/service/impl` },
+                    { key: 'mapper', path: () => `main/java/com/renren/modular/${moduleLower}/mapper` },
+                    { key: 'mapperXml', path: () => `main/resources/mapper/${moduleLower}` }
+                ]
+            };
+
+            const configList = GENERATION_CONFIG[currentCodeType];
+            const templateCount = configList.length;
 
             try {
                 log(`正在生成【${moduleCamel}】模块${codeTypeText}代码（共${templateCount}个文件，使用编辑后的原始模板）...`, false);
-                if (currentCodeType === 'frontend') {
-                    await generateFrontendCode();
-                } else {
-                    await generateBackendCode();
+                
+                // 统一生成逻辑
+                for (const item of configList) {
+                    const fileName = getFileName(item.key);
+                    const content = renderTemplate(TEMPLATES[currentCodeType][item.key]);
+                    const fullPath = `${item.path()}/${fileName}`;
+                    await writeFile(targetDirHandle, fullPath, content);
                 }
+
                 const highlightStr = currentCodeType === 'frontend' ? 'src/' : '项目根目录/';
                 dirTreeArea.innerHTML = generateDirTree().replace(highlightStr, `<span class="generated">${highlightStr}</span>`);
                 saveToLocalStorage();
@@ -1203,51 +1227,6 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                 console.error(err);
             }
         });
-
-        // ========== 前端代码生成（基于原始模板渲染） ==========
-        async function generateFrontendCode() {
-            const apiFile = getFileName('api');
-            const routerFile = getFileName('router');
-            const indexFile = getFileName('index');
-            const modalFile = getFileName('modal');
-            // 渲染原始模板为实际代码
-            const apiContent = renderTemplate(TEMPLATES.frontend.api);
-            const routerContent = renderTemplate(TEMPLATES.frontend.router);
-            const indexContent = renderTemplate(TEMPLATES.frontend.index);
-            const modalContent = renderTemplate(TEMPLATES.frontend.modal);
-            // 写入文件
-            await writeFile(targetDirHandle, `router/modules/${routerFile}`, routerContent);
-            await writeFile(targetDirHandle, `views/${viewFolder}/api/${apiFile}`, apiContent);
-            await writeFile(targetDirHandle, `views/${viewFolder}/${indexFile}`, indexContent);
-            await writeFile(targetDirHandle, `views/${viewFolder}/comp/${modalFile}`, modalContent);
-        }
-
-        // ========== 后端代码生成（基于原始模板渲染） ==========
-        async function generateBackendCode() {
-            const entityFile = getFileName('entity');
-            const controllerFile = getFileName('controller');
-            const serviceFile = getFileName('service');
-            const serviceImplFile = getFileName('serviceImpl');
-            const mapperFile = getFileName('mapper');
-            const xmlFile = getFileName('mapperXml');
-            // 渲染原始模板为实际代码
-            const entityContent = renderTemplate(TEMPLATES.backend.entity);
-            const controllerContent = renderTemplate(TEMPLATES.backend.controller);
-            const serviceContent = renderTemplate(TEMPLATES.backend.service);
-            const serviceImplContent = renderTemplate(TEMPLATES.backend.serviceImpl);
-            const mapperContent = renderTemplate(TEMPLATES.backend.mapper);
-            const mapperXmlContent = renderTemplate(TEMPLATES.backend.mapperXml);
-            // 基础路径
-            const baseJavaPath = `main/java/com/renren/modular/${moduleLower}`;
-            const baseXmlPath = `main/resources/mapper/${moduleLower}`;
-            // 写入文件
-            await writeFile(targetDirHandle, `${baseJavaPath}/entity/${entityFile}`, entityContent);
-            await writeFile(targetDirHandle, `${baseJavaPath}/controller/${controllerFile}`, controllerContent);
-            await writeFile(targetDirHandle, `${baseJavaPath}/service/${serviceFile}`, serviceContent);
-            await writeFile(targetDirHandle, `${baseJavaPath}/service/impl/${serviceImplFile}`, serviceImplContent);
-            await writeFile(targetDirHandle, `${baseJavaPath}/mapper/${mapperFile}`, mapperContent);
-            await writeFile(targetDirHandle, `${baseXmlPath}/${xmlFile}`, mapperXmlContent);
-        }
 
         // ========== 原有功能：文件/目录操作 ==========
         async function writeFile(dirHandle, path, content) {
