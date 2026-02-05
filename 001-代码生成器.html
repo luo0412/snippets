@@ -196,6 +196,14 @@
                     <input type="radio" name="templateFile" id="tpl-mapperXml" value="mapperXml">
                     <label for="tpl-mapperXml">MapperXML模板 (mapper.xml)</label>
                 </div>
+                
+                <!-- 编辑器操作按钮组 -->
+                <div class="editor-actions" style="margin-left: auto; display: flex; gap: 8px; padding-right: 10px;">
+                    <button id="btnResetTpl" title="重置当前所有模板为默认值" style="padding: 6px 12px; font-size: 12px; margin: 0; background: #fff; border: 1px solid #dcdfe6; color: #606266; border-radius: 3px;">↺ 重置默认</button>
+                    <button id="btnImportTpl" title="导入配置JSON文件" style="padding: 6px 12px; font-size: 12px; margin: 0; background: #fff; border: 1px solid #dcdfe6; color: #606266; border-radius: 3px;">📂 导入配置</button>
+                    <button id="btnExportTpl" title="导出当前配置为JSON" style="padding: 6px 12px; font-size: 12px; margin: 0; background: #fff; border: 1px solid #dcdfe6; color: #606266; border-radius: 3px;">💾 导出配置</button>
+                    <input type="file" id="fileInput" accept=".json" style="display: none;">
+                </div>
             </div>
             <!-- 编辑器加载提示 -->
             <div class="editor-loading" id="editorLoading">📝 正在加载代码编辑器...（离线环境将自动隐藏）</div>
@@ -223,10 +231,16 @@
         const templateFileRadios = document.getElementsByName('templateFile');
         const frontendTabs = document.querySelectorAll('.frontend-tab');
         const backendTabs = document.querySelectorAll('.backend-tab');
+        // 编辑器操作按钮
+        const btnResetTpl = document.getElementById('btnResetTpl');
+        const btnImportTpl = document.getElementById('btnImportTpl');
+        const btnExportTpl = document.getElementById('btnExportTpl');
+        const fileInput = document.getElementById('fileInput');
+
         // Monaco编辑器实例
         let monacoEditor = null;
-        // 核心：原始模板存储对象（所有编辑操作基于此，修改后全局生效）
-        const TEMPLATES = {
+        // 核心：原始模板存储对象（定义默认值，用于重置）
+        const DEFAULT_TEMPLATES = {
             // 前端原始模板（无模块名，纯可复用模板）
             frontend: {
                 api: `import request from '@/utils/request'
@@ -652,6 +666,9 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
 </mapper>`
             }
         };
+        //以此为基础创建可编辑的模板副本
+        const TEMPLATES = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+        
         // 本地存储key（语义化）
         const STORAGE_KEY = 'renrenFastCodeGenConfig';
         // 全局状态（默认前端Vue代码）
@@ -811,6 +828,18 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             // 切换模板Tab显示/隐藏
             frontendTabs.forEach(tab => tab.style.display = codeType === 'frontend' ? 'flex' : 'none');
             backendTabs.forEach(tab => tab.style.display = codeType === 'backend' ? 'flex' : 'none');
+            
+            // 修复联动问题：切回前端时，同步当前UI选中的命名规则到变量
+            if (codeType === 'frontend') {
+                const checkedRadio = Array.from(nameRuleRadios).find(r => r.checked);
+                if (checkedRadio) {
+                    currentNameRule = checkedRadio.value;
+                } else {
+                    currentNameRule = 'camel'; // 默认值
+                    document.getElementById('camelCase').checked = true;
+                }
+            }
+            
             // 获取当前代码类型的默认模板
             const defaultTpl = codeType === 'frontend' ? 'api' : 'entity';
             // 选中默认模板Radio
@@ -1266,6 +1295,81 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                 log(`❌ 代码生成失败: ${err.message}`, true);
                 console.error(err);
             }
+        });
+
+        // ========== 升级功能：编辑器操作按钮逻辑 ==========
+        
+        // 1. 重置模板
+        btnResetTpl.addEventListener('click', () => {
+            if (confirm('⚠️ 确定要重置所有模板吗？\n\n这将丢失你当前所有的自定义修改，恢复为系统默认模板。')) {
+                // 深拷贝重置 TEMPLATES
+                const defaults = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+                TEMPLATES.frontend = defaults.frontend;
+                TEMPLATES.backend = defaults.backend;
+                
+                // 刷新编辑器显示
+                switchTemplateTab(currentTemplateFile);
+                
+                // 保存并提示
+                saveToLocalStorage();
+                log('✅ 所有模板已重置为默认状态', false);
+            }
+        });
+
+        // 2. 导出配置
+        btnExportTpl.addEventListener('click', () => {
+            const config = StorageUtils.get(STORAGE_KEY) || {
+                moduleName: moduleRaw,
+                codeType: currentCodeType,
+                nameRule: currentNameRule,
+                templates: TEMPLATES
+            };
+            // 确保当前最新的模板被包含
+            config.templates = TEMPLATES;
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `codegen-config-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            log('✅ 配置已导出', false);
+        });
+
+        // 3. 导入配置
+        btnImportTpl.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const config = JSON.parse(event.target.result);
+                    // 简单的格式校验
+                    if (!config.templates || !config.templates.frontend || !config.templates.backend) {
+                        throw new Error('无效的配置文件格式');
+                    }
+
+                    // 覆盖本地配置
+                    StorageUtils.set(STORAGE_KEY, config);
+                    
+                    // 重新加载页面以应用配置
+                    if (confirm('✅ 配置导入成功！\n\n点击“确定”将刷新页面以应用新配置。')) {
+                        location.reload();
+                    }
+                } catch (err) {
+                    alert('❌ 导入失败：' + err.message);
+                    log('❌ 导入失败：' + err.message, true);
+                } finally {
+                    fileInput.value = ''; // 重置文件选择
+                }
+            };
+            reader.readAsText(file);
         });
 
         // ========== 原有功能：文件/目录操作 ==========
