@@ -668,6 +668,36 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         let currentNameRule = 'camel';
         let currentTemplateFile = 'api'; // 默认编辑API模板
 
+        // ========== 工具函数：防抖 ==========
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // ========== 工具函数：存储管理（提取公共方法） ==========
+        const StorageUtils = {
+            get(key) {
+                try {
+                    return JSON.parse(localStorage.getItem(key));
+                } catch (e) {
+                    return null;
+                }
+            },
+            set(key, value) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                } catch (e) {
+                    console.error('Local storage save failed:', e);
+                }
+            }
+        };
+
+        // 包装保存操作（带防抖，用于编辑器实时保存）
+        const debouncedSave = debounce(saveToLocalStorage, 1000);
+
         // ========== 核心：Monaco Editor初始化（修复blob语法错误+CDN+离线兼容） ==========
         function initMonacoEditor() {
             // 检查require是否定义（CDN是否加载成功）
@@ -705,6 +735,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                 // 监听编辑器内容变化，实时更新原始模板
                 monacoEditor.onDidChangeModelContent(() => {
                     TEMPLATES[currentCodeType][currentTemplateFile] = monacoEditor.getValue();
+                    debouncedSave(); // 实时保存
                 });
                 log('✅ 代码编辑器加载成功，可编辑原始模板（修改后全局生效）', false);
             }, (err) => {
@@ -727,6 +758,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             // 监听输入
             fallbackEditor.addEventListener('input', () => {
                 TEMPLATES[currentCodeType][currentTemplateFile] = fallbackEditor.value;
+                debouncedSave(); // 实时保存
             });
             
             log('ℹ️ 离线环境或CDN加载失败，已切换至简易文本编辑模式', false);
@@ -798,14 +830,21 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             updateDirTree();
         }
 
-        // ========== 原有功能：本地存储初始化 ==========
+        // ========== 升级功能：本地存储初始化（包含模板） ==========
         function initFromLocalStorage() {
-            const savedConfig = localStorage.getItem(STORAGE_KEY);
+            const savedConfig = StorageUtils.get(STORAGE_KEY);
             if (savedConfig) {
                 try {
-                    const { moduleName, codeType, nameRule } = JSON.parse(savedConfig);
+                    const { moduleName, codeType, nameRule, templates } = savedConfig;
 
-                    // 1. 优先恢复所有状态变量
+                    // 0. 优先恢复模板内容（如果存在）
+                    if (templates) {
+                        if (templates.frontend) Object.assign(TEMPLATES.frontend, templates.frontend);
+                        if (templates.backend) Object.assign(TEMPLATES.backend, templates.backend);
+                        log('✅ 已从本地存储恢复自定义模板内容', false);
+                    }
+
+                    // 1. 恢复状态变量
                     if (codeType && ['frontend', 'backend'].includes(codeType)) {
                         currentCodeType = codeType;
                         Array.from(codeTypeRadios).forEach(radio => radio.checked = radio.value === codeType);
@@ -874,14 +913,15 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             }, tplContent);
         }
 
-        // ========== 原有功能：保存配置到本地存储 ==========
+        // ========== 升级功能：保存配置到本地存储（包含模板） ==========
         function saveToLocalStorage() {
             const config = {
                 moduleName: moduleRaw,
                 codeType: currentCodeType,
-                nameRule: currentNameRule
+                nameRule: currentNameRule,
+                templates: TEMPLATES // 新增：保存当前模板内容
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+            StorageUtils.set(STORAGE_KEY, config);
         }
 
         // ========== 原有功能：日志函数 ==========
