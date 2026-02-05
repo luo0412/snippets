@@ -7,10 +7,55 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; line-height: 1.6; height: 100vh; overflow: hidden; }
-        /* 核心：左右两栏弹性布局，占满视口 */
-        .layout-container { display: flex; width: 100vw; height: 100vh; gap: 1px; background: #e4e7ed; }
-        .left-panel { flex: 1; padding: 20px; background: #fff; overflow-y: auto; height: 100%; }
-        .right-panel { flex: 1; height: 100%; background: #f5f7fa; display: none; flex-direction: column; }
+        /* 核心：左右两栏弹性布局，占满视口 - 新增分割面板样式 */
+        .layout-container { 
+            display: flex; 
+            width: 100vw; 
+            height: 100vh; 
+            background: #e4e7ed; 
+            position: relative;
+        }
+        .left-panel { 
+            flex: 0 0 50%; /* 默认50%宽度 */
+            max-width: calc(100% - 10px);
+            min-width: 300px;
+            padding: 20px; 
+            background: #fff; 
+            overflow-y: auto; 
+            height: 100%; 
+            transition: flex-basis 0.1s ease;
+        }
+        /* 新增：分割线样式 */
+        .splitter {
+            width: 4px;
+            height: 100%;
+            background: #e4e7ed;
+            cursor: col-resize;
+            position: relative;
+            z-index: 10;
+        }
+        .splitter:hover {
+            background: #409EFF;
+        }
+        .splitter::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 1px;
+            height: 30px;
+            background: #fff;
+            opacity: 0.7;
+        }
+        .right-panel { 
+            flex: 1; 
+            height: 100%; 
+            background: #f5f7fa; 
+            display: none; 
+            flex-direction: column; 
+            min-width: 300px;
+        }
         /* 原有样式保留并适配 */
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px; }
         button:disabled { cursor: not-allowed; opacity: 0.6; }
@@ -70,11 +115,17 @@
                 height: auto;
                 max-height: 50vh;
                 overflow-y: auto;
+                width: 100%;
+            }
+            /* 响应式下隐藏分割线 */
+            .splitter {
+                display: none;
             }
             .right-panel {
                 flex: 1;
                 height: 50vh;
                 min-height: 400px;
+                width: 100%;
             }
         }
         /* 超小屏幕进一步优化 */
@@ -103,10 +154,10 @@
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
 </head>
 <body>
-    <!-- 左右两栏核心布局 -->
+    <!-- 左右两栏核心布局 - 新增分割线元素 -->
     <div class="layout-container">
         <!-- 左侧：原有操作界面 -->
-        <div class="left-panel">
+        <div class="left-panel" id="leftPanel">
             <h2>前后端CRUD代码生成器（多Tab模板编辑版）</h2>
             <div class="module-input">
                 <label>模块名(支持任意格式)：</label>
@@ -149,6 +200,9 @@
 
             <div class="log" id="logArea">等待操作...请先输入模块名 | 右侧可编辑原始模板，修改后全局生效</div>
         </div>
+        
+        <!-- 新增：分割线 -->
+        <div class="splitter" id="splitter"></div>
 
         <!-- 右侧：模板Tab栏 + Monaco编辑器面板（默认隐藏，编辑器加载成功后显示） -->
         <div class="right-panel" id="rightPanel">
@@ -236,6 +290,10 @@
         const btnImportTpl = document.getElementById('btnImportTpl');
         const btnExportTpl = document.getElementById('btnExportTpl');
         const fileInput = document.getElementById('fileInput');
+        // 新增：分割面板相关元素
+        const splitter = document.getElementById('splitter');
+        const leftPanel = document.getElementById('leftPanel');
+        let isResizing = false;
 
         // Monaco编辑器实例和模型缓存
         let monacoEditor = null;
@@ -716,6 +774,56 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         // 包装保存操作（带防抖，用于编辑器实时保存）
         const debouncedSave = debounce(saveToLocalStorage, 1000);
 
+        // ========== 新增：分割面板拖拽逻辑 ==========
+        function initSplitter() {
+            // 鼠标按下开始拖拽
+            splitter.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none'; // 防止拖拽时选中文字
+            });
+
+            // 鼠标移动调整宽度
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                
+                // 获取容器宽度和鼠标位置
+                const containerRect = document.querySelector('.layout-container').getBoundingClientRect();
+                const x = e.clientX - containerRect.left;
+                const containerWidth = containerRect.width;
+                
+                // 计算左侧面板宽度百分比（限制最小300px，最大容器宽度-300px）
+                const minWidth = 300;
+                const maxWidth = containerWidth - 300;
+                const clampedX = Math.max(minWidth, Math.min(maxWidth, x));
+                const percentage = (clampedX / containerWidth) * 100;
+                
+                // 设置左侧面板宽度
+                leftPanel.style.flexBasis = `${percentage}%`;
+                
+                // 如果编辑器已初始化，重新布局
+                if (monacoEditor) {
+                    monacoEditor.layout();
+                }
+            });
+
+            // 鼠标松开结束拖拽
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+
+            // 窗口大小变化时，保持分割比例
+            window.addEventListener('resize', () => {
+                if (monacoEditor) {
+                    monacoEditor.layout();
+                }
+            });
+        }
+
         // ========== 核心：Monaco Editor初始化（修复blob语法错误+CDN+离线兼容） ==========
         function initMonacoEditor() {
             // 检查require是否定义（CDN是否加载成功）
@@ -783,8 +891,6 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             
             log('ℹ️ 离线环境或CDN加载失败，已切换至简易文本编辑模式', false);
         }
-        // 页面加载后立即初始化Monaco
-        window.addEventListener('DOMContentLoaded', initMonacoEditor);
 
         // ========== 核心：根据模板类型和代码类型获取语法高亮语言 ==========
         function getTemplateLanguage(tplFile, codeType) {
@@ -1394,7 +1500,11 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         }
 
         // 初始化
-        window.addEventListener('load', initFromLocalStorage);
+        window.addEventListener('load', () => {
+            initFromLocalStorage();
+            initSplitter(); // 初始化分割面板
+            initMonacoEditor(); // 初始化编辑器
+        });
     </script>
 </body>
 </html>
