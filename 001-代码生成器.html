@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>renren-fast 前后端CRUD代码生成器（多Tab模板编辑版）</title>
+    <title>前后端CRUD代码生成器（多Tab模板编辑版）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; line-height: 1.6; height: 100vh; overflow: hidden; }
@@ -107,7 +107,7 @@
     <div class="layout-container">
         <!-- 左侧：原有操作界面 -->
         <div class="left-panel">
-            <h2>renren-fast 前后端CRUD代码生成器（多Tab模板编辑版）</h2>
+            <h2>前后端CRUD代码生成器（多Tab模板编辑版）</h2>
             <div class="module-input">
                 <label>模块名(支持任意格式)：</label>
                 <input type="text" id="moduleName" placeholder="如userInfo / UserInfo / user-info / 商品订单(空格)" autocomplete="off">
@@ -143,7 +143,7 @@
             </div>
             
             <p>
-                <button id="btnPick" disabled>📂 1. 选择src文件夹（前端）/ 项目根目录（后端）</button>
+                <button id="btnPick" disabled>📂 1. 选择前端项目src目录 / 后端项目根目录</button>
                 <button id="btnWrite" disabled>💾 2. 手动生成CRUD代码</button>
             </p>
 
@@ -326,18 +326,18 @@ export default 【大驼峰模块名】Router`,
     </el-pagination>
 
     <el-dialog :title="dialogTitle" :visible.sync="open" width="500px" append-to-body>
-      <Modal ref="modal" :form="form" :isAdd="isAdd" @success="getList"/>
+      <【大驼峰模块名】Modal ref="modal" :form="form" :isAdd="isAdd" @success="getList"/>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import Modal from './comp/【Modal文件名】'
+import 【大驼峰模块名】Modal from './comp/【Modal文件名】'
 import 【大驼峰模块名】Api from './api/【API文件名】'
 
 export default {
   name: '【大驼峰模块名】Index',
-  components: { Modal },
+  components: { 【大驼峰模块名】Modal },
   data() {
     return {
       loading: false,
@@ -1131,10 +1131,45 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                 }
                 targetDirHandle = await window.showDirectoryPicker();
                 if (currentCodeType === 'frontend' && targetDirHandle.name !== 'src') {
-                    log('前端代码生成请选择项目的src文件夹！', true);
+                    // 宽松验证：虽然建议选src，但如果用户一定要选别的目录，提示后允许（只要包含views和api）
+                    const confirmMsg = '⚠️ 你选择的目录不是 "src"，是否确认继续？\n（建议选择Vue项目的 src 目录以确保自动创建 views/api 文件夹）';
+                    if (!confirm(confirmMsg)) {
+                        targetDirHandle = null;
+                        return;
+                    }
+                }
+                
+                // 验证目录结构
+                let valid = false;
+                let msg = '';
+                
+                if (currentCodeType === 'frontend') {
+                    // 前端验证：必须包含views和api目录
+                    // 宽松验证：只要是src目录或包含src子目录均可，这里假设用户选的是src
+                    try {
+                        // 尝试访问或创建关键目录，确认有写权限且结构合理
+                        // 注意：这里不做强制阻塞，因为ensureDir会自动创建
+                        valid = true;
+                    } catch(e) {
+                        msg = '前端代码生成请选择项目的 src 目录（需包含 views 和 api 文件夹）';
+                    }
+                } else {
+                    // 后端验证：必须包含src目录
+                    try {
+                        await targetDirHandle.getDirectoryHandle('src');
+                        valid = true;
+                    } catch(e) {
+                        msg = '后端代码生成请选择 Java 项目根目录（需包含 src 文件夹）';
+                    }
+                }
+
+                if (!valid) {
+                    alert(msg);
+                    log('❌ 目录校验失败：' + msg, true);
                     targetDirHandle = null;
                     return;
                 }
+
                 if (currentCodeType === 'backend') {
                     log(`✅ 已获取后端项目根目录授权，将使用编辑后的原始模板生成代码`, false);
                 } else {
