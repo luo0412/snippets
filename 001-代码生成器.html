@@ -153,8 +153,8 @@
                     <label for="tpl-index">列表模板 (index.vue)</label>
                 </div>
                 <div class="tab-item template-tab frontend-tab">
-                    <input type="radio" name="templateFile" id="tpl-form" value="form">
-                    <label for="tpl-form">表单模板 (form.vue)</label>
+                    <input type="radio" name="templateFile" id="tpl-modal" value="modal">
+                    <label for="tpl-modal">弹窗模板 (modal.vue)</label>
                 </div>
                 <!-- 后端模板Tab（默认隐藏） -->
                 <div class="tab-item template-tab backend-tab" style="display: none;">
@@ -308,18 +308,18 @@ export default 【大驼峰模块名】Router`,
     </el-pagination>
 
     <el-dialog :title="dialogTitle" :visible.sync="open" width="500px" append-to-body>
-      <Form ref="form" :form="form" :isAdd="isAdd" @success="getList"/>
+      <Modal ref="modal" :form="form" :isAdd="isAdd" @success="getList"/>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import Form from './comp/form'
+import Modal from './comp/modal'
 import 【大驼峰模块名】Api from './api/api'
 
 export default {
   name: '【大驼峰模块名】Index',
-  components: { Form },
+  components: { Modal },
   data() {
     return {
       loading: false,
@@ -400,7 +400,7 @@ export default {
   border: 1px solid #eee;
 }
 </style>`,
-                form: `<template>
+                modal: `<template>
   <el-form ref="form" :model="form" :rules="rules" label-width="100px">
     <el-form-item label="【模块名】名称" prop="name">
       <el-input v-model="form.name" placeholder="请输入【模块名】名称"/>
@@ -419,7 +419,7 @@ export default {
 import 【大驼峰模块名】Api from '../api/api'
 
 export default {
-  name: "【大驼峰模块名】Form",
+  name: "【大驼峰模块名】Modal",
   props: {
     form: { type: Object, default: () => {} },
     isAdd: { type: Boolean, default: true }
@@ -716,7 +716,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         // ========== 核心：获取模板对应的文件名（用于提示） ==========
         function getTemplateFileName(tplFile, codeType) {
             const nameMap = {
-                frontend: { api: 'api.js', router: 'router.js', index: 'index.vue', form: 'form.vue' },
+                frontend: { api: 'api.js', router: 'router.js', index: 'index.vue', modal: 'modal.vue' },
                 backend: { entity: 'entity.java', controller: 'controller.java', service: 'service.java', serviceImpl: 'serviceImpl.java', mapper: 'mapper.java', mapperXml: 'mapper.xml' }
             };
             return nameMap[codeType][tplFile];
@@ -883,8 +883,8 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         // ========== 原有功能：获取文件名 ==========
         function getFileName(type) {
             const frontendSuffix = {
-                camel: { api: 'Api.js', router: 'Router.js', index: 'Index.vue', form: 'Form.vue' },
-                kebab: { api: '-api.js', router: '-router.js', index: '-index.vue', form: '-form.vue' }
+                camel: { api: 'Api.js', router: 'Router.js', index: 'Index.vue', modal: 'Modal.vue' },
+                kebab: { api: '-api.js', router: '-router.js', index: '-index.vue', modal: '-modal.vue' }
             };
             const backendSuffix = {
                 camel: { 
@@ -923,7 +923,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
                 const apiFile = getFileName('api');
                 const routerFile = getFileName('router');
                 const indexFile = getFileName('index');
-                const formFile = getFileName('form');
+                const modalFile = getFileName('modal');
                 return `src/
 ├── router/
 │   └── modules/
@@ -933,7 +933,7 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
         ├── api/           # API文件夹
         │   └── ${apiFile}
         ├── comp/          # 组件文件夹
-        │   └── ${formFile} # 表单组件
+        │   └── ${modalFile} # 弹窗组件
         └── ${indexFile}    # 列表页面
 
 > 原始输入：${moduleRaw}
@@ -1103,17 +1103,17 @@ public interface 【大驼峰模块名】Mapper extends BaseMapper<【大驼峰�
             const apiFile = getFileName('api');
             const routerFile = getFileName('router');
             const indexFile = getFileName('index');
-            const formFile = getFileName('form');
+            const modalFile = getFileName('modal');
             // 渲染原始模板为实际代码
             const apiContent = renderTemplate(TEMPLATES.frontend.api);
             const routerContent = renderTemplate(TEMPLATES.frontend.router);
             const indexContent = renderTemplate(TEMPLATES.frontend.index);
-            const formContent = renderTemplate(TEMPLATES.frontend.form);
+            const modalContent = renderTemplate(TEMPLATES.frontend.modal);
             // 写入文件
             await writeFile(targetDirHandle, `router/modules/${routerFile}`, routerContent);
             await writeFile(targetDirHandle, `views/${viewFolder}/api/${apiFile}`, apiContent);
             await writeFile(targetDirHandle, `views/${viewFolder}/${indexFile}`, indexContent);
-            await writeFile(targetDirHandle, `views/${viewFolder}/comp/${formFile}`, formContent);
+            await writeFile(targetDirHandle, `views/${viewFolder}/comp/${modalFile}`, modalContent);
         }
 
         // ========== 后端代码生成（基于原始模板渲染） ==========
