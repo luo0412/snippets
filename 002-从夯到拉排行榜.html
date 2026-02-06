@@ -272,6 +272,16 @@
         .ratio-group input {
             accent-color: #409eff;
         }
+        /* 宽度调节样式 */
+        .width-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 16px;
+        }
+        .width-group input[type="range"] {
+            width: 140px;
+        }
     </style>
 </head>
 <body>
@@ -317,6 +327,12 @@
                 <label><input type="radio" name="ratio" value="3:4"> 3:4</label>
                 <label><input type="radio" name="ratio" value="4:3" checked> 4:3</label>
             </div>
+            <!-- 左右宽度调节（总份额7：左=滑块值，右=7-左） -->
+            <div class="width-group" id="widthGroup" title="调整左右栏宽度比例">
+                <span>左右宽度</span>
+                <input type="range" id="widthSlider" min="2" max="6" value="4">
+                <span id="widthLabel">左4 : 右3</span>
+            </div>
             <!-- 候选卡片容器（初始为空） -->
             <div class="list-container" id="candidateContainer"></div>
         </div>
@@ -334,6 +350,10 @@
             const uploadInput = document.getElementById('uploadInput');
             const ratioGroup = document.getElementById('ratioGroup');
             const ratioRadios = ratioGroup.querySelectorAll('input[name="ratio"]');
+            const widthSlider = document.getElementById('widthSlider');
+            const widthLabel = document.getElementById('widthLabel');
+            const rankList = document.querySelector('.rank-list');
+            const candidateList = document.querySelector('.candidate-list');
             
             // 所有左侧层级容器数组
             const tierContainers = [tierHang, tierTop, tierElite, tierNpc, tierTrash];
@@ -341,6 +361,8 @@
             let cardIdCounter = Date.now();
             // 右侧候选区默认比例
             let candidateAspect = '4 / 3';
+            // 左侧保持的比例（与右侧一致）
+            let leftAspect = 4 / 3;
 
             // 设置右侧候选区预览比例
             function setCandidateAspect(val) {
@@ -351,6 +373,10 @@
                 };
                 candidateAspect = map[val] || '4 / 3';
                 document.documentElement.style.setProperty('--candidate-aspect', candidateAspect);
+                // 更新左侧比例（数值）
+                leftAspect = (val === '1:1') ? 1 : (val === '3:4' ? (3/4) : (4/3));
+                // 重新布局所有层级
+                tierContainers.forEach(updateTierLayout);
             }
             // 初始化比例选择
             ratioRadios.forEach(r => {
@@ -377,22 +403,42 @@
                 }
             }
 
-            // 计算并设置左侧容器的行高，使其无滚动刚好铺满
-            function updateTierRows(container) {
-                const totalHeight = container.clientHeight;
-                const style = getComputedStyle(container);
-                const gap = parseFloat(style.rowGap || '0');
-                const cols = 4;
+            // 计算并设置左侧容器布局：保持选择比例、无滚动、刚好铺满该层级高度
+            function updateTierLayout(container) {
                 const count = container.querySelectorAll('.card-item').length;
-                const rows = Math.max(1, Math.ceil(count / cols));
-                const rowHeight = (totalHeight - gap * (rows - 1)) / rows;
+                const tierRow = container.parentElement; // .tier-row
+                if (!tierRow) return;
+                // 每个层级行的可用高度（不含自身外边距，因为用gap）
+                const tierHeight = tierRow.clientHeight;
+                const style = getComputedStyle(container);
+                const rowGap = parseFloat(style.rowGap || '0');
+                const containerWidth = container.clientWidth;
+                // 尝试从较多列开始，尽量让图片更大，且保证列宽*列数不超出容器宽度
+                const maxCols = Math.max(1, Math.min(8, Math.floor(containerWidth / 80)));
+                let chosenCols = 1;
+                let rowHeight = tierHeight; // fallback
+                let colWidth = containerWidth; // fallback
+                for (let cols = maxCols; cols >= 1; cols--) {
+                    const rows = Math.max(1, Math.ceil((count || 1) / cols));
+                    const itemHeight = (tierHeight - rowGap * (rows - 1)) / rows;
+                    const desiredColWidth = leftAspect * itemHeight; // w = ar * h
+                    if (desiredColWidth * cols <= containerWidth) {
+                        chosenCols = cols;
+                        rowHeight = itemHeight;
+                        colWidth = desiredColWidth;
+                        break;
+                    }
+                }
+                // 应用到容器：每行高度与列宽
                 container.style.setProperty('--row-height', `${rowHeight}px`);
+                container.style.gridAutoRows = `${rowHeight}px`;
+                container.style.gridTemplateColumns = `repeat(${chosenCols}, ${colWidth}px)`;
             }
 
             // 初始化所有容器的空状态
             tierContainers.forEach(updateEmptyState);
             updateEmptyState(candidateContainer);
-            tierContainers.forEach(updateTierRows);
+            tierContainers.forEach(updateTierLayout);
 
             // 图片上传处理
             uploadInput.addEventListener('change', function(e) {
@@ -479,21 +525,21 @@
                         }
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
-                        updateTierRows(evt.to);
-                        if (evt.from.classList.contains('tier-container')) updateTierRows(evt.from);
+                        updateTierLayout(evt.to);
+                        if (evt.from.classList.contains('tier-container')) updateTierLayout(evt.from);
                     },
                     // 移除所有可能导致布局变化的事件回调
                     onRemove: function(evt) {
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
-                        updateTierRows(evt.to);
-                        updateTierRows(evt.from);
+                        updateTierLayout(evt.to);
+                        updateTierLayout(evt.from);
                     },
                     onEnd: function(evt) {
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
-                        updateTierRows(evt.to);
-                        if (evt.from.classList.contains('tier-container')) updateTierRows(evt.from);
+                        updateTierLayout(evt.to);
+                        if (evt.from.classList.contains('tier-container')) updateTierLayout(evt.from);
                     }
                 });
             });
@@ -516,7 +562,7 @@
                             if (original && original !== evt.item) {
                                 original.remove();
                                 updateEmptyState(container);
-                                updateTierRows(container);
+                                updateTierLayout(container);
                             }
                         });
                     }
@@ -538,8 +584,21 @@
 
             // 窗口尺寸变化时，重算左侧每个层级的行高
             window.addEventListener('resize', () => {
-                tierContainers.forEach(updateTierRows);
+                tierContainers.forEach(updateTierLayout);
             });
+
+            // 左右宽度调节
+            function applyWidthFlex(val) {
+                const leftFlex = Number(val);
+                const rightFlex = Math.max(1, 7 - leftFlex);
+                rankList.style.flex = String(leftFlex);
+                candidateList.style.flex = String(rightFlex);
+                widthLabel.textContent = `左${leftFlex} : 右${rightFlex}`;
+                // 宽度变化影响布局，需重算
+                tierContainers.forEach(updateTierLayout);
+            }
+            widthSlider.addEventListener('input', (e) => applyWidthFlex(e.target.value));
+            applyWidthFlex(widthSlider.value);
         });
     </script>
 </body>
