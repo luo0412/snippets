@@ -127,7 +127,7 @@
         .tier-board {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 0;
             /* 填充剩余高度，且高度绝对固定 */
             flex: 1;
             height: calc(100% - 28px);
@@ -138,8 +138,8 @@
             align-items: stretch;
             /* 固定高度：总高度 - 4个间距(12*4) = 均分5行 */
             height: calc((100% - 48px) / 5);
-            border: 1px solid #e9ecef;
-            border-radius: 6px;
+            border: none;
+            border-radius: 0;
             overflow: hidden;
             background: #fff;
             /* 绝对禁止高度变化 */
@@ -167,7 +167,9 @@
             /* 固定4列，无间距（避免留白） */
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            row-gap: 8px;
+            row-gap: 0;
+            column-gap: 0;
+            grid-auto-flow: row;
             grid-auto-rows: var(--row-height, 100%);
             /* 高度100%匹配父容器，无任何溢出 */
             height: 100%;
@@ -272,16 +274,6 @@
         .ratio-group input {
             accent-color: #409eff;
         }
-        /* 宽度调节样式 */
-        .width-group {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-left: 16px;
-        }
-        .width-group input[type="range"] {
-            width: 140px;
-        }
     </style>
 </head>
 <body>
@@ -322,16 +314,10 @@
                 <input type="file" id="uploadInput" accept="image/*" multiple>
             </label>
             <!-- 比例选择器 -->
-            <div class="ratio-group" id="ratioGroup" title="预览比例仅影响右侧候选区">
+            <div class="ratio-group" id="ratioGroup" title="选择比例（同时影响左右）">
                 <label><input type="radio" name="ratio" value="1:1"> 1:1</label>
                 <label><input type="radio" name="ratio" value="3:4"> 3:4</label>
                 <label><input type="radio" name="ratio" value="4:3" checked> 4:3</label>
-            </div>
-            <!-- 左右宽度调节（总份额7：左=滑块值，右=7-左） -->
-            <div class="width-group" id="widthGroup" title="调整左右栏宽度比例">
-                <span>左右宽度</span>
-                <input type="range" id="widthSlider" min="2" max="6" value="4">
-                <span id="widthLabel">左4 : 右3</span>
             </div>
             <!-- 候选卡片容器（初始为空） -->
             <div class="list-container" id="candidateContainer"></div>
@@ -350,10 +336,6 @@
             const uploadInput = document.getElementById('uploadInput');
             const ratioGroup = document.getElementById('ratioGroup');
             const ratioRadios = ratioGroup.querySelectorAll('input[name="ratio"]');
-            const widthSlider = document.getElementById('widthSlider');
-            const widthLabel = document.getElementById('widthLabel');
-            const rankList = document.querySelector('.rank-list');
-            const candidateList = document.querySelector('.candidate-list');
             
             // 所有左侧层级容器数组
             const tierContainers = [tierHang, tierTop, tierElite, tierNpc, tierTrash];
@@ -411,10 +393,10 @@
                 // 每个层级行的可用高度（不含自身外边距，因为用gap）
                 const tierHeight = tierRow.clientHeight;
                 const style = getComputedStyle(container);
-                const rowGap = parseFloat(style.rowGap || '0');
+                const rowGap = 0; // 行间距为0，确保上下紧贴
                 const containerWidth = container.clientWidth;
                 // 尝试从较多列开始，尽量让图片更大，且保证列宽*列数不超出容器宽度
-                const maxCols = Math.max(1, Math.min(8, Math.floor(containerWidth / 80)));
+                const maxCols = 5;
                 let chosenCols = 1;
                 let rowHeight = tierHeight; // fallback
                 let colWidth = containerWidth; // fallback
@@ -433,6 +415,8 @@
                 container.style.setProperty('--row-height', `${rowHeight}px`);
                 container.style.gridAutoRows = `${rowHeight}px`;
                 container.style.gridTemplateColumns = `repeat(${chosenCols}, ${colWidth}px)`;
+                container.style.rowGap = '0px';
+                container.style.columnGap = '0px';
             }
 
             // 初始化所有容器的空状态
@@ -586,19 +570,6 @@
             window.addEventListener('resize', () => {
                 tierContainers.forEach(updateTierLayout);
             });
-
-            // 左右宽度调节
-            function applyWidthFlex(val) {
-                const leftFlex = Number(val);
-                const rightFlex = Math.max(1, 7 - leftFlex);
-                rankList.style.flex = String(leftFlex);
-                candidateList.style.flex = String(rightFlex);
-                widthLabel.textContent = `左${leftFlex} : 右${rightFlex}`;
-                // 宽度变化影响布局，需重算
-                tierContainers.forEach(updateTierLayout);
-            }
-            widthSlider.addEventListener('input', (e) => applyWidthFlex(e.target.value));
-            applyWidthFlex(widthSlider.value);
         });
     </script>
 </body>
