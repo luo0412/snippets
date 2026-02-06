@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖拽排行榜</title>
+    <!-- 引入SortableJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <!-- 引入Font Awesome图标CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+
+        /* 整体容器 4:3 比例控制 */
+        .container {
+            display: flex;
+            gap: 20px;
+            width: 1200px;
+            height: 900px; /* 4:3 宽高比 1200:900 */
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* 左侧排行榜区域（4份） */
+        .rank-list {
+            flex: 4;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+        }
+
+        /* 右侧候选区域（3份） */
+        .candidate-list {
+            flex: 3;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        h2 i {
+            margin-right: 8px;
+            color: #666;
+        }
+
+        /* 上传按钮样式 */
+        .upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #409eff;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 15px;
+        }
+        .upload-btn:hover {
+            background-color: #66b1ff;
+        }
+        .upload-btn input {
+            display: none;
+        }
+
+        /* 列表容器 */
+        .list-container {
+            height: calc(100% - 80px);
+            overflow-y: auto;
+            border: 1px dashed #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            /* 右侧滚动动画 */
+            scroll-behavior: smooth;
+            scrollbar-width: thin;
+            /* 右侧图片网格布局 - 每行3列 */
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            align-content: start;
+        }
+        /* 自定义滚动条样式 */
+        .list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .list-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .list-container::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+            transition: background 0.2s ease;
+        }
+        .list-container::-webkit-scrollbar-thumb:hover {
+            background: #409eff;
+        }
+        
+        /* 五级梯度面板 */
+        .tier-board {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+        }
+        .tier-row {
+            display: flex;
+            align-items: stretch;
+            min-height: 150px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .tier-label {
+            width: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+            font-size: 18px;
+            border-right: 1px solid rgba(0,0,0,0.08);
+        }
+        .tier-container {
+            flex: 1;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            align-content: start;
+            min-height: 148px;
+            background-color: #f9f9f9;
+        }
+        
+        /* 统一正方形图片卡片样式（左右侧通用） */
+        .card-item {
+            width: 100%;
+            aspect-ratio: 1/1; /* 强制正方形 */
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: grab;
+            transition: all 0.2s ease;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 2px solid transparent;
+            /* 确保卡片在网格中正确对齐 */
+            display: block;
+        }
+        .card-item:active {
+            cursor: grabbing;
+        }
+        .card-item:hover { 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            border-color: #409eff; 
+            transform: translateY(-2px);
+        }
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 保持比例裁剪，填满正方形 */
+            display: block;
+        }
+        
+        /* 层级标签样式 */
+        .tier-label.level-hang { background: #d9534f; }      /* 夯 */
+        .tier-label.level-top { background: #f39c12; }       /* 顶级 */
+        .tier-label.level-elite { background: #f1c40f; }     /* 人上人 */
+        .tier-label.level-npc { background: #f5d76e; color:#333;}  /* NPC */
+        .tier-label.level-trash { background: #bdc3c7; color:#333;}/* 拉完了 */
+
+        /* 空状态提示 */
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            padding: 40px 0;
+            font-size: 14px;
+            pointer-events: none;
+            /* 跨列显示 */
+            grid-column: 1 / -1;
+            /* 空提示居中 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+        }
+
+        /* 拖拽过程中的样式 */
+        .sortable-ghost {
+            opacity: 0.6;
+            transform: scale(0.95);
+        }
+        .sortable-chosen {
+            box-shadow: 0 6px 16px rgba(64, 158, 255, 0.3);
+            border-color: #409eff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧：五级梯度面板 -->
+        <div class="rank-list">
+            <h2><i class="fa fa-list" aria-hidden="true"></i> 从夯到拉（五个等级）</h2>
+            <div class="tier-board">
+                <div class="tier-row">
+                    <div class="tier-label level-hang">夯</div>
+                    <div class="tier-container" id="tierHang"></div>
+                </div>
+                <div class="tier-row">
+                    <div class="tier-label level-top">顶级</div>
+                    <div class="tier-container" id="tierTop"></div>
+                </div>
+                <div class="tier-row">
+                    <div class="tier-label level-elite">人上人</div>
+                    <div class="tier-container" id="tierElite"></div>
+                </div>
+                <div class="tier-row">
+                    <div class="tier-label level-npc">NPC</div>
+                    <div class="tier-container" id="tierNpc"></div>
+                </div>
+                <div class="tier-row">
+                    <div class="tier-label level-trash">拉完了</div>
+                    <div class="tier-container" id="tierTrash"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧候选卡片区域 -->
+        <div class="candidate-list">
+            <h2><i class="fa fa-th" aria-hidden="true"></i> 候选卡片</h2>
+            <!-- 上传按钮 -->
+            <label class="upload-btn">
+                <i class="fa fa-upload" aria-hidden="true"></i> 上传图片
+                <input type="file" id="uploadInput" accept="image/*" multiple>
+            </label>
+            <!-- 候选卡片容器（初始为空） -->
+            <div class="list-container" id="candidateContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有容器元素
+            const tierHang = document.getElementById('tierHang');
+            const tierTop = document.getElementById('tierTop');
+            const tierElite = document.getElementById('tierElite');
+            const tierNpc = document.getElementById('tierNpc');
+            const tierTrash = document.getElementById('tierTrash');
+            const candidateContainer = document.getElementById('candidateContainer');
+            const uploadInput = document.getElementById('uploadInput');
+            
+            // 所有左侧层级容器数组
+            const tierContainers = [tierHang, tierTop, tierElite, tierNpc, tierTrash];
+            // 生成唯一ID的计数器（使用时间戳+随机数确保绝对唯一）
+            let cardIdCounter = Date.now();
+
+            // 空状态更新
+            function updateEmptyState(container) {
+                const hasItems = container.querySelector('.card-item') !== null;
+                const emptyTip = container.querySelector('.empty-tip');
+                
+                if (!hasItems && !emptyTip) {
+                    const tip = document.createElement('div');
+                    tip.className = 'empty-tip';
+                    tip.textContent = container.classList.contains('tier-container') 
+                        ? '拖拽图片到此' 
+                        : '请上传图片作为候选';
+                    container.appendChild(tip);
+                } else if (hasItems && emptyTip) {
+                    emptyTip.remove();
+                }
+            }
+
+            // 初始化所有容器的空状态
+            tierContainers.forEach(updateEmptyState);
+            updateEmptyState(candidateContainer);
+
+            // 图片上传处理
+            uploadInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
+
+                // 处理每个上传的图片
+                files.forEach(file => {
+                    if (!file.type.startsWith('image/')) {
+                        alert('请上传图片文件！');
+                        return;
+                    }
+
+                    // 创建唯一卡片ID（时间戳+自增+随机数）
+                    const cardId = `card-${cardIdCounter++}-${Math.floor(Math.random() * 1000)}`;
+                    
+                    // 创建图片卡片（先创建DOM元素，避免异步问题）
+                    const cardItem = document.createElement('div');
+                    cardItem.className = 'card-item';
+                    cardItem.dataset.id = cardId;
+                    cardItem.dataset.fileName = file.name;
+
+                    // 创建图片元素
+                    const img = document.createElement('img');
+                    img.className = 'card-img';
+                    img.alt = file.name || `图片${cardId}`;
+                    
+                    // 读取图片文件（异步处理）
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        img.src = ev.target.result;
+                        // 确保图片加载完成后添加到DOM
+                        img.onload = function() {
+                            // 确保卡片只添加一次
+                            if (!cardItem.parentElement) {
+                                candidateContainer.appendChild(cardItem);
+                                // 更新空状态
+                                updateEmptyState(candidateContainer);
+                                // 滚动到最新添加的卡片（带动画）
+                                cardItem.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                            }
+                        };
+                    };
+                    reader.readAsDataURL(file);
+
+                    // 添加图片到卡片
+                    cardItem.appendChild(img);
+                });
+
+                // 清空文件选择器，允许重复上传同一文件
+                uploadInput.value = '';
+            });
+
+            // 通用拖拽配置
+            const commonSortableConfig = {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                forceFallback: true,
+                fallbackTolerance: 1,
+                filter: '.empty-tip',
+                onFilter: (e) => e.preventDefault(),
+                // 整个卡片作为拖拽区域
+                handle: '.card-item',
+                // 修复拖拽克隆问题
+                draggable: '.card-item'
+            };
+
+            // 初始化左侧所有层级容器的拖拽
+            tierContainers.forEach(container => {
+                new Sortable(container, {
+                    ...commonSortableConfig,
+                    group: {
+                        name: 'tier-group',
+                        pull: true,
+                        put: true
+                    },
+                    onAdd: function(evt) {
+                        // 确保拖拽的是有效卡片
+                        if (!evt.item || !evt.item.dataset.id) return;
+                        
+                        // 从右侧拖入：删除右侧原卡片（使用唯一ID精准查找）
+                        if (evt.from === candidateContainer) {
+                            const original = candidateContainer.querySelector(`[data-id="${evt.item.dataset.id}"]`);
+                            if (original) {
+                                original.remove();
+                                updateEmptyState(candidateContainer);
+                            }
+                        }
+                        updateEmptyState(evt.to);
+                        updateEmptyState(evt.from);
+                    },
+                    onRemove: function(evt) {
+                        updateEmptyState(evt.to);
+                        updateEmptyState(evt.from);
+                    },
+                    onEnd: function(evt) {
+                        updateEmptyState(evt.to);
+                        updateEmptyState(evt.from);
+                    }
+                });
+            });
+
+            // 初始化右侧候选区拖拽（核心修复：使用move而非clone）
+            new Sortable(candidateContainer, {
+                ...commonSortableConfig,
+                group: {
+                    name: 'tier-group',
+                    pull: true,    // 移动而非克隆
+                    put: true      // 允许拖入
+                },
+                onAdd: function(evt) {
+                    // 确保拖拽的是有效卡片
+                    if (!evt.item || !evt.item.dataset.id) return;
+                    
+                    // 从左侧拖回：删除左侧原卡片
+                    if (tierContainers.includes(evt.from)) {
+                        tierContainers.forEach(container => {
+                            const original = container.querySelector(`[data-id="${evt.item.dataset.id}"]`);
+                            if (original && original !== evt.item) {
+                                original.remove();
+                                updateEmptyState(container);
+                            }
+                        });
+                    }
+                    updateEmptyState(evt.to);
+                    updateEmptyState(evt.from);
+                },
+                onRemove: function(evt) {
+                    updateEmptyState(evt.to);
+                    updateEmptyState(evt.from);
+                },
+                onEnd: function(evt) {
+                    updateEmptyState(evt.to);
+                    updateEmptyState(evt.from);
+                }
+            });
+
+            // 右侧滚动动画增强
+            candidateContainer.addEventListener('wheel', function(e) {
+                // 自定义滚动速度，增加动画感
+                const scrollSpeed = e.deltaY > 0 ? 50 : -50;
+                this.scrollTop += scrollSpeed;
+                e.preventDefault();
+            }, { passive: false });
+        });
+    </script>
+</body>
+</html>
