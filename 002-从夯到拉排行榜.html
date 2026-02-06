@@ -167,11 +167,14 @@
             /* 固定4列，无间距（避免留白） */
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0;
+            row-gap: 8px;
             /* 高度100%匹配父容器，无任何溢出 */
             height: 100%;
-            /* 禁止滚动，卡片直接填充 */
-            overflow: hidden;
+            /* 垂直方向不压缩，按内容自然高度排列 */
+            align-content: start;
+            /* 超出时允许纵向滚动，防止多行卡片被压缩 */
+            overflow-y: auto;
+            overflow-x: hidden;
             background-color: #f9f9f9;
         }
         
