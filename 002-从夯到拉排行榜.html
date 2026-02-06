@@ -168,21 +168,18 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             row-gap: 8px;
+            grid-auto-rows: var(--row-height, 100%);
             /* 高度100%匹配父容器，无任何溢出 */
             height: 100%;
-            /* 垂直方向不压缩，按内容自然高度排列 */
+            /* 垂直方向按行高度均分，禁止滚动 */
             align-content: start;
-            /* 超出时允许纵向滚动，防止多行卡片被压缩 */
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
             background-color: #f9f9f9;
         }
         
-        /* 卡片尺寸：统一长宽比，居中裁剪，避免强制正方形 */
+        /* 卡片尺寸：统一行为定义（左侧按行高填充，右侧按比例预览） */
         .card-item {
             width: 100%;
-            /* 统一采用 4:3 的长宽比，避免变成正方形 */
-            aspect-ratio: 4 / 3;
             /* 移除圆角避免边缘留白（可根据需要开启圆角并增加容器内边距） */
             border-radius: 0;
             overflow: hidden;
@@ -195,6 +192,14 @@
             /* 固定尺寸策略，避免因内容导致尺寸抖动 */
             flex-shrink: 0;
             flex-grow: 0;
+        }
+        /* 右侧候选区：按所选比例展示预览 */
+        .candidate-list .card-item {
+            aspect-ratio: var(--candidate-aspect, 4 / 3);
+        }
+        /* 左侧层级区：按行高铺满 */
+        .tier-container .card-item {
+            height: 100%;
         }
         .card-item:active {
             cursor: grabbing;
@@ -245,6 +250,28 @@
             outline: 2px solid #409eff;
             outline-offset: -2px;
         }
+        
+        /* 比例选择器样式 */
+        .ratio-group {
+            display: inline-flex;
+            gap: 8px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        .ratio-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            background: #fff;
+        }
+        .ratio-group input {
+            accent-color: #409eff;
+        }
     </style>
 </head>
 <body>
@@ -284,6 +311,12 @@
                 <i class="fa fa-upload" aria-hidden="true"></i> 上传图片
                 <input type="file" id="uploadInput" accept="image/*" multiple>
             </label>
+            <!-- 比例选择器 -->
+            <div class="ratio-group" id="ratioGroup" title="预览比例仅影响右侧候选区">
+                <label><input type="radio" name="ratio" value="1:1"> 1:1</label>
+                <label><input type="radio" name="ratio" value="3:4"> 3:4</label>
+                <label><input type="radio" name="ratio" value="4:3" checked> 4:3</label>
+            </div>
             <!-- 候选卡片容器（初始为空） -->
             <div class="list-container" id="candidateContainer"></div>
         </div>
@@ -299,11 +332,33 @@
             const tierTrash = document.getElementById('tierTrash');
             const candidateContainer = document.getElementById('candidateContainer');
             const uploadInput = document.getElementById('uploadInput');
+            const ratioGroup = document.getElementById('ratioGroup');
+            const ratioRadios = ratioGroup.querySelectorAll('input[name="ratio"]');
             
             // 所有左侧层级容器数组
             const tierContainers = [tierHang, tierTop, tierElite, tierNpc, tierTrash];
             // 生成唯一ID的计数器
             let cardIdCounter = Date.now();
+            // 右侧候选区默认比例
+            let candidateAspect = '4 / 3';
+
+            // 设置右侧候选区预览比例
+            function setCandidateAspect(val) {
+                const map = {
+                    '1:1': '1 / 1',
+                    '3:4': '3 / 4',
+                    '4:3': '4 / 3'
+                };
+                candidateAspect = map[val] || '4 / 3';
+                document.documentElement.style.setProperty('--candidate-aspect', candidateAspect);
+            }
+            // 初始化比例选择
+            ratioRadios.forEach(r => {
+                r.addEventListener('change', (e) => {
+                    if (e.target.checked) setCandidateAspect(e.target.value);
+                });
+            });
+            setCandidateAspect('4:3');
 
             // 空状态更新 - 仅在无卡片时显示
             function updateEmptyState(container) {
@@ -322,9 +377,22 @@
                 }
             }
 
+            // 计算并设置左侧容器的行高，使其无滚动刚好铺满
+            function updateTierRows(container) {
+                const totalHeight = container.clientHeight;
+                const style = getComputedStyle(container);
+                const gap = parseFloat(style.rowGap || '0');
+                const cols = 4;
+                const count = container.querySelectorAll('.card-item').length;
+                const rows = Math.max(1, Math.ceil(count / cols));
+                const rowHeight = (totalHeight - gap * (rows - 1)) / rows;
+                container.style.setProperty('--row-height', `${rowHeight}px`);
+            }
+
             // 初始化所有容器的空状态
             tierContainers.forEach(updateEmptyState);
             updateEmptyState(candidateContainer);
+            tierContainers.forEach(updateTierRows);
 
             // 图片上传处理
             uploadInput.addEventListener('change', function(e) {
@@ -411,15 +479,21 @@
                         }
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
+                        updateTierRows(evt.to);
+                        if (evt.from.classList.contains('tier-container')) updateTierRows(evt.from);
                     },
                     // 移除所有可能导致布局变化的事件回调
                     onRemove: function(evt) {
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
+                        updateTierRows(evt.to);
+                        updateTierRows(evt.from);
                     },
                     onEnd: function(evt) {
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
+                        updateTierRows(evt.to);
+                        if (evt.from.classList.contains('tier-container')) updateTierRows(evt.from);
                     }
                 });
             });
@@ -442,6 +516,7 @@
                             if (original && original !== evt.item) {
                                 original.remove();
                                 updateEmptyState(container);
+                                updateTierRows(container);
                             }
                         });
                     }
@@ -460,6 +535,11 @@
                 this.scrollTop += scrollSpeed;
                 e.preventDefault();
             }, { passive: false });
+
+            // 窗口尺寸变化时，重算左侧每个层级的行高
+            window.addEventListener('resize', () => {
+                tierContainers.forEach(updateTierRows);
+            });
         });
     </script>
 </body>
