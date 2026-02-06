@@ -40,6 +40,10 @@
             padding: 20px;
             background-color: #f8f9fa;
             border-right: 1px solid #e9ecef;
+            /* 绝对固定高度，填充剩余空间 */
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         /* 右侧候选区域（3份） */
@@ -47,6 +51,7 @@
             flex: 3;
             padding: 20px;
             background-color: #fff;
+            height: 100%;
         }
 
         h2 {
@@ -55,6 +60,9 @@
             font-size: 20px;
             display: flex;
             align-items: center;
+            /* 绝对固定标题高度，禁止偏移 */
+            height: 28px;
+            flex-shrink: 0;
         }
 
         h2 i {
@@ -72,6 +80,7 @@
             cursor: pointer;
             transition: all 0.2s ease;
             margin-bottom: 15px;
+            flex-shrink: 0;
         }
         .upload-btn:hover {
             background-color: #66b1ff;
@@ -95,6 +104,7 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             align-content: start;
+            flex-shrink: 0;
         }
         /* 自定义滚动条样式 */
         .list-container::-webkit-scrollbar {
@@ -113,21 +123,28 @@
             background: #409eff;
         }
         
-        /* 五级梯度面板 */
+        /* 五级梯度面板 - 核心：绝对固定高度分配 */
         .tier-board {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            height: 100%;
+            /* 填充剩余高度，且高度绝对固定 */
+            flex: 1;
+            height: calc(100% - 28px);
         }
+        /* 核心：每一层级行高度绝对固定，无任何伸缩 */
         .tier-row {
             display: flex;
             align-items: stretch;
-            min-height: 150px;
+            /* 固定高度：总高度 - 4个间距(12*4) = 均分5行 */
+            height: calc((100% - 48px) / 5);
             border: 1px solid #e9ecef;
             border-radius: 6px;
             overflow: hidden;
             background: #fff;
+            /* 绝对禁止高度变化 */
+            flex-shrink: 0;
+            flex-grow: 0;
         }
         .tier-label {
             width: 110px;
@@ -138,44 +155,55 @@
             color: #fff;
             font-size: 18px;
             border-right: 1px solid rgba(0,0,0,0.08);
+            /* 绝对固定宽度，禁止伸缩 */
+            flex-shrink: 0;
+            flex-grow: 0;
         }
+        /* 层级容器 - 尺寸完全匹配层级行 */
         .tier-container {
             flex: 1;
-            padding: 10px;
+            /* 移除内边距，避免留白 */
+            padding: 0;
+            /* 固定4列，无间距（避免留白） */
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            align-content: start;
-            min-height: 148px;
+            gap: 0;
+            /* 高度100%匹配父容器，无任何溢出 */
+            height: 100%;
+            /* 禁止滚动，卡片直接填充 */
+            overflow: hidden;
             background-color: #f9f9f9;
         }
         
-        /* 统一正方形图片卡片样式（左右侧通用） */
+        /* 核心：卡片尺寸与层级容器完全匹配，无留白 */
         .card-item {
+            /* 宽度100%填充网格列，高度100%填充层级容器 */
             width: 100%;
-            aspect-ratio: 1/1; /* 强制正方形 */
-            border-radius: 6px;
+            height: 100%;
+            /* 移除圆角避免边缘留白（可选，如需圆角需调整层级容器内边距） */
+            border-radius: 0;
             overflow: hidden;
             cursor: grab;
             transition: all 0.2s ease;
             user-select: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border: 2px solid transparent;
-            /* 确保卡片在网格中正确对齐 */
-            display: block;
+            /* 移除边框和阴影避免留白 */
+            box-shadow: none;
+            border: none;
+            /* 绝对禁止尺寸变化 */
+            flex-shrink: 0;
+            flex-grow: 0;
         }
         .card-item:active {
             cursor: grabbing;
         }
         .card-item:hover { 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-            border-color: #409eff; 
-            transform: translateY(-2px);
+            /* hover效果改为透明度，避免尺寸变化 */
+            opacity: 0.95;
         }
         .card-img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* 保持比例裁剪，填满正方形 */
+            object-fit: cover; /* 保持比例填充 */
             display: block;
         }
         
@@ -186,30 +214,31 @@
         .tier-label.level-npc { background: #f5d76e; color:#333;}  /* NPC */
         .tier-label.level-trash { background: #bdc3c7; color:#333;}/* 拉完了 */
 
-        /* 空状态提示 */
+        /* 空状态提示 - 完全填充层级容器 */
         .empty-tip {
             text-align: center;
             color: #999;
-            padding: 40px 0;
             font-size: 14px;
             pointer-events: none;
-            /* 跨列显示 */
+            /* 跨列居中，高度100%填充 */
             grid-column: 1 / -1;
-            /* 空提示居中 */
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 200px;
+            height: 100%;
+            width: 100%;
         }
 
-        /* 拖拽过程中的样式 */
+        /* 拖拽过程中的样式 - 避免尺寸变化 */
         .sortable-ghost {
             opacity: 0.6;
-            transform: scale(0.95);
+            /* 移除缩放，避免抖动 */
+            transform: none;
         }
         .sortable-chosen {
-            box-shadow: 0 6px 16px rgba(64, 158, 255, 0.3);
-            border-color: #409eff;
+            /* 仅用边框提示选中，避免尺寸变化 */
+            outline: 2px solid #409eff;
+            outline-offset: -2px;
         }
     </style>
 </head>
@@ -268,10 +297,10 @@
             
             // 所有左侧层级容器数组
             const tierContainers = [tierHang, tierTop, tierElite, tierNpc, tierTrash];
-            // 生成唯一ID的计数器（使用时间戳+随机数确保绝对唯一）
+            // 生成唯一ID的计数器
             let cardIdCounter = Date.now();
 
-            // 空状态更新
+            // 空状态更新 - 仅在无卡片时显示
             function updateEmptyState(container) {
                 const hasItems = container.querySelector('.card-item') !== null;
                 const emptyTip = container.querySelector('.empty-tip');
@@ -304,32 +333,28 @@
                         return;
                     }
 
-                    // 创建唯一卡片ID（时间戳+自增+随机数）
+                    // 创建唯一卡片ID
                     const cardId = `card-${cardIdCounter++}-${Math.floor(Math.random() * 1000)}`;
                     
-                    // 创建图片卡片（先创建DOM元素，避免异步问题）
+                    // 创建图片卡片
                     const cardItem = document.createElement('div');
                     cardItem.className = 'card-item';
                     cardItem.dataset.id = cardId;
-                    cardItem.dataset.fileName = file.name;
 
                     // 创建图片元素
                     const img = document.createElement('img');
                     img.className = 'card-img';
                     img.alt = file.name || `图片${cardId}`;
                     
-                    // 读取图片文件（异步处理）
+                    // 读取图片文件
                     const reader = new FileReader();
                     reader.onload = function(ev) {
                         img.src = ev.target.result;
-                        // 确保图片加载完成后添加到DOM
                         img.onload = function() {
-                            // 确保卡片只添加一次
                             if (!cardItem.parentElement) {
                                 candidateContainer.appendChild(cardItem);
-                                // 更新空状态
                                 updateEmptyState(candidateContainer);
-                                // 滚动到最新添加的卡片（带动画）
+                                // 滚动到最新卡片
                                 cardItem.scrollIntoView({ behavior: 'smooth', block: 'end' });
                             }
                         };
@@ -340,23 +365,23 @@
                     cardItem.appendChild(img);
                 });
 
-                // 清空文件选择器，允许重复上传同一文件
+                // 清空文件选择器
                 uploadInput.value = '';
             });
 
-            // 通用拖拽配置
+            // 通用拖拽配置 - 极简配置避免抖动
             const commonSortableConfig = {
-                animation: 150,
+                animation: 0, // 关闭动画避免抖动
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
                 forceFallback: true,
-                fallbackTolerance: 1,
+                fallbackTolerance: 0,
                 filter: '.empty-tip',
                 onFilter: (e) => e.preventDefault(),
-                // 整个卡片作为拖拽区域
                 handle: '.card-item',
-                // 修复拖拽克隆问题
-                draggable: '.card-item'
+                draggable: '.card-item',
+                // 完全禁止拖拽时的自动滚动
+                scroll: false
             };
 
             // 初始化左侧所有层级容器的拖拽
@@ -369,10 +394,9 @@
                         put: true
                     },
                     onAdd: function(evt) {
-                        // 确保拖拽的是有效卡片
                         if (!evt.item || !evt.item.dataset.id) return;
                         
-                        // 从右侧拖入：删除右侧原卡片（使用唯一ID精准查找）
+                        // 从右侧拖入：删除右侧原卡片
                         if (evt.from === candidateContainer) {
                             const original = candidateContainer.querySelector(`[data-id="${evt.item.dataset.id}"]`);
                             if (original) {
@@ -383,6 +407,7 @@
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
                     },
+                    // 移除所有可能导致布局变化的事件回调
                     onRemove: function(evt) {
                         updateEmptyState(evt.to);
                         updateEmptyState(evt.from);
@@ -394,16 +419,15 @@
                 });
             });
 
-            // 初始化右侧候选区拖拽（核心修复：使用move而非clone）
+            // 初始化右侧候选区拖拽
             new Sortable(candidateContainer, {
                 ...commonSortableConfig,
                 group: {
                     name: 'tier-group',
-                    pull: true,    // 移动而非克隆
-                    put: true      // 允许拖入
+                    pull: true,    
+                    put: true      
                 },
                 onAdd: function(evt) {
-                    // 确保拖拽的是有效卡片
                     if (!evt.item || !evt.item.dataset.id) return;
                     
                     // 从左侧拖回：删除左侧原卡片
@@ -419,10 +443,6 @@
                     updateEmptyState(evt.to);
                     updateEmptyState(evt.from);
                 },
-                onRemove: function(evt) {
-                    updateEmptyState(evt.to);
-                    updateEmptyState(evt.from);
-                },
                 onEnd: function(evt) {
                     updateEmptyState(evt.to);
                     updateEmptyState(evt.from);
@@ -431,7 +451,6 @@
 
             // 右侧滚动动画增强
             candidateContainer.addEventListener('wheel', function(e) {
-                // 自定义滚动速度，增加动画感
                 const scrollSpeed = e.deltaY > 0 ? 50 : -50;
                 this.scrollTop += scrollSpeed;
                 e.preventDefault();
