@@ -8,15 +8,15 @@
 https://github.com/dayun-cloud/tools/blob/main/build/ranking.html 
 ```
 
-![](https://luo0412.oss-cn-hangzhou.aliyuncs.com/1770816522820-jWsSZRfrW3ey-image.png)
+![](https://raw.githubusercontent.com/luo0412/static/main/20260211213455.png)
 
 
 - [101-从夯到拉排行榜.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜.html)
 
 - [002-Mybatis挖空填充器](https://luo0412.github.io/snippets/002-Mybatis挖空填充器)
 
-![](https://luo0412.oss-cn-hangzhou.aliyuncs.com/1770816422670-yktzyN7Wjn2f-image.png)
+![](https://raw.githubusercontent.com/luo0412/static/main/20260211213515.png)
 
 - [001-CRUD代码生成器.html](https://luo0412.github.io/snippets/001-CRUD代码生成器.html)
 
-![](https://luo0412.oss-cn-hangzhou.aliyuncs.com/1770816578002-A7WRDmF4Df4H-image.png)
+![](https://raw.githubusercontent.com/luo0412/static/main/20260211213533.png)
