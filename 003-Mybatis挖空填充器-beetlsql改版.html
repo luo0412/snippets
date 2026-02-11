@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeetlSQL SQL 挖空填充工具</title>
+  <!-- 引入 Element UI -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <!-- 引入 Monaco Editor -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+  <!-- SQL 语法高亮库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: "Microsoft Yahei", "PingFang SC", "Segoe UI", sans-serif;
+      background-color: #f8f9fa;
+      padding: 10px;
+    }
+    
+    #app {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .page-title {
+      text-align: center;
+      color: #1f2937;
+      margin-bottom: 15px;
+      font-weight: 600;
+      font-size: 20px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 8px 0 rgba(0, 0, 0, 0.08);
+      padding: 12px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .card-header {
+      color: #303133;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    
+    /* Monaco 编辑器容器 */
+    #editor-container {
+      flex: 1;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    #monaco-editor {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .sql-box {
+      background: #1a1b26;
+      padding: 8px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: "Consolas", "Monaco", monospace;
+      font-size: 11px;
+      line-height: 1.3;
+      flex: 1;
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: auto;
+      color: #a9b1d6;
+    }
+    
+    .input-area {
+      background: #1a1b26;
+      padding: 8px;
+      border-radius: 4px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      font-family: "Consolas", "Monaco", monospace;
+      font-size: 11px;
+      line-height: 1.3;
+      color: #a9b1d6;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+    
+    .sql-input, .sql-number-input, .sql-date-input {
+      width: 120px !important;
+      display: inline-block !important;
+      margin: 0 2px;
+      background: #282a36 !important;
+      border-color: #44475a !important;
+      color: #f8f8f2 !important;
+      font-size: 11px !important;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    
+    .sql-date-input {
+      width: 180px !important;
+    }
+    
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    
+    .copy-btn, .setting-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+    }
+
+    .type-set-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .type-set-label {
+      width: 80px;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    .type-set-select {
+      width: 120px;
+    }
+    
+    /* 高亮样式 */
+    .hljs-keyword {
+      color: #ff79c6 !important;
+    }
+    
+    .hljs-built_in {
+      color: #8be9fd !important;
+    }
+    
+    .hljs-string {
+      color: #f1fa8c !important;
+    }
+    
+    .hljs-number {
+      color: #bd93f9 !important;
+    }
+    
+    .hljs-comment {
+      color: #6272a4 !important;
+    }
+    
+    .hljs-literal {
+      color: #bd93f9 !important;
+    }
+    
+    .hljs-operator {
+      color: #ff79c6 !important;
+    }
+    
+    .hljs-punctuation {
+      color: #f8f8f2 !important;
+    }
+    
+    .warning-tip {
+      color: #e6a23c;
+      font-size: 12px;
+      margin-top: 8px;
+      padding: 6px;
+      background: #fff7e6;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1 class="page-title">BeetlSQL SQL 挖空填充工具</h1>
+    
+    <el-row :gutter="16">
+      <!-- 左侧：Monaco Editor (4/7) -->
+      <el-col :span="10">
+        <div class="card" style="height: 600px;">
+          <div class="card-header">
+            <span>原始 BeetlSQL（复杂查询）</span>
+            <el-button type="text" icon="el-icon-copy-document" class="copy-btn" @click="copyOriginalSql">复制</el-button>
+          </div>
+          <div id="editor-container">
+            <div id="monaco-editor"></div>
+          </div>
+        </div>
+      </el-col>
+
+      <!-- 右侧：挖空界面 + 填充后SQL (3/7) -->
+      <el-col :span="14">
+        <el-row :gutter="16" style="height: 600px;">
+          <!-- 上方：挖空界面 (4/7 of right column) -->
+          <el-col :span="24" :style="{height: '68.57%'}">
+            <div class="card" style="height: 100%;">
+              <div class="card-header">
+                <span>挖空界面（可输入参数）</span>
+                <el-button 
+                  type="text" 
+                  icon="el-icon-setting" 
+                  class="setting-btn" 
+                  @click="openTypeSetting"
+                >
+                  类型设置
+                </el-button>
+              </div>
+              <div class="input-area" ref="inputAreaRef" v-if="showInputArea">
+                <template v-for="(item, index) in sqlParts" :key="`part-${index}-${paramTypeMap[item.param] || 'default'}`">
+                  <span 
+                    class="sql-text-fragment" 
+                    :key="`text-${index}`"
+                    v-html="highlightText(item.text)"
+                  ></span>
+                  <template v-if="item.param">
+                    <component 
+                      :is="getInputComponent(paramTypeMap[item.param])" 
+                      :value="params[item.param]" 
+                      @input="updateParam(item.param, $event)" 
+                      :class="getInputClass(paramTypeMap[item.param])"
+                      size="mini"
+                      :placeholder="item.param"
+                      :precision="getNumberPrecision(item.param)"
+                      :min="-Infinity"
+                      :max="Infinity"
+                      value-format="yyyy-MM-dd"
+                      :key="`comp-${item.param}-${paramTypeMap[item.param]}-${refreshKey}`"
+                    />
+                  </template>
+                </template>
+              </div>
+            </div>
+          </el-col>
+
+          <!-- 下方：填充后的SQL (3/7 of right column) -->
+          <el-col :span="24" :style="{height: '31.43%', marginTop: '8px'}">
+            <div class="card" style="height: 100%;">
+              <div class="card-header">
+                <span>可执行SQL</span>
+                <el-button type="text" icon="el-icon-copy-document" class="copy-btn" @click="copyFilledSql">复制</el-button>
+              </div>
+              <div class="sql-box" ref="filledSqlRef" v-html="highlightText(executableSql)"></div>
+              <div class="warning-tip">
+                ⚠️ 本工具仅处理参数替换，复杂BeetlSQL逻辑（循环/条件）需手动调整生成的SQL
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+      </el-col>
+    </el-row>
+
+    <!-- 参数类型设置弹窗 -->
+    <el-dialog
+      title="参数类型设置"
+      :visible.sync="typeSettingVisible"
+      width="350px"
+      append-to-body
+    >
+      <div v-for="param in paramList" :key="`set-${param}`" class="type-set-item">
+        <span class="type-set-label">{{ param }}：</span>
+        <el-select
+          v-model="paramTypeMap[param]"
+          class="type-set-select"
+          size="mini"
+          @change="handleParamTypeChange(param)"
+        >
+          <el-option label="文本框" value="text"></el-option>
+          <el-option label="数字框" value="number"></el-option>
+          <el-option label="日期选择器" value="date"></el-option>
+          <el-option label="时间选择器" value="datetime"></el-option>
+        </el-select>
+      </div>
+    </el-dialog>
+  </div>
+
+  <script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+    
+    let editor;
+    
+    new Vue({
+      el: '#app',
+      data() {
+        return {
+          originalSql: `select *
+from sys_user u
+where 1=1
+-- @ if(!isBlank(userName)){
+    and user_name = #{userName}
+-- @ }
+-- @ if(!isBlank(deptId)){
+    and dept_id = #{deptId}
+-- @ }
+order by u.dept_id desc;
+
+-- 批量插入示例
+insert into demo_dept(name, date_create) 
+values
+-- @trim(){for(item in list) {
+    (#{item.name}, #{item.dateCreate}),
+-- @}}`,
+
+          params: {},
+          paramTypeMap: {},
+          paramList: [],
+          typeSettingVisible: false,
+          showInputArea: true,
+          refreshKey: Date.now(),
+          hljs: window.hljs,
+          // 存储原始参数名和转换后的参数名映射
+          paramNameMap: {}
+        }
+      },
+      computed: {
+        sqlParts() {
+          // 匹配 BeetlSQL 的参数格式：#{param} 或 #{item.param}
+          const regex = /#\{([\w.]+)\}/g
+          const parts = []
+          let lastIndex = 0
+          let match
+          const newParamList = []
+          const newParamNameMap = {}
+          
+          while ((match = regex.exec(this.originalSql)) !== null) {
+            const text = this.originalSql.slice(lastIndex, match.index)
+            const originalParam = match[1]
+            // 处理嵌套参数，如 item.name 转换为 item_name
+            let paramKey = originalParam.replace(/\./g, '_')
+            
+            parts.push({ text, param: paramKey })
+            
+            // 建立原始参数名和转换后参数名的映射
+            newParamNameMap[paramKey] = originalParam
+            
+            if (!newParamList.includes(paramKey)) {
+              newParamList.push(paramKey)
+              
+              if (!this.paramTypeMap[paramKey]) {
+                this.initParamType(paramKey)
+              }
+              
+              if (!(paramKey in this.params)) {
+                this.$set(this.params, paramKey, this.getInitValue(paramKey))
+              }
+            }
+            
+            lastIndex = match.index + match[0].length
+          }
+          
+          parts.push({ text: this.originalSql.slice(lastIndex) })
+          this.paramList = newParamList
+          this.paramNameMap = newParamNameMap
+          return parts
+        },
+
+        executableSql() {
+          let sql = this.originalSql;
+          
+          // 1. 先替换所有参数（在移除注释前！）
+          // 使用原始参数名（如 item.name）进行替换，这是SQL中实际存在的格式
+          for (const [paramKey, originalParam] of Object.entries(this.paramNameMap)) {
+            const val = this.params[paramKey] ?? '';
+            
+            // 根据参数类型处理值
+            let strVal;
+            if (this.paramTypeMap[paramKey] === 'number') {
+              const num = Number(val);
+              strVal = isNaN(num) ? '0' : String(num);
+            } else if (val === '' || val === null || val === undefined) {
+              strVal = "''";
+            } else {
+              // 字符串/日期：转义单引号并加引号
+              strVal = `'${String(val).replace(/'/g, "''")}'`;
+            }
+            
+            // 关键修复：对原始参数名进行正则转义（处理 item.name 中的点号）
+            const escapedParam = originalParam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(`#\\{${escapedParam}\\}`, 'g');
+            sql = sql.replace(pattern, strVal);
+          }
+          
+          // 2. 移除多行注释
+          sql = sql.replace(/\/\*[\s\S]*?\*\//g, '');
+          
+          // 3. 智能移除注释行（保留非注释SQL）
+          sql = sql.split('\n')
+            .map(line => line.trim())
+            .filter(line => {
+              // 保留非空行且不以 -- 开头的行
+              // 注意：BeetlSQL指令行以 "-- @" 开头，普通注释以 "-- " 开头
+              return line !== '' && !line.startsWith('--');
+            })
+            .join('\n');
+          
+          // 4. 清理SQL格式
+          return sql
+            .replace(/,\s*$/gm, '') // 移除行尾逗号
+            .replace(/\b(AND|OR)\s+(AND|OR)\b/gi, '$1')
+            .replace(/WHERE\s+(AND|OR)\b/gi, 'WHERE')
+            .replace(/\s+(AND|OR)\s*$/gim, '')
+            .replace(/\n{2,}/g, '\n') // 合并连续空行
+            .trim();
+        }
+      },
+      watch: {
+        originalSql: {
+          handler(val) {
+            if (editor && editor.getValue() !== val) {
+              editor.setValue(val)
+            }
+          },
+          deep: true
+        }
+      },
+      mounted() {
+        this.$nextTick(() => {
+          require(['vs/editor/editor.main'], () => {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+              value: this.originalSql,
+              language: 'sql',
+              theme: 'vs-dark',
+              automaticLayout: true,
+              minimap: { enabled: true },
+              fontSize: 12,
+              scrollbar: {
+                vertical: 'auto',
+                horizontal: 'auto'
+              },
+              wordWrap: 'on'
+            })
+            
+            editor.onDidChangeModelContent(() => {
+              this.originalSql = editor.getValue()
+            })
+          })
+        })
+      },
+      methods: {
+        initParamType(param) {
+          if (/date|time/i.test(param)) {
+            this.paramTypeMap[param] = 'datetime'
+          } else if (/price|num|size|amount|id|dept/i.test(param)) {
+            this.paramTypeMap[param] = 'number'
+          } else {
+            this.paramTypeMap[param] = 'text'
+          }
+        },
+        
+        getInitValue(param) {
+          const type = this.paramTypeMap[param]
+          switch (type) {
+            case 'number': return 0
+            case 'date':
+            case 'datetime': return new Date().toISOString().split('T')[0]
+            default: return ''
+          }
+        },
+        
+        getNumberPrecision(param) {
+          return /price|money|amount/.test(param) ? 2 : 0
+        },
+        
+        getInputComponent(type) {
+          const map = {
+            number: 'el-input-number',
+            date: 'el-date-picker',
+            datetime: 'el-date-picker',
+            text: 'el-input'
+          }
+          return map[type] || 'el-input'
+        },
+        
+        getInputClass(type) {
+          const map = {
+            number: 'sql-number-input',
+            date: 'sql-date-input',
+            datetime: 'sql-date-input',
+            text: 'sql-input'
+          }
+          return map[type] || 'sql-input'
+        },
+        
+        updateParam(param, value) {
+          this.$set(this.params, param, value)
+        },
+        
+        highlightText(text) {
+          if (!text) return ''
+          try {
+            return this.hljs.highlight(text, { language: 'sql' }).value
+          } catch (e) {
+            return text
+          }
+        },
+        
+        openTypeSetting() {
+          this.typeSettingVisible = true
+        },
+        
+        handleParamTypeChange(param) {
+          const oldVal = this.params[param]
+          const newType = this.paramTypeMap[param]
+          
+          let newVal = oldVal
+          switch (newType) {
+            case 'number':
+              newVal = isNaN(Number(oldVal)) ? 0 : Number(oldVal)
+              break
+            case 'date':
+            case 'datetime':
+              newVal = oldVal && new Date(oldVal).getTime()
+                ? oldVal
+                : new Date().toISOString().split('T')[0]
+              break
+            default:
+              newVal = String(oldVal ?? '')
+          }
+          
+          this.$set(this.params, param, newVal)
+          
+          // 强制重渲染
+          this.showInputArea = false
+          this.$nextTick(() => {
+            this.refreshKey = Date.now()
+            this.showInputArea = true
+          })
+        },
+        
+        async copyToClipboard(text) {
+          try {
+            await navigator.clipboard.writeText(text)
+            this.$message.success('复制成功！')
+          } catch (e) {
+            const ta = document.createElement('textarea')
+            ta.value = text
+            document.body.appendChild(ta)
+            ta.select()
+            document.execCommand('copy')
+            document.body.removeChild(ta)
+            this.$message.success('复制成功！')
+          }
+        },
+        
+        copyOriginalSql() {
+          this.copyToClipboard(editor?.getValue() || this.originalSql)
+        },
+        
+        copyFilledSql() {
+          this.copyToClipboard(this.executableSql)
+        }
+      }
+    })
+  </script>
+</body>
+</html>
