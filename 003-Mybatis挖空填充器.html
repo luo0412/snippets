@@ -47,6 +47,8 @@
       box-shadow: 0 1px 8px 0 rgba(0, 0, 0, 0.08);
       padding: 12px;
       height: 100%;
+      display: flex;
+      flex-direction: column;
     }
     
     .card-header {
@@ -59,11 +61,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
     
     /* Monaco 编辑器容器 */
     #editor-container {
-      height: 540px;
+      flex: 1;
       border: 1px solid #e5e7eb;
       border-radius: 4px;
       overflow: hidden;
@@ -82,8 +85,8 @@
       font-family: "Consolas", "Monaco", monospace;
       font-size: 11px;
       line-height: 1.3;
-      height: calc(100% - 35px);
-      max-height: 260px;
+      flex: 1;
+      min-height: 0; /* 关键：允许flex项目收缩到内容高度以下 */
       overflow-x: auto;
       overflow-y: auto;
       color: #a9b1d6;
@@ -93,14 +96,15 @@
       background: #1a1b26;
       padding: 8px;
       border-radius: 4px;
-      height: calc(100% - 35px);
-      max-height: 260px;
+      flex: 1;
+      min-height: 0; /* 关键：允许flex项目收缩到内容高度以下 */
       overflow-y: auto;
       font-family: "Consolas", "Monaco", monospace;
       font-size: 11px;
       line-height: 1.3;
       color: #a9b1d6;
       white-space: pre-wrap; /* 支持换行 */
+      overflow-wrap: break-word; /* 在长单词或URL地址内部进行换行 */
     }
     
     .sql-input, .sql-number-input, .sql-date-input {
