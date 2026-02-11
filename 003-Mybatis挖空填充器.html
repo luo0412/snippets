@@ -100,6 +100,7 @@
       font-size: 11px;
       line-height: 1.3;
       color: #a9b1d6;
+      white-space: pre-wrap; /* 支持换行 */
     }
     
     .sql-input, .sql-number-input, .sql-date-input {
@@ -110,6 +111,8 @@
       border-color: #44475a !important;
       color: #f8f8f2 !important;
       font-size: 11px !important;
+      margin-top: 2px;
+      margin-bottom: 2px;
     }
     
     .sql-date-input {
@@ -252,7 +255,7 @@
           </el-col>
 
           <!-- 下方：填充后的SQL (3/7 of right column) -->
-          <el-col :span="24" :style="{height: '31.43%'}"> <!-- 3/7 = 42.86% -->
+          <el-col :span="24" :style="{height: '31.43%', marginTop: '8px'}"> <!-- 3/7 = 42.86% -->
             <div class="card" style="height: 100%;">
               <div class="card-header">
                 <span>可执行SQL</span>
