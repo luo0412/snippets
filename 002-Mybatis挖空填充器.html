@@ -6,7 +6,7 @@
   <title>MyBatis SQL 挖空填充工具</title>
   <!-- 引入 Element UI -->
   <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
   <script src="https://unpkg.com/element-ui/lib/index.js"></script>
   <!-- 引入 Monaco Editor -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -23,7 +23,7 @@
     }
     
     body {
-      font-family: "Microsoft Yahei", "PingFang SC", sans-serif;
+      font-family: "Microsoft Yahei", "PingFang SC", "Segoe UI", sans-serif;
       background-color: #f8f9fa;
       padding: 10px;
     }
@@ -86,7 +86,7 @@
       font-size: 11px;
       line-height: 1.3;
       flex: 1;
-      min-height: 0; /* 关键：允许flex项目收缩到内容高度以下 */
+      min-height: 0;
       overflow-x: auto;
       overflow-y: auto;
       color: #a9b1d6;
@@ -97,14 +97,14 @@
       padding: 8px;
       border-radius: 4px;
       flex: 1;
-      min-height: 0; /* 关键：允许flex项目收缩到内容高度以下 */
+      min-height: 0;
       overflow-y: auto;
       font-family: "Consolas", "Monaco", monospace;
       font-size: 11px;
       line-height: 1.3;
       color: #a9b1d6;
-      white-space: pre-wrap; /* 支持换行 */
-      overflow-wrap: break-word; /* 在长单词或URL地址内部进行换行 */
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
     }
     
     .sql-input, .sql-number-input, .sql-date-input {
@@ -217,7 +217,7 @@
       <el-col :span="14">
         <el-row :gutter="16" style="height: 600px;">
           <!-- 上方：挖空界面 (4/7 of right column) -->
-          <el-col :span="24" :style="{height: '68.57%'}"> <!-- 4/7 = 57.14% -->
+          <el-col :span="24" :style="{height: '68.57%'}">
             <div class="card" style="height: 100%;">
               <div class="card-header">
                 <span>挖空界面（可输入参数）</span>
@@ -230,7 +230,7 @@
                   类型设置
                 </el-button>
               </div>
-              <div class="input-area" ref="inputAreaRef">
+              <div class="input-area" ref="inputAreaRef" v-if="showInputArea">
                 <template v-for="(item, index) in sqlParts" :key="`part-${index}-${paramTypeMap[item.param] || 'default'}`">
                   <span 
                     class="sql-text-fragment" 
@@ -238,7 +238,6 @@
                     v-html="highlightText(item.text)"
                   ></span>
                   <template v-if="item.param">
-                    <!-- 根据类型动态渲染不同组件，使用参数名作为placeholder -->
                     <component 
                       :is="getInputComponent(paramTypeMap[item.param])" 
                       :value="params[item.param]" 
@@ -259,7 +258,7 @@
           </el-col>
 
           <!-- 下方：填充后的SQL (3/7 of right column) -->
-          <el-col :span="24" :style="{height: '31.43%', marginTop: '8px'}"> <!-- 3/7 = 42.86% -->
+          <el-col :span="24" :style="{height: '31.43%', marginTop: '8px'}">
             <div class="card" style="height: 100%;">
               <div class="card-header">
                 <span>可执行SQL</span>
@@ -344,9 +343,9 @@ LIMIT #{pageNum}, #{pageSize}`,
           paramTypeMap: {},
           paramList: [],
           typeSettingVisible: false,
-          showInputArea: true, // 控制输入区域显示，用于强制刷新
-          refreshKey: Date.now(), // 用于触发组件更新
-          hljs: window.hljs // 引用highlight.js对象
+          showInputArea: true,
+          refreshKey: Date.now(),
+          hljs: window.hljs
         }
       },
       computed: {
@@ -383,72 +382,60 @@ LIMIT #{pageNum}, #{pageSize}`,
         },
 
         executableSql() {
-          // 移除所有XML标签和条件语句，只保留SQL主体
-          let sql = this.originalSql;
+          let sql = this.originalSql.replace(/<[^>]*>/g, '')
           
-          // 移除所有XML标签（<if>, <where>, <set>, <foreach>等）
-          sql = sql.replace(/<[^>]*>/g, '');
-          
-          // 替换参数占位符
           for (const key in this.params) {
-            const val = this.params[key] ?? '';
-            const displayVal = val === 0 ? '0' : (val || '');
-            sql = sql.replace(new RegExp(`#\\{${key}\\}`, 'g'), displayVal);
+            const val = this.params[key] ?? ''
+            const strVal = typeof val === 'number' ? String(val) : `'${val}'`
+            sql = sql.replace(new RegExp(`#\\{${key}\\}`, 'g'), strVal)
           }
           
-          // 清理多余的AND/OR开头的条件
-          sql = sql.replace(/\bAND\b\s*AND\b/gi, 'AND');
-          sql = sql.replace(/\bOR\b\s*OR\b/gi, 'OR');
-          sql = sql.replace(/\bWHERE\s+AND\b/gi, 'WHERE');
-          sql = sql.replace(/\bWHERE\s+OR\b/gi, 'WHERE');
-          
-          // 清理多余的AND/OR结尾
-          sql = sql.replace(/\s+AND\s*$/gm, '');
-          sql = sql.replace(/\s+OR\s*$/gm, '');
-          
-          // 合并多个连续空格为单个空格
-          sql = sql.replace(/\s+/g, ' ');
-          
-          return sql.trim();
+          return sql
+            .replace(/\b(AND|OR)\s+(AND|OR)\b/gi, '$1')
+            .replace(/WHERE\s+(AND|OR)\b/gi, 'WHERE')
+            .replace(/\s+(AND|OR)\s*$/gim, '')
+            .replace(/\s+/g, ' ')
+            .trim()
         }
       },
       watch: {
         originalSql: {
-          handler() {
-            if (editor && editor.getValue() !== this.originalSql) {
-              editor.setValue(this.originalSql);
+          handler(val) {
+            if (editor && editor.getValue() !== val) {
+              editor.setValue(val)
             }
-          }
+          },
+          deep: true
         }
       },
       mounted() {
-        // 初始化 Monaco Editor
-        require(['vs/editor/editor.main'], () => {
-          editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-            value: this.originalSql,
-            language: 'sql',
-            theme: 'vs-dark',
-            automaticLayout: true,
-            minimap: { enabled: true },
-            fontSize: 12,
-            scrollbar: {
-              vertical: 'auto',
-              horizontal: 'auto'
-            },
-            wordWrap: 'on'
-          });
-          
-          // 监听编辑器内容变化
-          editor.onDidChangeModelContent(() => {
-            this.originalSql = editor.getValue();
-          });
-        });
+        this.$nextTick(() => {
+          require(['vs/editor/editor.main'], () => {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+              value: this.originalSql,
+              language: 'sql',
+              theme: 'vs-dark',
+              automaticLayout: true,
+              minimap: { enabled: true },
+              fontSize: 12,
+              scrollbar: {
+                vertical: 'auto',
+                horizontal: 'auto'
+              },
+              wordWrap: 'on'
+            })
+            
+            editor.onDidChangeModelContent(() => {
+              this.originalSql = editor.getValue()
+            })
+          })
+        })
       },
       methods: {
         initParamType(param) {
           if (/date|time/i.test(param)) {
             this.paramTypeMap[param] = 'datetime'
-          } else if (/num|size|price/i.test(param)) {
+          } else if (/price|num|size|amount/i.test(param)) {
             this.paramTypeMap[param] = 'number'
           } else {
             this.paramTypeMap[param] = 'text'
@@ -458,58 +445,47 @@ LIMIT #{pageNum}, #{pageSize}`,
         getInitValue(param) {
           const type = this.paramTypeMap[param]
           switch (type) {
-            case 'number':
-              return 0
+            case 'number': return 0
             case 'date':
-            case 'datetime':
-              return new Date().toISOString().split('T')[0] // 默认今天日期
-            default:
-              return ''
+            case 'datetime': return new Date().toISOString().split('T')[0]
+            default: return ''
           }
         },
         
         getNumberPrecision(param) {
-          if (param.includes('money') || param.includes('price')) {
-            return 2
-          }
-          return 0
+          return /price|money|amount/.test(param) ? 2 : 0
         },
         
-        // 获取对应的组件类型
         getInputComponent(type) {
-          switch (type) {
-            case 'number': return 'el-input-number'
-            case 'date': return 'el-date-picker'
-            case 'datetime': return 'el-date-picker'
-            default: return 'el-input'
+          const map = {
+            number: 'el-input-number',
+            date: 'el-date-picker',
+            datetime: 'el-date-picker',
+            text: 'el-input'
           }
+          return map[type] || 'el-input'
         },
         
-        // 获取输入框CSS类
         getInputClass(type) {
-          switch (type) {
-            case 'number': return 'sql-number-input'
-            case 'date': 
-            case 'datetime': return 'sql-date-input'
-            default: return 'sql-input'
+          const map = {
+            number: 'sql-number-input',
+            date: 'sql-date-input',
+            datetime: 'sql-date-input',
+            text: 'sql-input'
           }
+          return map[type] || 'sql-input'
         },
         
-        // 更新参数值
         updateParam(param, value) {
           this.$set(this.params, param, value)
         },
         
-        // 高亮SQL文本
         highlightText(text) {
-          if (!text) return '';
+          if (!text) return ''
           try {
-            // 使用highlight.js进行语法高亮
-            const highlighted = this.hljs.highlight(text, { language: 'sql' }).value;
-            return highlighted;
+            return this.hljs.highlight(text, { language: 'sql' }).value
           } catch (e) {
-            console.error('Syntax highlighting error:', e);
-            return text;
+            return text
           }
         },
         
@@ -517,65 +493,56 @@ LIMIT #{pageNum}, #{pageSize}`,
           this.typeSettingVisible = true
         },
         
-        // 处理参数类型变更 - 彻底重置输入区域
         handleParamTypeChange(param) {
-          // 获取当前值
-          const currentValue = this.params[param]
-          let newValue = currentValue
-          
-          // 根据新类型转换值
+          const oldVal = this.params[param]
           const newType = this.paramTypeMap[param]
+          
+          let newVal = oldVal
           switch (newType) {
             case 'number':
-              if (currentValue === '' || currentValue === null || currentValue === undefined) {
-                newValue = 0
-              } else {
-                const parsed = parseFloat(currentValue)
-                newValue = isNaN(parsed) ? 0 : parsed
-              }
-              break
-            case 'text':
-              newValue = String(currentValue === undefined || currentValue === null ? '' : currentValue)
+              newVal = isNaN(Number(oldVal)) ? 0 : Number(oldVal)
               break
             case 'date':
             case 'datetime':
-              // 如果当前值为空或无效日期，使用今天日期
-              if (!currentValue || !(new Date(currentValue).getTime())) {
-                newValue = new Date().toISOString().split('T')[0]
-              } else {
-                newValue = currentValue
-              }
+              newVal = oldVal && new Date(oldVal).getTime()
+                ? oldVal
+                : new Date().toISOString().split('T')[0]
               break
+            default:
+              newVal = String(oldVal ?? '')
           }
           
-          // 更新参数值
-          this.$set(this.params, param, newValue)
+          this.$set(this.params, param, newVal)
           
-          // 强制刷新输入区域 - 这是关键修复
+          // 强制重渲染
           this.showInputArea = false
-          this.refreshKey = Date.now()
           this.$nextTick(() => {
+            this.refreshKey = Date.now()
             this.showInputArea = true
           })
         },
         
+        async copyToClipboard(text) {
+          try {
+            await navigator.clipboard.writeText(text)
+            this.$message.success('复制成功！')
+          } catch (e) {
+            const ta = document.createElement('textarea')
+            ta.value = text
+            document.body.appendChild(ta)
+            ta.select()
+            document.execCommand('copy')
+            document.body.removeChild(ta)
+            this.$message.success('复制成功！')
+          }
+        },
+        
         copyOriginalSql() {
-          const currentSql = editor ? editor.getValue() : this.originalSql;
-          this.copyToClipboard(currentSql);
+          this.copyToClipboard(editor?.getValue() || this.originalSql)
         },
         
         copyFilledSql() {
           this.copyToClipboard(this.executableSql)
-        },
-        
-        copyToClipboard(text) {
-          const textarea = document.createElement('textarea')
-          textarea.value = text
-          document.body.appendChild(textarea)
-          textarea.select()
-          document.execCommand('copy')
-          document.body.removeChild(textarea)
-          this.$message.success('复制成功！')
         }
       }
     })
