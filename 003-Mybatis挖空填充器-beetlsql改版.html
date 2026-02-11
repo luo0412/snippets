@@ -22,23 +22,18 @@
       box-sizing: border-box;
     }
     
-    html, body {
-      height: 100%;
-      overflow: hidden;
-    }
-    
     body {
       font-family: "Microsoft Yahei", "PingFang SC", "Segoe UI", sans-serif;
       background-color: #f5f6f7;
-      display: flex;
-      flex-direction: column;
+      padding: 12px;
+      height: 100vh;
+      overflow: hidden;
     }
     
     #app {
+      height: calc(100vh - 24px);
       display: flex;
       flex-direction: column;
-      height: 100%;
-      padding: 12px;
     }
     
     .page-title {
@@ -51,10 +46,9 @@
     }
     
     .main-content {
+      flex: 1;
       display: flex;
       gap: 16px;
-      flex: 1;
-      min-height: 0;
     }
     
     .card {
@@ -62,9 +56,9 @@
       border-radius: 8px;
       box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
       padding: 12px;
+      height: 100%;
       display: flex;
       flex-direction: column;
-      height: 100%;
       overflow: hidden;
     }
     
@@ -81,12 +75,12 @@
       flex-shrink: 0;
     }
     
+    /* Monaco 编辑器容器 */
     #editor-container {
       flex: 1;
       border: 1px solid #e8e9eb;
       border-radius: 6px;
       overflow: hidden;
-      min-height: 0;
     }
     
     #monaco-editor {
@@ -126,32 +120,213 @@
       margin-top: 4px;
     }
     
-    .sql-input, .sql-number-input, .sql-date-input {
-      width: 120px;
+    /* 核心修复：参数输入框容器样式 */
+    .param-wrapper {
       display: inline-block;
-      margin: 0 2px;
-      background: #282a36;
-      border-color: #44475a;
-      color: #f8f8f2;
-      font-size: 12px;
-      margin-top: 0;
-      margin-bottom: 0;
       vertical-align: middle;
+      margin: 0 1px;
+      position: relative;
       height: 22px;
       line-height: 22px;
+    }
+    
+    /* 输入框基础样式 - 关键修复 */
+    .sql-input, .sql-number-input, .sql-date-input {
+      width: 120px !important;
+      display: inline-block !important;
+      margin: 0 !important;
+      background: #282a36 !important;
+      border-color: #44475a !important;
+      color: #f8f8f2 !important;
+      font-size: 12px !important;
+      height: 22px !important;
+      line-height: 22px !important;
+      vertical-align: baseline !important;
+      position: relative !important;
     }
     
     .sql-number-input {
-      width: 100px;
-      height: 22px;
-      line-height: 22px;
-      padding: 0 4px;
+      width: 100px !important;
     }
     
     .sql-date-input {
-      width: 160px;
-      height: 22px;
-      line-height: 22px;
+      width: 160px !important;
+    }
+    
+    /* 深度选择器覆盖 Arco 组件样式 - 核心修复 */
+    .input-area :deep(.arco-input),
+    .input-area :deep(.arco-input-inner),
+    .input-area :deep(.arco-input-tag) {
+      background: #282a36 !important;
+      border-color: #44475a !important;
+      color: #f8f8f2 !important;
+      height: 22px !important;
+      line-height: 22px !important;
+      font-size: 12px !important;
+      padding: 0 24px 0 8px !important; /* 右侧留出清除按钮空间 */
+      border-radius: 4px !important;
+      width: 100% !important;
+    }
+    
+    .input-area :deep(.arco-input-inner::placeholder) {
+      color: #6272a4 !important;
+    }
+    
+    .input-area :deep(.arco-input:hover),
+    .input-area :deep(.arco-input:focus) {
+      border-color: #61afef !important;
+      box-shadow: 0 0 0 2px rgba(97, 175, 239, 0.2) !important;
+    }
+    
+    /* 清除按钮样式 - 核心修复 */
+    .input-area :deep(.arco-input-suffix) {
+      position: absolute !important;
+      right: 6px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 16px !important;
+      height: 16px !important;
+      z-index: 10 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    .input-area :deep(.arco-input-clear-icon) {
+      color: #f8f8f2 !important;
+      cursor: pointer !important;
+      font-size: 14px !important;
+      width: 16px !important;
+      height: 16px !important;
+      line-height: 1 !important;
+    }
+    
+    .input-area :deep(.arco-input-clear-icon:hover) {
+      color: #ff5555 !important;
+    }
+    
+    /* 数字输入框样式修复 */
+    .input-area :deep(.arco-input-number) {
+      background: #282a36 !important;
+      border-color: #44475a !important;
+      color: #f8f8f2 !important;
+      height: 22px !important;
+      width: 100% !important;
+    }
+    
+    .input-area :deep(.arco-input-number-input) {
+      background: #282a36 !important;
+      border-color: #44475a !important;
+      color: #f8f8f2 !important;
+      height: 22px !important;
+      line-height: 22px !important;
+      text-align: left !important;
+      padding: 0 24px 0 8px !important;
+      font-size: 12px !important;
+    }
+    
+    .input-area :deep(.arco-input-number-handler-wrap) {
+      display: none !important; /* 隐藏数字增减按钮，避免布局问题 */
+    }
+    
+    /* 日期选择器样式修复 */
+    .input-area :deep(.arco-picker) {
+      display: inline-block !important;
+      vertical-align: middle !important;
+      height: 22px !important;
+      line-height: 22px !important;
+      width: 100% !important;
+      position: relative !important;
+    }
+    
+    .input-area :deep(.arco-picker-trigger) {
+      height: 22px !important;
+      line-height: 22px !important;
+      width: 100% !important;
+    }
+    
+    .input-area :deep(.arco-picker-input) {
+      height: 22px !important;
+      line-height: 22px !important;
+      width: 100% !important;
+    }
+    
+    .input-area :deep(.arco-picker-input-input) {
+      background: #282a36 !important;
+      border-color: #44475a !important;
+      color: #f8f8f2 !important;
+      height: 22px !important;
+      line-height: 22px !important;
+      font-size: 12px !important;
+      padding: 0 36px 0 8px !important; /* 为清除按钮和日历图标留空间 */
+      width: 100% !important;
+    }
+    
+    .input-area :deep(.arco-picker-icon) {
+      color: #8be9fd !important;
+      position: absolute !important;
+      right: 8px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      z-index: 10 !important;
+    }
+    
+    .input-area :deep(.arco-picker-clear-icon) {
+      position: absolute !important;
+      right: 28px !important; /* 在日历图标左侧 */
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      color: #f8f8f2 !important;
+      z-index: 10 !important;
+    }
+    
+    /* 日期面板样式 */
+    :deep(.arco-picker-panel) {
+      background: #1a1b26 !important;
+    }
+    
+    :deep(.arco-picker-panel-header) {
+      background: #282a36 !important;
+    }
+    
+    :deep(.arco-picker-panel-header-icon) {
+      color: #f8f8f2 !important;
+    }
+    
+    :deep(.arco-picker-panel-header-icon:hover) {
+      color: #61afef !important;
+    }
+    
+    :deep(.arco-picker-cell) {
+      color: #a9b1d6 !important;
+    }
+    
+    :deep(.arco-picker-cell:hover) {
+      background: #282a36 !important;
+    }
+    
+    :deep(.arco-picker-cell-selected) {
+      background: #61afef !important;
+      color: #1a1b26 !important;
+    }
+    
+    :deep(.arco-picker-cell-today) {
+      color: #50fa7b !important;
+    }
+    
+    :deep(.arco-picker-footer) {
+      background: #282a36 !important;
+      border-top-color: #44475a !important;
+    }
+    
+    :deep(.arco-picker-footer-btn) {
+      color: #f8f8f2 !important;
+    }
+    
+    :deep(.arco-picker-footer-btn:hover) {
+      background: #44475a !important;
     }
     
     ::-webkit-scrollbar {
@@ -193,36 +368,37 @@
       width: 140px;
     }
     
+    /* 高亮样式 */
     .hljs-keyword {
-      color: #ff79c6;
+      color: #ff79c6 !important;
     }
     
     .hljs-built_in {
-      color: #8be9fd;
+      color: #8be9fd !important;
     }
     
     .hljs-string {
-      color: #f1fa8c;
+      color: #f1fa8c !important;
     }
     
     .hljs-number {
-      color: #bd93f9;
+      color: #bd93f9 !important;
     }
     
     .hljs-comment {
-      color: #6272a4;
+      color: #6272a4 !important;
     }
     
     .hljs-literal {
-      color: #bd93f9;
+      color: #bd93f9 !important;
     }
     
     .hljs-operator {
-      color: #ff79c6;
+      color: #ff79c6 !important;
     }
     
     .hljs-punctuation {
-      color: #f8f8f2;
+      color: #f8f8f2 !important;
     }
     
     .warning-tip {
@@ -241,229 +417,6 @@
       color: #999;
       text-align: center;
     }
-    
-    .param-wrapper {
-      display: inline-block;
-      vertical-align: middle;
-      margin: 0 1px;
-    }
-    
-    /* 全局暗色主题覆盖 - 确保所有输入组件都是暗色 */
-    .input-area .arco-input-wrapper,
-    .input-area .arco-input-number-wrapper,
-    .input-area .arco-picker-wrapper {
-      background: #282a36 !important;
-      border-color: #44475a !important;
-    }
-    
-    .input-area .arco-input,
-    .input-area .arco-input-number,
-    .input-area .arco-picker {
-      background: #282a36 !important;
-      border-color: #44475a !important;
-      color: #f8f8f2 !important;
-    }
-    
-    .input-area .arco-input-inner,
-    .input-area .arco-input-number-input,
-    .input-area .arco-picker-input-input {
-      background: #282a36 !important;
-      border-color: #44475a !important;
-      color: #f8f8f2 !important;
-      height: 22px;
-      line-height: 22px;
-      font-size: 12px;
-    }
-    
-    .input-area .arco-input::placeholder,
-    .input-area .arco-input-inner::placeholder,
-    .input-area .arco-input-number-input::placeholder,
-    .input-area .arco-picker-input-input::placeholder {
-      color: #6272a4 !important;
-    }
-    
-    /* 输入框边框 */
-    .input-area .arco-input-wrapper,
-    .input-area .arco-input-number-wrapper,
-    .input-area .arco-picker-wrapper {
-      border: 1px solid #44475a !important;
-    }
-    
-    /* 输入框 hover 状态 */
-    .input-area .arco-input-wrapper:hover,
-    .input-area .arco-input-number-wrapper:hover,
-    .input-area .arco-picker-wrapper:hover {
-      border-color: #61afef !important;
-      background: #282a36 !important;
-    }
-    
-    /* 输入框 focus 状态 */
-    .input-area .arco-input-wrapper.arco-input-focus,
-    .input-area .arco-input-number-wrapper.arco-input-number-focus,
-    .input-area .arco-picker-wrapper.arco-picker-focus {
-      border-color: #61afef !important;
-      background: #282a36 !important;
-      box-shadow: 0 0 0 2px rgba(97, 175, 239, 0.2) !important;
-    }
-    
-    /* 数字输入框按钮 */
-    .input-area .arco-input-number-step-button {
-      background: #333542 !important;
-      border-color: #44475a !important;
-      color: #f8f8f2 !important;
-    }
-    
-    .input-area .arco-input-number-step-button:hover {
-      background: #44475a !important;
-      color: #61afef !important;
-    }
-    
-    /* 日期选择器图标 */
-    .input-area .arco-picker-suffix-icon,
-    .input-area .arco-picker-icon {
-      color: #8be9fd !important;
-    }
-    
-    /* 清除按钮 */
-    .input-area .arco-input-clear-icon,
-    .input-area .arco-picker-clear-icon {
-      color: #f8f8f2 !important;
-    }
-    
-    .input-area .arco-input-clear-icon:hover,
-    .input-area .arco-picker-clear-icon:hover {
-      color: #ff5555 !important;
-    }
-    
-    /* 下拉面板暗色主题 */
-    .arco-select-dropdown,
-    .arco-picker-panel-container,
-    .arco-picker-panel {
-      background: #1a1b26 !important;
-      border-color: #44475a !important;
-    }
-    
-    .arco-select-option,
-    .arco-picker-cell {
-      color: #a9b1d6 !important;
-    }
-    
-    .arco-select-option:hover,
-    .arco-picker-cell:hover {
-      background: #282a36 !important;
-    }
-    
-    .arco-select-option-selected,
-    .arco-picker-cell-selected {
-      background: #61afef !important;
-      color: #1a1b26 !important;
-    }
-    
-    /* 弹窗暗色主题 */
-    .arco-modal {
-      background: #1a1b26 !important;
-    }
-    
-    .arco-modal-header {
-      border-bottom-color: #44475a !important;
-    }
-    
-    .arco-modal-title {
-      color: #f8f8f2 !important;
-    }
-    
-    .arco-modal-close-icon {
-      color: #a9b1d6 !important;
-    }
-    
-    .arco-modal-close-icon:hover {
-      color: #ff5555 !important;
-    }
-    
-    .arco-modal-body {
-      color: #a9b1d6 !important;
-    }
-    
-    /* 按钮暗色主题 */
-    .arco-btn-text {
-      color: #a9b1d6 !important;
-    }
-    
-    .arco-btn-text:hover {
-      background: #282a36 !important;
-      color: #61afef !important;
-    }
-    
-    /* 滚动条暗色主题 */
-    .input-area ::-webkit-scrollbar,
-    .sql-box ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    
-    .input-area ::-webkit-scrollbar-track,
-    .sql-box ::-webkit-scrollbar-track {
-      background: #1a1b26;
-      border-radius: 3px;
-    }
-    
-    .input-area ::-webkit-scrollbar-thumb,
-    .sql-box ::-webkit-scrollbar-thumb {
-      background: #44475a;
-      border-radius: 3px;
-    }
-    
-    .input-area ::-webkit-scrollbar-thumb:hover,
-    .sql-box ::-webkit-scrollbar-thumb:hover {
-      background: #61afef;
-    }
-    
-    /* 日期面板暗色主题 */
-    .arco-picker-panel {
-      background: #1a1b26 !important;
-    }
-    
-    .arco-picker-panel-header {
-      background: #282a36 !important;
-    }
-    
-    .arco-picker-panel-header-icon {
-      color: #f8f8f2 !important;
-    }
-    
-    .arco-picker-panel-header-icon:hover {
-      color: #61afef !important;
-    }
-    
-    .arco-picker-cell {
-      color: #a9b1d6 !important;
-    }
-    
-    .arco-picker-cell:hover {
-      background: #282a36 !important;
-    }
-    
-    .arco-picker-cell-selected {
-      background: #61afef !important;
-      color: #1a1b26 !important;
-    }
-    
-    .arco-picker-cell-today {
-      color: #50fa7b !important;
-    }
-    
-    .arco-picker-footer {
-      background: #282a36 !important;
-      border-top-color: #44475a !important;
-    }
-    
-    .arco-picker-footer-btn {
-      color: #f8f8f2 !important;
-    }
-    
-    .arco-picker-footer-btn:hover {
-      background: #44475a !important;
-    }
   </style>
 </head>
 <body>
@@ -471,6 +424,7 @@
     <h1 class="page-title">BeetlSQL SQL 挖空填充工具</h1>
     
     <div class="main-content">
+      <!-- 左侧：Monaco Editor -->
       <div style="flex: 1; min-width: 0;">
         <div class="card">
           <div class="card-header">
@@ -486,8 +440,10 @@
         </div>
       </div>
 
+      <!-- 右侧：挖空界面 + 填充后SQL -->
       <div style="flex: 1.4; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
-        <div class="card" style="flex: 0.7; min-height: 0;">
+        <!-- 挖空界面 -->
+        <div class="card" style="flex: 0.7;">
           <div class="card-header">
             <span>🔍 挖空界面（可输入参数）</span>
             <a-button 
@@ -501,14 +457,14 @@
             </a-button>
           </div>
           <div class="input-area" ref="inputAreaRef" v-if="showInputArea">
-            <template v-for="(item, index) in sqlParts" :key="'part-' + index + '-' + (paramTypeMap[item.param] || 'default')">
+            <template v-for="(item, index) in sqlParts" :key="`part-${index}-${paramTypeMap[item.param] || 'default'}`">
               <span 
                 class="sql-text-fragment" 
-                :key="'text-' + index"
+                :key="`text-${index}`"
                 v-html="highlightText(item.text)"
               ></span>
               <template v-if="item.param">
-                <span class="param-wrapper" :key="'wrap-' + item.param">
+                <span class="param-wrapper" :key="`wrap-${item.param}`">
                   <component 
                     :is="getInputComponent(paramTypeMap[item.param])" 
                     :model-value="params[item.param]" 
@@ -523,7 +479,7 @@
                     format="YYYY-MM-DD"
                     value-format="YYYY-MM-DD"
                     allow-clear
-                    :key="'comp-' + item.param + '-' + paramTypeMap[item.param] + '-' + refreshKey"
+                    :key="`comp-${item.param}-${paramTypeMap[item.param]}-${refreshKey}`"
                   />
                 </span>
               </template>
@@ -531,7 +487,8 @@
           </div>
         </div>
 
-        <div class="card" style="flex: 0.3; min-height: 0;">
+        <!-- 填充后的SQL -->
+        <div class="card" style="flex: 0.3;">
           <div class="card-header">
             <span>✅ 可执行SQL</span>
             <a-button type="text" size="mini" class="copy-btn" @click="copyFilledSql">
@@ -550,13 +507,14 @@
       </div>
     </div>
 
+    <!-- 参数类型设置弹窗 -->
     <a-modal
       title="参数类型设置"
       v-model:visible="typeSettingVisible"
       width="380px"
       :footer="false"
     >
-      <div v-for="param in paramList" :key="'set-' + param" class="type-set-item">
+      <div v-for="param in paramList" :key="`set-${param}`" class="type-set-item">
         <span class="type-set-label">{{ param }}：</span>
         <a-select
           v-model="paramTypeMap[param]"
@@ -576,19 +534,19 @@
   <script>
     require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
     
-    var { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
-    var { Message } = ArcoVue;
-    var { IconCopy, IconSettings } = ArcoVue.Icon;
+    const { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
+    const { Message } = ArcoVue;
+    const { IconCopy, IconSettings } = ArcoVue.Icon;
     
-    var editor;
+    let editor;
     
-    var app = createApp({
+    const app = createApp({
       components: {
         IconCopy,
         IconSettings
       },
-      setup: function() {
-        var originalSql = ref(`select *
+      setup() {
+        const originalSql = ref(`select *
 from sys_user u
 where 1=1
 -- @ if(!isBlank(userName)){
@@ -606,29 +564,29 @@ values
     (#{item.name}, #{item.dateCreate}),
 -- @}}`);
 
-        var params = reactive({});
-        var paramTypeMap = reactive({});
-        var paramList = ref([]);
-        var typeSettingVisible = ref(false);
-        var showInputArea = ref(true);
-        var refreshKey = ref(Date.now());
-        var paramNameMap = reactive({});
-        var hljs = window.hljs;
+        const params = reactive({});
+        const paramTypeMap = reactive({});
+        const paramList = ref([]);
+        const typeSettingVisible = ref(false);
+        const showInputArea = ref(true);
+        const refreshKey = ref(Date.now());
+        const paramNameMap = reactive({});
+        const hljs = window.hljs;
         
-        var sqlParts = computed(function() {
-          var regex = /#\{([\w.]+)\}/g;
-          var parts = [];
-          var lastIndex = 0;
-          var match;
-          var newParamList = [];
-          var newParamNameMap = {};
+        const sqlParts = computed(() => {
+          const regex = /#\{([\w.]+)\}/g;
+          const parts = [];
+          let lastIndex = 0;
+          let match;
+          const newParamList = [];
+          const newParamNameMap = {};
           
           while ((match = regex.exec(originalSql.value)) !== null) {
-            var text = originalSql.value.slice(lastIndex, match.index);
-            var originalParam = match[1];
-            var paramKey = originalParam.replace(/\./g, '_');
+            const text = originalSql.value.slice(lastIndex, match.index);
+            const originalParam = match[1];
+            let paramKey = originalParam.replace(/\./g, '_');
             
-            parts.push({ text: text, param: paramKey });
+            parts.push({ text, param: paramKey });
             
             newParamNameMap[paramKey] = originalParam;
             
@@ -653,36 +611,39 @@ values
           return parts;
         });
 
-        var executableSql = computed(function() {
-          var sql = originalSql.value;
+        const executableSql = computed(() => {
+          let sql = originalSql.value;
           
-          for (var paramKey in paramNameMap) {
-            var originalParam = paramNameMap[paramKey];
-            var val = params[paramKey] !== undefined ? params[paramKey] : '';
+          // 1. 先替换所有参数（在移除注释前！）
+          for (const [paramKey, originalParam] of Object.entries(paramNameMap)) {
+            const val = params[paramKey] ?? '';
             
-            var strVal;
+            let strVal;
             if (paramTypeMap[paramKey] === 'number') {
-              var num = Number(val);
+              const num = Number(val);
               strVal = isNaN(num) ? '0' : String(num);
             } else if (val === '' || val === null || val === undefined) {
               strVal = "''";
             } else {
-              strVal = "'" + String(val).replace(/'/g, "''") + "'";
+              strVal = `'${String(val).replace(/'/g, "''")}'`;
             }
             
-            var escapedParam = originalParam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            var pattern = new RegExp('#\\{' + escapedParam + '\\}', 'g');
+            const escapedParam = originalParam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(`#\\{${escapedParam}\\}`, 'g');
             sql = sql.replace(pattern, strVal);
           }
           
+          // 2. 移除多行注释
           sql = sql.replace(/\/\*[\s\S]*?\*\//g, '');
           
-          var lines = sql.split('\n');
-          var processedLines = [];
+          // 3. 智能处理单行注释和BeetlSQL指令
+          const lines = sql.split('\n');
+          const processedLines = [];
           
-          for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
             
+            // 跳过空行和注释行
             if (line === '' || line.startsWith('--')) {
               continue;
             }
@@ -692,25 +653,26 @@ values
           
           sql = processedLines.join('\n');
           
+          // 4. 优化SQL格式：紧凑化，多语句间用空行分隔
           return sql
-            .replace(/,\s*$/gm, '')
-            .replace(/\b(AND|OR)\s+(AND|OR)\b/gi, '$1')
-            .replace(/WHERE\s+(AND|OR)\b/gi, 'WHERE')
-            .replace(/\s+(AND|OR)\s*$/gim, '')
-            .replace(/\s+/g, ' ')
-            .replace(/;\s*/g, ';\n\n')
-            .replace(/\n{3,}/g, '\n\n')
+            .replace(/,\s*$/gm, '') // 移除行尾逗号
+            .replace(/\b(AND|OR)\s+(AND|OR)\b/gi, '$1') // 清理重复的AND/OR
+            .replace(/WHERE\s+(AND|OR)\b/gi, 'WHERE') // 清理WHERE后的AND/OR
+            .replace(/\s+(AND|OR)\s*$/gim, '') // 清理行尾的AND/OR
+            .replace(/\s+/g, ' ') // 多个空格合并为一个
+            .replace(/;\s*/g, ';\n\n') // 语句间用空行分隔
+            .replace(/\n{3,}/g, '\n\n') // 最多两个连续空行
             .trim()
-            .replace(/;$/, '');
+            .replace(/;$/, ''); // 移除末尾分号
         });
 
-        watch(originalSql, function(val) {
+        watch(originalSql, (val) => {
           if (editor && editor.getValue() !== val) {
             editor.setValue(val);
           }
         });
 
-        var initParamType = function(param) {
+        const initParamType = (param) => {
           if (/date|time/i.test(param)) {
             paramTypeMap[param] = 'datetime';
           } else if (/price|num|size|amount|id|dept/i.test(param)) {
@@ -720,8 +682,8 @@ values
           }
         };
         
-        var getInitValue = function(param) {
-          var type = paramTypeMap[param];
+        const getInitValue = (param) => {
+          const type = paramTypeMap[param];
           switch (type) {
             case 'number': return 0;
             case 'date':
@@ -730,20 +692,20 @@ values
           }
         };
         
-        var formatDate = function(date) {
-          var d = new Date(date);
-          var year = d.getFullYear();
-          var month = String(d.getMonth() + 1).padStart(2, '0');
-          var day = String(d.getDate()).padStart(2, '0');
-          return year + '-' + month + '-' + day;
+        const formatDate = (date) => {
+          const d = new Date(date);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         };
         
-        var getNumberPrecision = function(param) {
+        const getNumberPrecision = (param) => {
           return /price|money|amount/.test(param) ? 2 : 0;
         };
         
-        var getInputComponent = function(type) {
-          var map = {
+        const getInputComponent = (type) => {
+          const map = {
             number: 'a-input-number',
             date: 'a-date-picker',
             datetime: 'a-date-picker',
@@ -752,8 +714,8 @@ values
           return map[type] || 'a-input';
         };
         
-        var getInputClass = function(type) {
-          var map = {
+        const getInputClass = (type) => {
+          const map = {
             number: 'sql-number-input',
             date: 'sql-date-input',
             datetime: 'sql-date-input',
@@ -762,7 +724,8 @@ values
           return map[type] || 'sql-input';
         };
         
-        var updateParam = function(param, value) {
+        const updateParam = (param, value) => {
+          // 处理日期组件返回的值
           if (paramTypeMap[param] === 'date' || paramTypeMap[param] === 'datetime') {
             if (value && typeof value === 'string') {
               params[param] = value;
@@ -778,7 +741,7 @@ values
           }
         };
         
-        var highlightText = function(text) {
+        const highlightText = (text) => {
           if (!text) return '';
           try {
             return hljs.highlight(text, { language: 'sql' }).value;
@@ -787,21 +750,22 @@ values
           }
         };
         
-        var openTypeSetting = function() {
+        const openTypeSetting = () => {
           typeSettingVisible.value = true;
         };
         
-        var handleParamTypeChange = function(param) {
-          var oldVal = params[param];
-          var newType = paramTypeMap[param];
+        const handleParamTypeChange = (param) => {
+          const oldVal = params[param];
+          const newType = paramTypeMap[param];
           
-          var newVal = oldVal;
+          let newVal = oldVal;
           switch (newType) {
             case 'number':
               newVal = isNaN(Number(oldVal)) ? 0 : Number(oldVal);
               break;
             case 'date':
             case 'datetime':
+              // 确保返回标准日期格式
               if (oldVal && typeof oldVal === 'string') {
                 newVal = oldVal;
               } else {
@@ -809,24 +773,25 @@ values
               }
               break;
             default:
-              newVal = String(oldVal !== null && oldVal !== undefined ? oldVal : '');
+              newVal = String(oldVal ?? '');
           }
           
           params[param] = newVal;
           
+          // 强制重渲染
           showInputArea.value = false;
-          nextTick(function() {
+          nextTick(() => {
             refreshKey.value = Date.now();
             showInputArea.value = true;
           });
         };
         
-        var copyToClipboard = async function(text) {
+        const copyToClipboard = async (text) => {
           try {
             await navigator.clipboard.writeText(text);
             Message.success('复制成功！');
           } catch (e) {
-            var ta = document.createElement('textarea');
+            const ta = document.createElement('textarea');
             ta.value = text;
             document.body.appendChild(ta);
             ta.select();
@@ -836,17 +801,17 @@ values
           }
         };
         
-        var copyOriginalSql = function() {
-          copyToClipboard(editor && editor.getValue() || originalSql.value);
+        const copyOriginalSql = () => {
+          copyToClipboard(editor?.getValue() || originalSql.value);
         };
         
-        var copyFilledSql = function() {
+        const copyFilledSql = () => {
           copyToClipboard(executableSql.value);
         };
 
-        onMounted(function() {
-          nextTick(function() {
-            require(['vs/editor/editor.main'], function() {
+        onMounted(() => {
+          nextTick(() => {
+            require(['vs/editor/editor.main'], () => {
               editor = monaco.editor.create(document.getElementById('monaco-editor'), {
                 value: originalSql.value,
                 language: 'sql',
@@ -863,7 +828,7 @@ values
                 renderWhitespace: 'none'
               });
               
-              editor.onDidChangeModelContent(function() {
+              editor.onDidChangeModelContent(() => {
                 originalSql.value = editor.getValue();
               });
             });
@@ -871,29 +836,29 @@ values
         });
 
         return {
-          originalSql: originalSql,
-          params: params,
-          paramTypeMap: paramTypeMap,
-          paramList: paramList,
-          typeSettingVisible: typeSettingVisible,
-          showInputArea: showInputArea,
-          refreshKey: refreshKey,
-          hljs: hljs,
-          paramNameMap: paramNameMap,
-          sqlParts: sqlParts,
-          executableSql: executableSql,
-          initParamType: initParamType,
-          getInitValue: getInitValue,
-          formatDate: formatDate,
-          getNumberPrecision: getNumberPrecision,
-          getInputComponent: getInputComponent,
-          getInputClass: getInputClass,
-          updateParam: updateParam,
-          highlightText: highlightText,
-          openTypeSetting: openTypeSetting,
-          handleParamTypeChange: handleParamTypeChange,
-          copyOriginalSql: copyOriginalSql,
-          copyFilledSql: copyFilledSql
+          originalSql,
+          params,
+          paramTypeMap,
+          paramList,
+          typeSettingVisible,
+          showInputArea,
+          refreshKey,
+          hljs,
+          paramNameMap,
+          sqlParts,
+          executableSql,
+          initParamType,
+          getInitValue,
+          formatDate,
+          getNumberPrecision,
+          getInputComponent,
+          getInputClass,
+          updateParam,
+          highlightText,
+          openTypeSetting,
+          handleParamTypeChange,
+          copyOriginalSql,
+          copyFilledSql
         };
       }
     });
