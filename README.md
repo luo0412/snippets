@@ -13,7 +13,7 @@ https://github.com/dayun-cloud/tools/blob/main/build/ranking.html
 
 - [101-从夯到拉排行榜.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜.html)
 
-- [003-Mybatis挖空填充器-beetlsql改版.html](https://luo0412.github.io/snippets/003-Mybatis挖空填充器-beetlsql改版.html)
+- [002a-Mybatis挖空填充器-beetlsql改版.html](https://luo0412.github.io/snippets/002a-Mybatis挖空填充器-beetlsql改版.html)
 
 - [002-Mybatis挖空填充器.html](https://luo0412.github.io/snippets/002-Mybatis挖空填充器.html)
 
