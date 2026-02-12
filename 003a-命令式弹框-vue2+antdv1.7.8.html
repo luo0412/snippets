@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vue2 + Ant Design Vue 弹窗管理器 (内嵌弹框 + 隐藏/销毁分离)</title>
+  <title>Vue2 + Ant Design Vue 模态框管理器 (内嵌模态框 + 隐藏/销毁分离)</title>
   <!-- 引入 Ant Design Vue 样式 -->
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/ant-design-vue/1.7.8/antd.min.css">
   <!-- 引入 Vue 2 -->
@@ -20,107 +20,207 @@
 <body>
   <div id="app">
     <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-      <h2>Vue2 + Ant Design Vue 弹窗管理器 (内嵌弹框 + 隐藏/销毁分离)</h2>
+      <h2>Vue2 + Ant Design Vue 模态框管理器 (内嵌模态框 + 隐藏/销毁分离)</h2>
       <div style="margin-bottom: 20px;">
-        <a-button type="primary" @click="openCustomDialog">打开自定义弹窗</a-button>
-        <a-button type="danger" @click="openConfirmDialog" style="margin-left: 10px;">打开确认弹窗</a-button>
-        <a-button type="dashed" @click="openByComponentName" style="margin-left: 10px;">通过组件名打开弹窗</a-button>
-        <a-button type="warning" @click="openByPubsub" style="margin-left: 10px;">通过Pubsub打开弹窗</a-button>
-        <a-button type="default" @click="closeAllDialogs" style="margin-left: 10px;">关闭所有弹窗</a-button>
+        <a-button type="primary" @click="openCustomModal">打开自定义模态框</a-button>
+        <a-button type="danger" @click="openConfirmModal" style="margin-left: 10px;">打开确认模态框</a-button>
+        <a-button type="dashed" @click="openByComponentName" style="margin-left: 10px;">通过组件名打开模态框</a-button>
+        <a-button type="warning" @click="openByPubsub" style="margin-left: 10px;">通过Pubsub打开模态框</a-button>
+        <a-button type="default" @click="closeAllModals" style="margin-left: 10px;">关闭所有模态框</a-button>
       </div>
 
-      <h3>当前打开的弹窗:</h3>
+      <h3>当前打开的模态框:</h3>
       <div style="margin-bottom: 20px;">
-        <span v-if="openDialogs.length === 0">无</span>
+        <span v-if="openModals.length === 0">无</span>
         <a-tag 
-          v-for="dialog in openDialogs" 
-          :key="dialog.id" 
+          v-for="modal in openModals" 
+          :key="modal.id" 
           color="blue"
         >
-          {{ dialog.title }} (ID: {{ dialog.id }}, 类型: {{ dialog.type }})
+          {{ modal.title }} (ID: {{ modal.id }}, 类型: {{ modal.type }})
         </a-tag>
       </div>
 
       <h3>调用方法示例：</h3>
       <div class="code-examples">
         <div class="example-section">
-          <h4>1. 打开弹窗（Await-to-js风格）：</h4>
-          <pre><code class="language-javascript">const [err, result] = await DialogManager.toOpenDialog(
-  GlobalDialogComponents.CustomDialog,
+          <h4>1. 打开模态框（Await-to-js风格）：</h4>
+          <pre><code class="language-javascript">const [err, result] = await ModalManager.toOpenModal(
+  GlobalModalComponents.CustomModal,
   { 
-    title: 'AntV 自定义弹窗',
-    dialogKey: 'custom_dialog' // 包含在props中，防重复打开
+    title: 'AntV 自定义模态框',
+    modalKey: 'custom_modal' // 包含在props中，防重复打开
   }
 );
 
 if (err) {
-  // 弹窗被取消或发生错误
+  // 模态框被取消或发生错误
   if (err.isCanceled) {
-    console.log('弹窗被取消：', err);
+    console.log('模态框被取消：', err);
   } else {
-    console.error('弹窗打开失败：', err);
+    console.error('模态框打开失败：', err);
   }
 } else {
-  // 弹窗成功确认
-  console.log('弹窗确认返回数据：', result.data);
+  // 模态框成功确认
+  console.log('模态框确认返回数据：', result.data);
 }</code></pre>
         </div>
 
         <div class="example-section">
-          <h4>2. 隐藏/销毁弹窗：</h4>
-          <pre><code class="language-javascript">// 隐藏弹窗（仅隐藏，不销毁实例）
-DialogManager.hideDialog('dialog_id');
+          <h4>2. 隐藏/销毁模态框：</h4>
+          <pre><code class="language-javascript">// 隐藏模态框（仅隐藏，不销毁实例）
+ModalManager.hideModal('modal_id');
 
-// 销毁弹窗（完全销毁，释放内存）
-DialogManager.destroyDialog('dialog_id');
+// 销毁模态框（完全销毁，释放内存）
+ModalManager.destroyModal('modal_id');
 
 // 或者通过pubsub
-DialogManager.pubsubHideDialog('dialog_id');
-DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
+ModalManager.pubsubHideModal('modal_id');
+ModalManager.pubsubDestroyModal('modal_id');</code></pre>
         </div>
 
         <div class="example-section">
-          <h4>3. 内嵌弹窗示例（在弹窗中打开另一个弹窗）：</h4>
+          <h4>3. 内嵌模态框示例（在模态框中打开另一个模态框）：</h4>
           <pre><code class="language-javascript">export default {
-  // 在弹窗组件内部打开另一个弹窗
+  // 在模态框组件内部打开另一个模态框
   methods: {
-    async openNestedDialog() {
-      // 在当前弹窗中打开另一个弹窗
-      const [err, result] = await DialogManager.toOpenDialog(
-        'NestedDialog', 
+    async openNestedModal() {
+      // 在当前模态框中打开另一个模态框
+      const [err, result] = await ModalManager.toOpenModal(
+        'NestedModal', 
         { 
-          title: '内嵌弹窗',
-          dialogKey: 'nested_dialog_' + this.dialogId,
-          parentDialogId: this.dialogId // 传递父弹窗ID
+          title: '内嵌模态框',
+          modalKey: 'nested_modal_' + this.modalId,
+          parentModalId: this.modalId // 传递父模态框ID
         }
       );
       
       if (!err) {
-        console.log('内嵌弹窗确认：', result.data);
+        console.log('内嵌模态框确认：', result.data);
       }
     }
   }
 }</code></pre>
         </div>
+        
+        <div class="example-section">
+          <h4>4. 批量操作模态框：</h4>
+          <pre><code class="language-javascript">// 获取所有打开的模态框列表
+const allModals = ModalManager.getOpenModals();
+console.log('当前打开的模态框数量：', allModals.length);
+
+// 关闭所有模态框
+ModalManager.closeAllModals();
+
+// 检查模态框是否存在
+const exists = ModalManager.hasModal('custom_modal');
+if (exists) {
+  console.log('模态框已存在，执行显示操作');
+  ModalManager.showModal('custom_modal');
+}</code></pre>
+        </div>
+        
+        <div class="example-section">
+          <h4>5. Pubsub全局调用模态框：</h4>
+          <pre><code class="language-javascript">// 方式1：直接发布事件
+PubSub.publish('modal/open', { 
+  componentOrName: 'InfoModal', 
+  config: {
+    message: '全局调用的提示信息',
+    modalKey: 'global_info_modal'
+  }
+});
+
+// 方式2：使用封装的API（推荐）
+const [err, result] = await ModalManager.toPubsubOpenModal(
+  'ConfirmModal', 
+  {
+    message: '这是通过Pubsub调用的确认框',
+    modalKey: 'pubsub_confirm_modal'
+  }
+);
+
+if (!err) {
+  console.log('Pubsub模态框确认成功');
+}</code></pre>
+        </div>
+      </div>
+      
+      <h3>API 文档</h3>
+      <div class="code-examples">
+        <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+          <thead>
+            <tr style="background-color: #f0f2f5;">
+              <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">方法名</th>
+              <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">参数</th>
+              <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">返回值</th>
+              <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>toOpenModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">componentOrName, config</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">[err, result]</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">打开模态框，await-to-js风格</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>showModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">显示已隐藏的模态框</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>hideModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">隐藏模态框（不销毁）</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>destroyModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">销毁模态框（释放内存）</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>closeAllModals</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">关闭所有模态框</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>hasModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalIdOrInstance</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">检查模态框是否存在</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>getOpenModals</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Array</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">获取所有打开的模态框列表</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
   <script>
-    // ========== 全局注册的弹窗组件集合 ==========
-    const GlobalDialogComponents = {
-      // 自定义内容弹窗
-      CustomDialog: {
+    // ========== 全局注册的模态框组件集合 ==========
+    const GlobalModalComponents = {
+      // 自定义内容模态框
+      CustomModal: {
         props: {
           title: {
             type: String,
-            default: '自定义弹窗'
+            default: '自定义模态框'
           },
           visible: {
             type: Boolean,
             default: false
           },
-          dialogId: {
+          modalId: {
             type: String,
             default: ''
           },
@@ -143,15 +243,15 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
             @cancel="handleCancel"
             @ok="handleConfirm"
           >
-            <div>这是自定义弹窗（ID：{{dialogId}}）</div>
+            <div>这是自定义模态框（ID：{{modalId}}）</div>
             <a-input 
               v-model="inputValue" 
               placeholder="请输入内容" 
               style="margin-top: 10px;"
             />
             <div style="margin-top: 10px;">
-              <a-button type="primary" size="small" @click="openNestedDialog">打开内嵌弹窗</a-button>
-              <a-button type="dashed" size="small" @click="hideCurrentDialog" style="margin-left: 8px;">隐藏当前弹窗</a-button>
+              <a-button type="primary" size="small" @click="openNestedModal">打开内嵌模态框</a-button>
+              <a-button type="dashed" size="small" @click="hideCurrentModal" style="margin-left: 8px;">隐藏当前模态框</a-button>
             </div>
           </a-modal>
         `,
@@ -162,47 +262,47 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
         },
         methods: {
           handleCancel() {
-            console.log('CustomDialog handleCancel called');
-            // 首先隐藏弹窗
+            console.log('CustomModal handleCancel called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行reject回调，标记为取消
             this.reject({ 
-              reason: '用户关闭/取消弹窗', 
-              dialogId: this.dialogId,
+              reason: '用户关闭/取消模态框', 
+              modalId: this.modalId,
               isCanceled: true
             });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
           handleConfirm() {
-            console.log('CustomDialog handleConfirm called');
-            // 首先隐藏弹窗
+            console.log('CustomModal handleConfirm called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行resolve回调
-            this.resolve({ inputValue: this.inputValue, dialogId: this.dialogId });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            this.resolve({ inputValue: this.inputValue, modalId: this.modalId });
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
-          async openNestedDialog() {
-            // 在当前弹窗中打开另一个弹窗
-            const [err, result] = await DialogManager.toOpenDialog(
-              'NestedDialog', 
+          async openNestedModal() {
+            // 在当前模态框中打开另一个模态框
+            const [err, result] = await ModalManager.toOpenModal(
+              'NestedModal', 
               { 
-                title: '内嵌弹窗',
-                dialogKey: 'nested_dialog_' + this.dialogId,
-                parentDialogId: this.dialogId // 传递父弹窗ID
+                title: '内嵌模态框',
+                modalKey: 'nested_modal_' + this.modalId,
+                parentModalId: this.modalId // 传递父模态框ID
               }
             );
             
             if (!err) {
-              console.log('内嵌弹窗确认：', result.data);
-              this.$message.success(`内嵌弹窗返回: ${JSON.stringify(result.data)}`);
+              console.log('内嵌模态框确认：', result.data);
+              this.$message.success(`内嵌模态框返回: ${JSON.stringify(result.data)}`);
             }
           },
-          hideCurrentDialog() {
-            // 隐藏当前弹窗
-            DialogManager.hideDialog(this.dialogId);
-            this.$message.info('当前弹窗已隐藏');
+          hideCurrentModal() {
+            // 隐藏当前模态框
+            ModalManager.hideModal(this.modalId);
+            this.$message.info('当前模态框已隐藏');
           }
         },
         // 组件销毁前清理数据
@@ -211,8 +311,8 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
         }
       },
       
-      // 确认弹窗
-      ConfirmDialog: {
+      // 确认模态框
+      ConfirmModal: {
         props: {
           message: {
             type: String,
@@ -222,7 +322,7 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
             type: Boolean,
             default: false
           },
-          dialogId: {
+          modalId: {
             type: String,
             default: ''
           },
@@ -247,55 +347,55 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
           >
             <div style="color: #666;">{{ message }}</div>
             <div style="margin-top: 10px;">
-              <a-button type="primary" size="small" @click="openNestedConfirm">打开内嵌确认弹窗</a-button>
+              <a-button type="primary" size="small" @click="openNestedConfirm">打开内嵌确认模态框</a-button>
             </div>
           </a-modal>
         `,
         methods: {
           handleCancel() {
-            console.log('ConfirmDialog handleCancel called');
-            // 首先隐藏弹窗
+            console.log('ConfirmModal handleCancel called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行reject回调，标记为取消
             this.reject({ 
               reason: '用户取消操作', 
-              dialogId: this.dialogId,
+              modalId: this.modalId,
               isCanceled: true
             });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
           handleConfirm() {
-            console.log('ConfirmDialog handleConfirm called');
-            // 首先隐藏弹窗
+            console.log('ConfirmModal handleConfirm called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行resolve回调
-            this.resolve({ confirmed: true, dialogId: this.dialogId });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            this.resolve({ confirmed: true, modalId: this.modalId });
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
           async openNestedConfirm() {
-            // 在当前弹窗中打开另一个确认弹窗
-            const [err, result] = await DialogManager.toOpenDialog(
-              'ConfirmDialog', 
+            // 在当前模态框中打开另一个确认模态框
+            const [err, result] = await ModalManager.toOpenModal(
+              'ConfirmModal', 
               { 
-                message: '这是内嵌的确认弹窗！',
+                message: '这是内嵌的确认模态框！',
                 title: '内嵌确认',
-                dialogKey: 'nested_confirm_' + this.dialogId,
-                parentDialogId: this.dialogId
+                modalKey: 'nested_confirm_' + this.modalId,
+                parentModalId: this.modalId
               }
             );
             
             if (!err) {
-              console.log('内嵌确认弹窗确认：', result.data);
-              this.$message.success('内嵌确认弹窗已确认');
+              console.log('内嵌确认模态框确认：', result.data);
+              this.$message.success('内嵌确认模态框已确认');
             }
           }
         }
       },
       
-      // 提示弹窗
-      InfoDialog: {
+      // 提示模态框
+      InfoModal: {
         props: {
           message: {
             type: String,
@@ -305,7 +405,7 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
             type: Boolean,
             default: false
           },
-          dialogId: {
+          modalId: {
             type: String,
             default: ''
           },
@@ -333,69 +433,69 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
               {{ message }}
             </div>
             <div style="margin-top: 10px; text-align: center;">
-              <a-button type="primary" size="small" @click="openNestedInfo">打开内嵌提示弹窗</a-button>
+              <a-button type="primary" size="small" @click="openNestedInfo">打开内嵌提示模态框</a-button>
             </div>
           </a-modal>
         `,
         methods: {
           handleCancel() {
-            console.log('InfoDialog handleCancel called');
-            // 首先隐藏弹窗
+            console.log('InfoModal handleCancel called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行reject回调，标记为取消
             this.reject({ 
-              reason: '用户关闭提示弹窗', 
-              dialogId: this.dialogId,
+              reason: '用户关闭提示模态框', 
+              modalId: this.modalId,
               isCanceled: true
             });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
           handleConfirm() {
-            console.log('InfoDialog handleConfirm called');
-            // 首先隐藏弹窗
+            console.log('InfoModal handleConfirm called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行resolve回调
-            this.resolve({ confirmed: true, dialogId: this.dialogId });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            this.resolve({ confirmed: true, modalId: this.modalId });
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
           async openNestedInfo() {
-            // 在当前弹窗中打开另一个提示弹窗
-            const [err, result] = await DialogManager.toOpenDialog(
-              'InfoDialog', 
+            // 在当前模态框中打开另一个提示模态框
+            const [err, result] = await ModalManager.toOpenModal(
+              'InfoModal', 
               { 
-                message: '这是内嵌的提示弹窗！',
+                message: '这是内嵌的提示模态框！',
                 title: '内嵌提示',
-                dialogKey: 'nested_info_' + this.dialogId,
-                parentDialogId: this.dialogId
+                modalKey: 'nested_info_' + this.modalId,
+                parentModalId: this.modalId
               }
             );
             
             if (!err) {
-              console.log('内嵌提示弹窗确认：', result.data);
-              this.$message.success('内嵌提示弹窗已确认');
+              console.log('内嵌提示模态框确认：', result.data);
+              this.$message.success('内嵌提示模态框已确认');
             }
           }
         }
       },
       
-      // 内嵌弹窗示例
-      NestedDialog: {
+      // 内嵌模态框示例
+      NestedModal: {
         props: {
           title: {
             type: String,
-            default: '内嵌弹窗'
+            default: '内嵌模态框'
           },
           visible: {
             type: Boolean,
             default: false
           },
-          dialogId: {
+          modalId: {
             type: String,
             default: ''
           },
-          parentDialogId: {
+          parentModalId: {
             type: String,
             default: ''
           },
@@ -418,11 +518,11 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
             @cancel="handleCancel"
             @ok="handleConfirm"
           >
-            <div>这是内嵌弹窗（ID：{{dialogId}}）</div>
-            <div>父弹窗ID：{{parentDialogId}}</div>
+            <div>这是内嵌模态框（ID：{{modalId}}）</div>
+            <div>父模态框ID：{{parentModalId}}</div>
             <a-input 
               v-model="inputValue" 
-              placeholder="内嵌弹窗输入" 
+              placeholder="内嵌模态框输入" 
               style="margin-top: 10px;"
             />
           </a-modal>
@@ -434,47 +534,47 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
         },
         methods: {
           handleCancel() {
-            console.log('NestedDialog handleCancel called');
-            // 首先隐藏弹窗
+            console.log('NestedModal handleCancel called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行reject回调，标记为取消
             this.reject({ 
-              reason: '内嵌弹窗被取消', 
-              dialogId: this.dialogId,
-              parentDialogId: this.parentDialogId,
+              reason: '内嵌模态框被取消', 
+              modalId: this.modalId,
+              parentModalId: this.parentModalId,
               isCanceled: true
             });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           },
           handleConfirm() {
-            console.log('NestedDialog handleConfirm called');
-            // 首先隐藏弹窗
+            console.log('NestedModal handleConfirm called');
+            // 首先隐藏模态框
             this.visible = false;
             // 然后执行resolve回调
             this.resolve({ 
               inputValue: this.inputValue, 
-              dialogId: this.dialogId,
-              parentDialogId: this.parentDialogId
+              modalId: this.modalId,
+              parentModalId: this.parentModalId
             });
-            // 最后关闭弹窗
-            DialogManager.destroyDialog(this.dialogId);
+            // 最后关闭模态框
+            ModalManager.destroyModal(this.modalId);
           }
         }
       }
     };
 
-    // ========== 弹窗管理器核心实现（内嵌弹框 + 隐藏/销毁分离） ==========
-    const DialogManager = {
-      // 存储弹窗实例（包含隐藏状态）
-      dialogs: new Map(),
+    // ========== 模态框管理器核心实现（内嵌模态框 + 隐藏/销毁分离） ==========
+    const ModalManager = {
+      // 存储模态框实例（包含隐藏状态）
+      modals: new Map(),
       // 缓存组件构造器，避免重复创建
       constructorCache: new Map(),
       // 注册的全局组件映射
-      registeredComponents: GlobalDialogComponents,
+      registeredComponents: GlobalModalComponents,
       // 生成唯一ID
       generateId() {
-        return `dialog_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        return `modal_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       },
 
       // 获取组件（支持对象和字符串组件名）
@@ -484,7 +584,7 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
           if (this.registeredComponents[componentOrName]) {
             return this.registeredComponents[componentOrName];
           } else {
-            throw new Error(`未找到名为 "${componentOrName}" 的弹窗组件`);
+            throw new Error(`未找到名为 "${componentOrName}" 的模态框组件`);
           }
         } else if (typeof componentOrName === 'object' && componentOrName.template) {
           // 如果是组件对象，直接返回
@@ -494,75 +594,75 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
         }
       },
 
-      // 打开弹窗（原版：返回Promise）
-      openDialog(componentOrName, config = {}) {
+      // 打开模态框（原版：返回Promise）
+      openModal(componentOrName, config = {}) {
         // 解析组件
         const component = this.getComponent(componentOrName);
         
-        // 从config中提取dialogKey和其他props
-        const { dialogKey, ...props } = config;
+        // 从config中提取modalKey和其他props
+        const { modalKey, ...props } = config;
         
-        // 防重复打开：如果指定了key且已存在，则返回现有弹窗的Promise
-        if (dialogKey && this.dialogs.has(dialogKey)) {
-          const existingDialog = this.dialogs.get(dialogKey);
-          console.warn(`弹窗[${dialogKey}]已打开，避免重复创建`);
+        // 防重复打开：如果指定了key且已存在，则返回现有模态框的Promise
+        if (modalKey && this.modals.has(modalKey)) {
+          const existingModal = this.modals.get(modalKey);
+          console.warn(`模态框[${modalKey}]已打开，避免重复创建`);
           
-          // 如果弹窗被隐藏了，重新显示它
-          if (existingDialog.hidden) {
-            this.showDialog(dialogKey);
+          // 如果模态框被隐藏了，重新显示它
+          if (existingModal.hidden) {
+            this.showModal(modalKey);
           }
           
-          return existingDialog.promise;
+          return existingModal.promise;
         }
 
         return new Promise((resolve, reject) => {
-          const dialogId = dialogKey || this.generateId();
+          const modalId = modalKey || this.generateId();
           // 缓存构造器，提升性能
-          let DialogConstructor = this.constructorCache.get(component);
-          if (!DialogConstructor) {
-            DialogConstructor = Vue.extend(component);
-            this.constructorCache.set(component, DialogConstructor);
+          let ModalConstructor = this.constructorCache.get(component);
+          if (!ModalConstructor) {
+            ModalConstructor = Vue.extend(component);
+            this.constructorCache.set(component, ModalConstructor);
           }
 
           // 初始化组件实例
-          const dialogInstance = new DialogConstructor({
+          const modalInstance = new ModalConstructor({
             el: document.createElement('div'),
             propsData: {
               ...props,
-              dialogId,
+              modalId,
               resolve: (data) => {
-                console.log('Dialog resolved:', data);
-                resolve({ data, dialogId });
-                // 移除已完成的弹窗
-                this.dialogs.delete(dialogId);
+                console.log('Modal resolved:', data);
+                resolve({ data, modalId });
+                // 移除已完成的模态框
+                this.modals.delete(modalId);
               },
               reject: (data) => {
-                console.log('Dialog rejected:', data);
+                console.log('Modal rejected:', data);
                 reject(data);
-                // 移除已取消的弹窗
-                this.dialogs.delete(dialogId);
+                // 移除已取消的模态框
+                this.modals.delete(modalId);
               }
             }
           });
           
-          // 挂载弹窗到页面
-          this.mountDialog(dialogInstance);
+          // 挂载模态框到页面
+          this.mountModal(modalInstance);
           
           // 存储实例和对应的Promise（包含隐藏状态）
-          this.dialogs.set(dialogId, {
-            instance: dialogInstance,
-            promise: Promise.resolve({ dialogId }),
-            title: props.title || component.name || '未知弹窗',
+          this.modals.set(modalId, {
+            instance: modalInstance,
+            promise: Promise.resolve({ modalId }),
+            title: props.title || component.name || '未知模态框',
             hidden: false, // 初始状态为非隐藏
-            type: 'normal' // 弹窗类型
+            type: 'normal' // 模态框类型
           });
         });
       },
 
-      // Await-to-js风格的打开弹窗方法
-      async toOpenDialog(componentOrName, config = {}) {
+      // Await-to-js风格的打开模态框方法
+      async toOpenModal(componentOrName, config = {}) {
         try {
-          const result = await this.openDialog(componentOrName, config);
+          const result = await this.openModal(componentOrName, config);
           return [null, result]; // [error, result]
         } catch (error) {
           // 如果是用户取消，仍然返回错误，但标记为取消
@@ -574,10 +674,10 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
         }
       },
 
-      // Await-to-js风格的Pubsub打开弹窗方法
-      async toPubsubOpenDialog(componentOrName, config = {}) {
+      // Await-to-js风格的Pubsub打开模态框方法
+      async toPubsubOpenModal(componentOrName, config = {}) {
         try {
-          const result = await this.pubsubOpenDialog(componentOrName, config);
+          const result = await this.pubsubOpenModal(componentOrName, config);
           return [null, result]; // [error, result]
         } catch (error) {
           // 如果是用户取消，仍然返回错误，但标记为取消
@@ -589,57 +689,57 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
         }
       },
 
-      // 显示弹窗
-      showDialog(dialogId) {
-        const dialogItem = this.dialogs.get(dialogId);
-        if (!dialogItem) {
-          console.warn('未找到要显示的弹窗:', dialogId);
+      // 显示模态框
+      showModal(modalId) {
+        const modalItem = this.modals.get(modalId);
+        if (!modalItem) {
+          console.warn('未找到要显示的模态框:', modalId);
           return false;
         }
         
-        if (dialogItem.instance && !dialogItem.hidden) {
-          console.log('弹窗已经是显示状态:', dialogId);
+        if (modalItem.instance && !modalItem.hidden) {
+          console.log('模态框已经是显示状态:', modalId);
           return true;
         }
         
-        // 设置弹窗可见
-        dialogItem.instance.visible = true;
-        dialogItem.hidden = false;
-        console.log('弹窗已显示:', dialogId);
+        // 设置模态框可见
+        modalItem.instance.visible = true;
+        modalItem.hidden = false;
+        console.log('模态框已显示:', modalId);
         return true;
       },
 
-      // 隐藏弹窗（仅隐藏，不销毁实例）
-      hideDialog(dialogId) {
-        const dialogItem = this.dialogs.get(dialogId);
-        if (!dialogItem) {
-          console.warn('未找到要隐藏的弹窗:', dialogId);
+      // 隐藏模态框（仅隐藏，不销毁实例）
+      hideModal(modalId) {
+        const modalItem = this.modals.get(modalId);
+        if (!modalItem) {
+          console.warn('未找到要隐藏的模态框:', modalId);
           return false;
         }
         
-        if (dialogItem.instance && dialogItem.hidden) {
-          console.log('弹窗已经是隐藏状态:', dialogId);
+        if (modalItem.instance && modalItem.hidden) {
+          console.log('模态框已经是隐藏状态:', modalId);
           return true;
         }
         
-        // 隐藏弹窗
-        dialogItem.instance.visible = false;
-        dialogItem.hidden = true;
-        console.log('弹窗已隐藏:', dialogId);
+        // 隐藏模态框
+        modalItem.instance.visible = false;
+        modalItem.hidden = true;
+        console.log('模态框已隐藏:', modalId);
         return true;
       },
 
-      // 销毁弹窗（完全销毁，释放内存）
-      destroyDialog(dialogId) {
-        const dialogItem = this.dialogs.get(dialogId);
-        if (!dialogItem) {
-          console.warn('未找到要销毁的弹窗:', dialogId);
+      // 销毁模态框（完全销毁，释放内存）
+      destroyModal(modalId) {
+        const modalItem = this.modals.get(modalId);
+        if (!modalItem) {
+          console.warn('未找到要销毁的模态框:', modalId);
           return false;
         }
         
-        const { instance } = dialogItem;
+        const { instance } = modalItem;
         
-        // 确保弹窗可见状态被设置为false
+        // 确保模态框可见状态被设置为false
         if (instance.visible) {
           instance.visible = false;
         }
@@ -666,50 +766,50 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
               }
             }
           } catch (e) {
-            console.error('销毁弹窗时出错:', e);
+            console.error('销毁模态框时出错:', e);
           } finally {
             // 确保从Map中移除
-            this.dialogs.delete(dialogId);
-            console.log('弹窗已完全销毁:', dialogId);
+            this.modals.delete(modalId);
+            console.log('模态框已完全销毁:', modalId);
           }
         }, delay);
         
         return true;
       },
 
-      // 关闭弹窗（隐藏+销毁的组合操作）
-      closeDialog(dialogId) {
-        this.hideDialog(dialogId);
-        this.destroyDialog(dialogId);
+      // 关闭模态框（隐藏+销毁的组合操作）
+      closeModal(modalId) {
+        this.hideModal(modalId);
+        this.destroyModal(modalId);
       },
 
-      // 关闭所有弹窗
-      closeAllDialogs() {
+      // 关闭所有模态框
+      closeAllModals() {
         // 转换为数组避免遍历过程中Map结构变化
-        const dialogIds = Array.from(this.dialogs.keys());
-        console.log('准备关闭所有弹窗:', dialogIds);
-        dialogIds.forEach(id => this.destroyDialog(id));
-        console.log('已关闭所有弹窗');
+        const modalIds = Array.from(this.modals.keys());
+        console.log('准备关闭所有模态框:', modalIds);
+        modalIds.forEach(id => this.destroyModal(id));
+        console.log('已关闭所有模态框');
       },
 
-      // 检查弹窗是否存在
-      hasDialog(dialogIdOrInstance) {
-        if (typeof dialogIdOrInstance === 'string') {
-          return this.dialogs.has(dialogIdOrInstance);
+      // 检查模态框是否存在
+      hasModal(modalIdOrInstance) {
+        if (typeof modalIdOrInstance === 'string') {
+          return this.modals.has(modalIdOrInstance);
         }
-        for (const item of this.dialogs.values()) {
-          if (item.instance === dialogIdOrInstance) return true;
+        for (const item of this.modals.values()) {
+          if (item.instance === modalIdOrInstance) return true;
         }
         return false;
       },
 
-      // 挂载弹窗到body
-      mountDialog(dialogInstance) {
-        if (!dialogInstance.$el || dialogInstance.$el.parentNode) return;
-        document.body.appendChild(dialogInstance.$el);
+      // 挂载模态框到body
+      mountModal(modalInstance) {
+        if (!modalInstance.$el || modalInstance.$el.parentNode) return;
+        document.body.appendChild(modalInstance.$el);
         // 确保DOM渲染完成后再显示
         Vue.nextTick(() => {
-          dialogInstance.visible = true;
+          modalInstance.visible = true;
         });
       },
 
@@ -722,36 +822,36 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
       },
 
       // ========== 统一的 Pubsub API ==========
-      // 通过Pubsub打开弹窗（统一API）
-      pubsubOpenDialog(componentOrName, config = {}) {
-        return PubSub.publish('dialog/open', { componentOrName, config });
+      // 通过Pubsub打开模态框（统一API）
+      pubsubOpenModal(componentOrName, config = {}) {
+        return PubSub.publish('modal/open', { componentOrName, config });
       },
       
-      // 通过Pubsub关闭弹窗（统一API）
-      pubsubCloseDialog(dialogId) {
-        return PubSub.publish('dialog/close', dialogId);
+      // 通过Pubsub关闭模态框（统一API）
+      pubsubCloseModal(modalId) {
+        return PubSub.publish('modal/close', modalId);
       },
       
-      // 通过Pubsub隐藏弹窗（统一API）
-      pubsubHideDialog(dialogId) {
-        return PubSub.publish('dialog/hide', dialogId);
+      // 通过Pubsub隐藏模态框（统一API）
+      pubsubHideModal(modalId) {
+        return PubSub.publish('modal/hide', modalId);
       },
       
-      // 通过Pubsub销毁弹窗（统一API）
-      pubsubDestroyDialog(dialogId) {
-        return PubSub.publish('dialog/destroy', dialogId);
+      // 通过Pubsub销毁模态框（统一API）
+      pubsubDestroyModal(modalId) {
+        return PubSub.publish('modal/destroy', modalId);
       },
       
-      // 通过Pubsub关闭所有弹窗（统一API）
-      pubsubCloseAllDialogs() {
-        return PubSub.publish('dialog/closeAll');
+      // 通过Pubsub关闭所有模态框（统一API）
+      pubsubCloseAllModals() {
+        return PubSub.publish('modal/closeAll');
       },
 
-      // 获取当前打开的弹窗列表
-      getOpenDialogs() {
-        const dialogs = [];
-        for (const [id, item] of this.dialogs.entries()) {
-          dialogs.push({
+      // 获取当前打开的模态框列表
+      getOpenModals() {
+        const modals = [];
+        for (const [id, item] of this.modals.entries()) {
+          modals.push({
             id,
             title: item.title,
             instance: item.instance,
@@ -759,169 +859,169 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
             type: item.type
           });
         }
-        return dialogs;
+        return modals;
       },
 
       // 初始化Pubsub订阅
       initPubsub() {
-        // 订阅打开弹窗的事件
-        PubSub.subscribe('dialog/open', (msg, { componentOrName, config }) => {
-          return this.openDialog(componentOrName, config);
+        // 订阅打开模态框的事件
+        PubSub.subscribe('modal/open', (msg, { componentOrName, config }) => {
+          return this.openModal(componentOrName, config);
         });
         
-        // 订阅关闭弹窗的事件
-        PubSub.subscribe('dialog/close', (msg, dialogId) => {
-          this.closeDialog(dialogId);
+        // 订阅关闭模态框的事件
+        PubSub.subscribe('modal/close', (msg, modalId) => {
+          this.closeModal(modalId);
         });
         
-        // 订阅隐藏弹窗的事件
-        PubSub.subscribe('dialog/hide', (msg, dialogId) => {
-          this.hideDialog(dialogId);
+        // 订阅隐藏模态框的事件
+        PubSub.subscribe('modal/hide', (msg, modalId) => {
+          this.hideModal(modalId);
         });
         
-        // 订阅销毁弹窗的事件
-        PubSub.subscribe('dialog/destroy', (msg, dialogId) => {
-          this.destroyDialog(dialogId);
+        // 订阅销毁模态框的事件
+        PubSub.subscribe('modal/destroy', (msg, modalId) => {
+          this.destroyModal(modalId);
         });
         
-        // 订阅关闭所有弹窗的事件
-        PubSub.subscribe('dialog/closeAll', () => {
-          this.closeAllDialogs();
+        // 订阅关闭所有模态框的事件
+        PubSub.subscribe('modal/closeAll', () => {
+          this.closeAllModals();
         });
         
-        console.log('弹窗管理器Pubsub订阅已初始化');
+        console.log('模态框管理器Pubsub订阅已初始化');
       }
     };
 
     // 初始化Pubsub订阅
-    DialogManager.initPubsub();
+    ModalManager.initPubsub();
 
     // ========== 主 Vue 实例 ==========
     new Vue({
       el: '#app',
       data() {
         return {
-          openDialogs: []
+          openModals: []
         };
       },
       mounted() {
-        // 定期更新打开的弹窗列表
+        // 定期更新打开的模态框列表
         setInterval(() => {
-          this.updateOpenDialogs();
+          this.updateOpenModals();
         }, 1000); // 每秒更新一次
       },
       methods: {
-        updateOpenDialogs() {
-          this.openDialogs = DialogManager.getOpenDialogs();
+        updateOpenModals() {
+          this.openModals = ModalManager.getOpenModals();
         },
         
-        // 常规方式打开弹窗（使用组件对象）
-        async openCustomDialog() {
-          const [err, result] = await DialogManager.toOpenDialog(
-            GlobalDialogComponents.CustomDialog,
+        // 常规方式打开模态框（使用组件对象）
+        async openCustomModal() {
+          const [err, result] = await ModalManager.toOpenModal(
+            GlobalModalComponents.CustomModal,
             { 
-              title: 'AntV 自定义弹窗',
-              dialogKey: 'custom_dialog' // 包含在props中，防重复打开
+              title: 'AntV 自定义模态框',
+              modalKey: 'custom_modal' // 包含在props中，防重复打开
             }
           );
 
           if (err) {
-            // 弹窗被取消或发生错误
+            // 模态框被取消或发生错误
             if (err.isCanceled) {
-              console.log('弹窗被取消：', err);
-              this.$message.info('弹窗已取消');
+              console.log('模态框被取消：', err);
+              this.$message.info('模态框已取消');
             } else {
               // 发生了代码错误
-              console.error('弹窗打开失败：', err);
-              this.$message.error('弹窗打开失败');
+              console.error('模态框打开失败：', err);
+              this.$message.error('模态框打开失败');
             }
           } else {
-            // 弹窗成功确认
-            console.log('弹窗确认返回数据：', result.data);
-            this.$message.success(`你输入的内容是：${result.data.inputValue}（弹窗ID：${result.dialogId}）`);
+            // 模态框成功确认
+            console.log('模态框确认返回数据：', result.data);
+            this.$message.success(`你输入的内容是：${result.data.inputValue}（模态框ID：${result.modalId}）`);
           }
         },
 
-        // 常规方式打开确认弹窗（使用组件对象）
-        async openConfirmDialog() {
-          const [err, result] = await DialogManager.toOpenDialog(
-            GlobalDialogComponents.ConfirmDialog,
+        // 常规方式打开确认模态框（使用组件对象）
+        async openConfirmModal() {
+          const [err, result] = await ModalManager.toOpenModal(
+            GlobalModalComponents.ConfirmModal,
             { 
               message: '确定要删除这条数据吗？',
-              dialogKey: 'confirm_dialog' // 包含在props中，防重复打开
+              modalKey: 'confirm_modal' // 包含在props中，防重复打开
             }
           );
 
           if (err) {
             if (err.isCanceled) {
-              console.log('确认弹窗被取消：', err);
+              console.log('确认模态框被取消：', err);
               this.$message.warning('删除操作已取消');
             } else {
-              console.error('确认弹窗打开失败：', err);
-              this.$message.error('确认弹窗打开失败');
+              console.error('确认模态框打开失败：', err);
+              this.$message.error('确认模态框打开失败');
             }
           } else {
             this.$message.success('删除操作已确认');
           }
         },
 
-        // 通过组件名打开弹窗（新功能）
+        // 通过组件名打开模态框（新功能）
         async openByComponentName() {
-          const [err, result] = await DialogManager.toOpenDialog(
-            'CustomDialog', // 使用字符串组件名
+          const [err, result] = await ModalManager.toOpenModal(
+            'CustomModal', // 使用字符串组件名
             { 
-              title: '通过组件名打开的弹窗',
-              dialogKey: 'component_name_dialog' // 包含在props中，防重复打开
+              title: '通过组件名打开的模态框',
+              modalKey: 'component_name_modal' // 包含在props中，防重复打开
             }
           );
 
           if (err) {
             if (err.isCanceled) {
-              console.log('组件名弹窗被取消：', err);
-              this.$message.info('组件名弹窗已取消');
+              console.log('组件名模态框被取消：', err);
+              this.$message.info('组件名模态框已取消');
             } else {
-              console.error('组件名弹窗打开失败：', err);
-              this.$message.error('组件名弹窗打开失败');
+              console.error('组件名模态框打开失败：', err);
+              this.$message.error('组件名模态框打开失败');
             }
           } else {
-            console.log('组件名弹窗确认返回数据：', result.data);
-            this.$message.success(`通过组件名打开的弹窗输入内容：${result.data.inputValue}（弹窗ID：${result.dialogId}）`);
+            console.log('组件名模态框确认返回数据：', result.data);
+            this.$message.success(`通过组件名打开的模态框输入内容：${result.data.inputValue}（模态框ID：${result.modalId}）`);
           }
         },
 
-        // 通过Pubsub打开弹窗（统一API）
+        // 通过Pubsub打开模态框（统一API）
         async openByPubsub() {
-          const [err, result] = await DialogManager.toPubsubOpenDialog(
-            'InfoDialog', 
+          const [err, result] = await ModalManager.toPubsubOpenModal(
+            'InfoModal', 
             {
-              message: '这是通过统一API的Pubsub和组件名打开的提示弹窗！',
-              dialogKey: 'pubsub_component_name_dialog' // 包含在props中
+              message: '这是通过统一API的Pubsub和组件名打开的提示模态框！',
+              modalKey: 'pubsub_component_name_modal' // 包含在props中
             }
           );
 
           if (err) {
             if (err.isCanceled) {
-              console.log('Pubsub弹窗被取消：', err);
-              this.$message.info('Pubsub弹窗已取消');
+              console.log('Pubsub模态框被取消：', err);
+              this.$message.info('Pubsub模态框已取消');
             } else {
-              console.error('Pubsub弹窗打开失败：', err);
-              this.$message.error('Pubsub弹窗打开失败');
+              console.error('Pubsub模态框打开失败：', err);
+              this.$message.error('Pubsub模态框打开失败');
             }
           } else {
-            console.log('Pubsub弹窗确认返回数据：', result.data);
-            this.$message.success(`Pubsub弹窗返回：已确认（弹窗ID：${result.dialogId}）`);
+            console.log('Pubsub模态框确认返回数据：', result.data);
+            this.$message.success(`Pubsub模态框返回：已确认（模态框ID：${result.modalId}）`);
           }
         },
 
-        // 关闭所有弹窗
-        closeAllDialogs() {
-          DialogManager.closeAllDialogs();
-          this.$message.info('所有弹窗已关闭');
+        // 关闭所有模态框
+        closeAllModals() {
+          ModalManager.closeAllModals();
+          this.$message.info('所有模态框已关闭');
         }
       },
-      // 页面销毁时关闭所有弹窗，防止内存泄漏
+      // 页面销毁时关闭所有模态框，防止内存泄漏
       beforeDestroy() {
-        DialogManager.closeAllDialogs();
+        ModalManager.closeAllModals();
       }
     });
 
@@ -963,6 +1063,11 @@ DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
       background: #f5f5f5;
       border-radius: 4px;
       overflow-x: auto;
+    }
+    
+    code {
+      font-family: Consolas, Monaco, 'Courier New', monospace;
+      font-size: 14px;
     }
   </style>
 </body>
