@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vue2 + Ant Design Vue 弹窗管理器 (修复弹框真正关闭)</title>
+  <title>Vue2 + Ant Design Vue 弹窗管理器 (内嵌弹框 + 隐藏/销毁分离)</title>
   <!-- 引入 Ant Design Vue 样式 -->
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/ant-design-vue/1.7.8/antd.min.css">
   <!-- 引入 Vue 2 -->
@@ -20,7 +20,7 @@
 <body>
   <div id="app">
     <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-      <h2>Vue2 + Ant Design Vue 弹窗管理器</h2>
+      <h2>Vue2 + Ant Design Vue 弹窗管理器 (内嵌弹框 + 隐藏/销毁分离)</h2>
       <div style="margin-bottom: 20px;">
         <a-button type="primary" @click="openCustomDialog">打开自定义弹窗</a-button>
         <a-button type="danger" @click="openConfirmDialog" style="margin-left: 10px;">打开确认弹窗</a-button>
@@ -37,71 +37,70 @@
           :key="dialog.id" 
           color="blue"
         >
-          {{ dialog.title }} (ID: {{ dialog.id }})
+          {{ dialog.title }} (ID: {{ dialog.id }}, 类型: {{ dialog.type }})
         </a-tag>
       </div>
 
       <h3>调用方法示例：</h3>
       <div class="code-examples">
         <div class="example-section">
-          <h4>1. 使用组件对象打开弹窗：</h4>
-          <pre><code class="language-javascript">try {
-  const { dialogInstance, data, dialogId } = await DialogManager.openDialog(
-    GlobalDialogComponents.CustomDialog,
-    { title: 'AntV 自定义弹窗' },
-    'custom_dialog' // 指定key，防重复打开
-  );
-  console.log('弹窗确认返回数据：', data);
-  this.$message.success(\`你输入的内容是：\${data.inputValue}\`);
-} catch (error) {
-  console.log('弹窗被取消：', error);
-  this.$message.info('弹窗已取消');
+          <h4>1. 打开弹窗（Await-to-js风格）：</h4>
+          <pre><code class="language-javascript">const [err, result] = await DialogManager.toOpenDialog(
+  GlobalDialogComponents.CustomDialog,
+  { 
+    title: 'AntV 自定义弹窗',
+    dialogKey: 'custom_dialog' // 包含在props中，防重复打开
+  }
+);
+
+if (err) {
+  // 弹窗被取消或发生错误
+  if (err.isCanceled) {
+    console.log('弹窗被取消：', err);
+  } else {
+    console.error('弹窗打开失败：', err);
+  }
+} else {
+  // 弹窗成功确认
+  console.log('弹窗确认返回数据：', result.data);
 }</code></pre>
         </div>
 
         <div class="example-section">
-          <h4>2. 使用组件名打开弹窗：</h4>
-          <pre><code class="language-javascript">try {
-  const { dialogInstance, data, dialogId } = await DialogManager.openDialog(
-    'CustomDialog', // 使用字符串组件名
-    { title: '通过组件名打开的弹窗' },
-    'component_name_dialog' // 指定key，防重复打开
-  );
-  console.log('组件名弹窗确认返回数据：', data);
-  this.$message.success(\`通过组件名打开的弹窗输入内容：\${data.inputValue}\`);
-} catch (error) {
-  console.log('组件名弹窗被取消：', error);
-  this.$message.info('组件名弹窗已取消');
+          <h4>2. 隐藏/销毁弹窗：</h4>
+          <pre><code class="language-javascript">// 隐藏弹窗（仅隐藏，不销毁实例）
+DialogManager.hideDialog('dialog_id');
+
+// 销毁弹窗（完全销毁，释放内存）
+DialogManager.destroyDialog('dialog_id');
+
+// 或者通过pubsub
+DialogManager.pubsubHideDialog('dialog_id');
+DialogManager.pubsubDestroyDialog('dialog_id');</code></pre>
+        </div>
+
+        <div class="example-section">
+          <h4>3. 内嵌弹窗示例（在弹窗中打开另一个弹窗）：</h4>
+          <pre><code class="language-javascript">export default {
+  // 在弹窗组件内部打开另一个弹窗
+  methods: {
+    async openNestedDialog() {
+      // 在当前弹窗中打开另一个弹窗
+      const [err, result] = await DialogManager.toOpenDialog(
+        'NestedDialog', 
+        { 
+          title: '内嵌弹窗',
+          dialogKey: 'nested_dialog_' + this.dialogId,
+          parentDialogId: this.dialogId // 传递父弹窗ID
+        }
+      );
+      
+      if (!err) {
+        console.log('内嵌弹窗确认：', result.data);
+      }
+    }
+  }
 }</code></pre>
-        </div>
-
-        <div class="example-section">
-          <h4>3. 通过Pubsub打开弹窗（统一API）：</h4>
-          <pre><code class="language-javascript">// 直接调用统一的API
-const { data } = await DialogManager.pubsubOpenDialog('InfoDialog', {
-  message: '这是通过Pubsub和组件名打开的提示弹窗！'
-}, 'pubsub_component_name_dialog');</code></pre>
-        </div>
-
-        <div class="example-section">
-          <h4>4. 关闭特定弹窗：</h4>
-          <pre><code class="language-javascript">// 通过弹窗ID关闭
-DialogManager.closeDialog('dialog_id');
-
-// 通过弹窗实例关闭
-DialogManager.closeDialog(dialogInstance);
-
-// 通过Pubsub关闭
-DialogManager.pubsubCloseDialog('dialog_id');</code></pre>
-        </div>
-
-        <div class="example-section">
-          <h4>5. 关闭所有弹窗：</h4>
-          <pre><code class="language-javascript">// 直接调用
-DialogManager.closeAllDialogs();
-
-// 通过Pubsub调用
-DialogManager.pubsubCloseAllDialogs();</code></pre>
         </div>
       </div>
     </div>
@@ -144,12 +143,16 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             @cancel="handleCancel"
             @ok="handleConfirm"
           >
-            <div>这是优化版的antv自定义弹窗（ID：{{dialogId}}）</div>
+            <div>这是自定义弹窗（ID：{{dialogId}}）</div>
             <a-input 
               v-model="inputValue" 
               placeholder="请输入内容" 
               style="margin-top: 10px;"
             />
+            <div style="margin-top: 10px;">
+              <a-button type="primary" size="small" @click="openNestedDialog">打开内嵌弹窗</a-button>
+              <a-button type="dashed" size="small" @click="hideCurrentDialog" style="margin-left: 8px;">隐藏当前弹窗</a-button>
+            </div>
           </a-modal>
         `,
         data() {
@@ -162,10 +165,14 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             console.log('CustomDialog handleCancel called');
             // 首先隐藏弹窗
             this.visible = false;
-            // 然后执行reject回调
-            this.reject({ reason: '用户关闭/取消弹窗', dialogId: this.dialogId });
+            // 然后执行reject回调，标记为取消
+            this.reject({ 
+              reason: '用户关闭/取消弹窗', 
+              dialogId: this.dialogId,
+              isCanceled: true
+            });
             // 最后关闭弹窗
-            DialogManager.closeDialog(this.dialogId);
+            DialogManager.destroyDialog(this.dialogId);
           },
           handleConfirm() {
             console.log('CustomDialog handleConfirm called');
@@ -174,7 +181,28 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             // 然后执行resolve回调
             this.resolve({ inputValue: this.inputValue, dialogId: this.dialogId });
             // 最后关闭弹窗
-            DialogManager.closeDialog(this.dialogId);
+            DialogManager.destroyDialog(this.dialogId);
+          },
+          async openNestedDialog() {
+            // 在当前弹窗中打开另一个弹窗
+            const [err, result] = await DialogManager.toOpenDialog(
+              'NestedDialog', 
+              { 
+                title: '内嵌弹窗',
+                dialogKey: 'nested_dialog_' + this.dialogId,
+                parentDialogId: this.dialogId // 传递父弹窗ID
+              }
+            );
+            
+            if (!err) {
+              console.log('内嵌弹窗确认：', result.data);
+              this.$message.success(`内嵌弹窗返回: ${JSON.stringify(result.data)}`);
+            }
+          },
+          hideCurrentDialog() {
+            // 隐藏当前弹窗
+            DialogManager.hideDialog(this.dialogId);
+            this.$message.info('当前弹窗已隐藏');
           }
         },
         // 组件销毁前清理数据
@@ -218,6 +246,9 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             @ok="handleConfirm"
           >
             <div style="color: #666;">{{ message }}</div>
+            <div style="margin-top: 10px;">
+              <a-button type="primary" size="small" @click="openNestedConfirm">打开内嵌确认弹窗</a-button>
+            </div>
           </a-modal>
         `,
         methods: {
@@ -225,10 +256,14 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             console.log('ConfirmDialog handleCancel called');
             // 首先隐藏弹窗
             this.visible = false;
-            // 然后执行reject回调
-            this.reject({ reason: '用户取消操作', dialogId: this.dialogId });
+            // 然后执行reject回调，标记为取消
+            this.reject({ 
+              reason: '用户取消操作', 
+              dialogId: this.dialogId,
+              isCanceled: true
+            });
             // 最后关闭弹窗
-            DialogManager.closeDialog(this.dialogId);
+            DialogManager.destroyDialog(this.dialogId);
           },
           handleConfirm() {
             console.log('ConfirmDialog handleConfirm called');
@@ -237,7 +272,24 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             // 然后执行resolve回调
             this.resolve({ confirmed: true, dialogId: this.dialogId });
             // 最后关闭弹窗
-            DialogManager.closeDialog(this.dialogId);
+            DialogManager.destroyDialog(this.dialogId);
+          },
+          async openNestedConfirm() {
+            // 在当前弹窗中打开另一个确认弹窗
+            const [err, result] = await DialogManager.toOpenDialog(
+              'ConfirmDialog', 
+              { 
+                message: '这是内嵌的确认弹窗！',
+                title: '内嵌确认',
+                dialogKey: 'nested_confirm_' + this.dialogId,
+                parentDialogId: this.dialogId
+              }
+            );
+            
+            if (!err) {
+              console.log('内嵌确认弹窗确认：', result.data);
+              this.$message.success('内嵌确认弹窗已确认');
+            }
           }
         }
       },
@@ -280,6 +332,9 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
               <a-icon type="info-circle" style="font-size: 24px; color: #1890ff; margin-right: 8px;" />
               {{ message }}
             </div>
+            <div style="margin-top: 10px; text-align: center;">
+              <a-button type="primary" size="small" @click="openNestedInfo">打开内嵌提示弹窗</a-button>
+            </div>
           </a-modal>
         `,
         methods: {
@@ -287,10 +342,14 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             console.log('InfoDialog handleCancel called');
             // 首先隐藏弹窗
             this.visible = false;
-            // 然后执行reject回调
-            this.reject({ reason: '用户关闭提示弹窗', dialogId: this.dialogId });
+            // 然后执行reject回调，标记为取消
+            this.reject({ 
+              reason: '用户关闭提示弹窗', 
+              dialogId: this.dialogId,
+              isCanceled: true
+            });
             // 最后关闭弹窗
-            DialogManager.closeDialog(this.dialogId);
+            DialogManager.destroyDialog(this.dialogId);
           },
           handleConfirm() {
             console.log('InfoDialog handleConfirm called');
@@ -299,15 +358,115 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
             // 然后执行resolve回调
             this.resolve({ confirmed: true, dialogId: this.dialogId });
             // 最后关闭弹窗
-            DialogManager.closeDialog(this.dialogId);
+            DialogManager.destroyDialog(this.dialogId);
+          },
+          async openNestedInfo() {
+            // 在当前弹窗中打开另一个提示弹窗
+            const [err, result] = await DialogManager.toOpenDialog(
+              'InfoDialog', 
+              { 
+                message: '这是内嵌的提示弹窗！',
+                title: '内嵌提示',
+                dialogKey: 'nested_info_' + this.dialogId,
+                parentDialogId: this.dialogId
+              }
+            );
+            
+            if (!err) {
+              console.log('内嵌提示弹窗确认：', result.data);
+              this.$message.success('内嵌提示弹窗已确认');
+            }
+          }
+        }
+      },
+      
+      // 内嵌弹窗示例
+      NestedDialog: {
+        props: {
+          title: {
+            type: String,
+            default: '内嵌弹窗'
+          },
+          visible: {
+            type: Boolean,
+            default: false
+          },
+          dialogId: {
+            type: String,
+            default: ''
+          },
+          parentDialogId: {
+            type: String,
+            default: ''
+          },
+          resolve: {
+            type: Function,
+            required: true
+          },
+          reject: {
+            type: Function,
+            required: true
+          }
+        },
+        template: `
+          <a-modal
+            :title="title"
+            :visible="visible"
+            :maskClosable="false"
+            :closable="true"
+            width="350px"
+            @cancel="handleCancel"
+            @ok="handleConfirm"
+          >
+            <div>这是内嵌弹窗（ID：{{dialogId}}）</div>
+            <div>父弹窗ID：{{parentDialogId}}</div>
+            <a-input 
+              v-model="inputValue" 
+              placeholder="内嵌弹窗输入" 
+              style="margin-top: 10px;"
+            />
+          </a-modal>
+        `,
+        data() {
+          return {
+            inputValue: ''
+          };
+        },
+        methods: {
+          handleCancel() {
+            console.log('NestedDialog handleCancel called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行reject回调，标记为取消
+            this.reject({ 
+              reason: '内嵌弹窗被取消', 
+              dialogId: this.dialogId,
+              parentDialogId: this.parentDialogId,
+              isCanceled: true
+            });
+            // 最后关闭弹窗
+            DialogManager.destroyDialog(this.dialogId);
+          },
+          handleConfirm() {
+            console.log('NestedDialog handleConfirm called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行resolve回调
+            this.resolve({ 
+              inputValue: this.inputValue, 
+              dialogId: this.dialogId,
+              parentDialogId: this.parentDialogId
+            });
+            // 最后关闭弹窗
+            DialogManager.destroyDialog(this.dialogId);
           }
         }
       }
     };
 
-    // ========== 弹窗管理器核心实现（修复弹框真正关闭） ==========
+    // ========== 弹窗管理器核心实现（内嵌弹框 + 隐藏/销毁分离） ==========
     const DialogManager = {
-      // 存储弹窗实例
+      // 存储弹窗实例（包含隐藏状态）
       dialogs: new Map(),
       // 缓存组件构造器，避免重复创建
       constructorCache: new Map(),
@@ -335,15 +494,25 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         }
       },
 
-      // 打开弹窗（支持组件对象和组件名）
-      openDialog(componentOrName, props = {}, dialogKey = null) {
+      // 打开弹窗（原版：返回Promise）
+      openDialog(componentOrName, config = {}) {
         // 解析组件
         const component = this.getComponent(componentOrName);
-
+        
+        // 从config中提取dialogKey和其他props
+        const { dialogKey, ...props } = config;
+        
         // 防重复打开：如果指定了key且已存在，则返回现有弹窗的Promise
         if (dialogKey && this.dialogs.has(dialogKey)) {
+          const existingDialog = this.dialogs.get(dialogKey);
           console.warn(`弹窗[${dialogKey}]已打开，避免重复创建`);
-          return this.dialogs.get(dialogKey).promise;
+          
+          // 如果弹窗被隐藏了，重新显示它
+          if (existingDialog.hidden) {
+            this.showDialog(dialogKey);
+          }
+          
+          return existingDialog.promise;
         }
 
         return new Promise((resolve, reject) => {
@@ -363,13 +532,13 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
               dialogId,
               resolve: (data) => {
                 console.log('Dialog resolved:', data);
-                resolve({ dialogInstance, data, dialogId });
+                resolve({ data, dialogId });
                 // 移除已完成的弹窗
                 this.dialogs.delete(dialogId);
               },
               reject: (data) => {
                 console.log('Dialog rejected:', data);
-                reject({ dialogInstance, data, dialogId });
+                reject(data);
                 // 移除已取消的弹窗
                 this.dialogs.delete(dialogId);
               }
@@ -379,84 +548,147 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
           // 挂载弹窗到页面
           this.mountDialog(dialogInstance);
           
-          // 存储实例和对应的Promise
+          // 存储实例和对应的Promise（包含隐藏状态）
           this.dialogs.set(dialogId, {
             instance: dialogInstance,
-            promise: Promise.resolve({ dialogInstance, dialogId }),
-            title: props.title || component.name || '未知弹窗'
+            promise: Promise.resolve({ dialogId }),
+            title: props.title || component.name || '未知弹窗',
+            hidden: false, // 初始状态为非隐藏
+            type: 'normal' // 弹窗类型
           });
         });
       },
 
-      // 关闭弹窗（修复：确保真正关闭）
-      closeDialog(dialogIdOrInstance) {
-        let dialogId, dialogInstance;
-        
-        // 支持传入ID或实例
-        if (typeof dialogIdOrInstance === 'string') {
-          dialogId = dialogIdOrInstance;
-          const dialogItem = this.dialogs.get(dialogId);
-          dialogInstance = dialogItem?.instance;
-        } else {
-          // 从实例反向查找ID
-          for (const [id, item] of this.dialogs.entries()) {
-            if (item.instance === dialogIdOrInstance) {
-              dialogId = id;
-              dialogInstance = dialogIdOrInstance;
-              break;
-            }
+      // Await-to-js风格的打开弹窗方法
+      async toOpenDialog(componentOrName, config = {}) {
+        try {
+          const result = await this.openDialog(componentOrName, config);
+          return [null, result]; // [error, result]
+        } catch (error) {
+          // 如果是用户取消，仍然返回错误，但标记为取消
+          if (error.isCanceled) {
+            return [error, null]; // [cancellation, null]
           }
+          // 如果是其他错误，返回错误对象
+          return [error, null]; // [error, null]
         }
+      },
 
-        if (!dialogId || !dialogInstance) {
-          console.warn('未找到要关闭的弹窗:', dialogIdOrInstance);
-          return;
+      // Await-to-js风格的Pubsub打开弹窗方法
+      async toPubsubOpenDialog(componentOrName, config = {}) {
+        try {
+          const result = await this.pubsubOpenDialog(componentOrName, config);
+          return [null, result]; // [error, result]
+        } catch (error) {
+          // 如果是用户取消，仍然返回错误，但标记为取消
+          if (error.isCanceled) {
+            return [error, null]; // [cancellation, null]
+          }
+          // 如果是其他错误，返回错误对象
+          return [error, null]; // [error, null]
+        }
+      },
+
+      // 显示弹窗
+      showDialog(dialogId) {
+        const dialogItem = this.dialogs.get(dialogId);
+        if (!dialogItem) {
+          console.warn('未找到要显示的弹窗:', dialogId);
+          return false;
         }
         
-        console.log('开始关闭弹窗:', dialogId);
+        if (dialogItem.instance && !dialogItem.hidden) {
+          console.log('弹窗已经是显示状态:', dialogId);
+          return true;
+        }
+        
+        // 设置弹窗可见
+        dialogItem.instance.visible = true;
+        dialogItem.hidden = false;
+        console.log('弹窗已显示:', dialogId);
+        return true;
+      },
+
+      // 隐藏弹窗（仅隐藏，不销毁实例）
+      hideDialog(dialogId) {
+        const dialogItem = this.dialogs.get(dialogId);
+        if (!dialogItem) {
+          console.warn('未找到要隐藏的弹窗:', dialogId);
+          return false;
+        }
+        
+        if (dialogItem.instance && dialogItem.hidden) {
+          console.log('弹窗已经是隐藏状态:', dialogId);
+          return true;
+        }
+        
+        // 隐藏弹窗
+        dialogItem.instance.visible = false;
+        dialogItem.hidden = true;
+        console.log('弹窗已隐藏:', dialogId);
+        return true;
+      },
+
+      // 销毁弹窗（完全销毁，释放内存）
+      destroyDialog(dialogId) {
+        const dialogItem = this.dialogs.get(dialogId);
+        if (!dialogItem) {
+          console.warn('未找到要销毁的弹窗:', dialogId);
+          return false;
+        }
+        
+        const { instance } = dialogItem;
         
         // 确保弹窗可见状态被设置为false
-        if (dialogInstance.visible) {
-          dialogInstance.visible = false;
+        if (instance.visible) {
+          instance.visible = false;
         }
         
         // 优化：动态获取动画时长（兼容不同组件的动画）
-        const transitionDuration = this.getTransitionDuration(dialogInstance.$el);
+        const transitionDuration = this.getTransitionDuration(instance.$el);
         const delay = transitionDuration || 300;
 
         // 延迟卸载，适配动画
         setTimeout(() => {
           try {
             // 安全移除DOM：增加父节点校验
-            if (dialogInstance.$el && dialogInstance.$el.parentNode) {
-              document.body.removeChild(dialogInstance.$el);
+            if (instance.$el && instance.$el.parentNode) {
+              document.body.removeChild(instance.$el);
             }
             // 销毁实例前解绑所有事件
-            dialogInstance.$off();
+            instance.$off();
             // 销毁组件实例
-            dialogInstance.$destroy();
+            instance.$destroy();
             // 清理数据引用
-            for (const key in dialogInstance) {
-              if (dialogInstance.hasOwnProperty(key) && key !== '$options') {
-                dialogInstance[key] = null;
+            for (const key in instance) {
+              if (instance.hasOwnProperty(key) && key !== '$options') {
+                instance[key] = null;
               }
             }
           } catch (e) {
-            console.error('关闭弹窗时出错:', e);
+            console.error('销毁弹窗时出错:', e);
           } finally {
             // 确保从Map中移除
             this.dialogs.delete(dialogId);
-            console.log('弹窗已完全关闭:', dialogId);
+            console.log('弹窗已完全销毁:', dialogId);
           }
         }, delay);
+        
+        return true;
       },
 
-      // 关闭所有弹窗（新增功能）
+      // 关闭弹窗（隐藏+销毁的组合操作）
+      closeDialog(dialogId) {
+        this.hideDialog(dialogId);
+        this.destroyDialog(dialogId);
+      },
+
+      // 关闭所有弹窗
       closeAllDialogs() {
         // 转换为数组避免遍历过程中Map结构变化
         const dialogIds = Array.from(this.dialogs.keys());
         console.log('准备关闭所有弹窗:', dialogIds);
-        dialogIds.forEach(id => this.closeDialog(id));
+        dialogIds.forEach(id => this.destroyDialog(id));
         console.log('已关闭所有弹窗');
       },
 
@@ -471,7 +703,7 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         return false;
       },
 
-      // 挂载弹窗到body（优化：避免重复挂载）
+      // 挂载弹窗到body
       mountDialog(dialogInstance) {
         if (!dialogInstance.$el || dialogInstance.$el.parentNode) return;
         document.body.appendChild(dialogInstance.$el);
@@ -481,7 +713,7 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         });
       },
 
-      // 动态获取元素的过渡动画时长（性能优化）
+      // 动态获取元素的过渡动画时长
       getTransitionDuration(el) {
         if (!el) return 0;
         const computedStyle = window.getComputedStyle(el);
@@ -491,13 +723,23 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
 
       // ========== 统一的 Pubsub API ==========
       // 通过Pubsub打开弹窗（统一API）
-      pubsubOpenDialog(componentOrName, props = {}, dialogKey = null) {
-        return PubSub.publish('dialog/open', { componentOrName, props, dialogKey });
+      pubsubOpenDialog(componentOrName, config = {}) {
+        return PubSub.publish('dialog/open', { componentOrName, config });
       },
       
       // 通过Pubsub关闭弹窗（统一API）
-      pubsubCloseDialog(dialogIdOrInstance) {
-        return PubSub.publish('dialog/close', dialogIdOrInstance);
+      pubsubCloseDialog(dialogId) {
+        return PubSub.publish('dialog/close', dialogId);
+      },
+      
+      // 通过Pubsub隐藏弹窗（统一API）
+      pubsubHideDialog(dialogId) {
+        return PubSub.publish('dialog/hide', dialogId);
+      },
+      
+      // 通过Pubsub销毁弹窗（统一API）
+      pubsubDestroyDialog(dialogId) {
+        return PubSub.publish('dialog/destroy', dialogId);
       },
       
       // 通过Pubsub关闭所有弹窗（统一API）
@@ -512,7 +754,9 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
           dialogs.push({
             id,
             title: item.title,
-            instance: item.instance
+            instance: item.instance,
+            hidden: item.hidden,
+            type: item.type
           });
         }
         return dialogs;
@@ -521,13 +765,23 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
       // 初始化Pubsub订阅
       initPubsub() {
         // 订阅打开弹窗的事件
-        PubSub.subscribe('dialog/open', (msg, { componentOrName, props, dialogKey }) => {
-          return this.openDialog(componentOrName, props, dialogKey);
+        PubSub.subscribe('dialog/open', (msg, { componentOrName, config }) => {
+          return this.openDialog(componentOrName, config);
         });
         
         // 订阅关闭弹窗的事件
-        PubSub.subscribe('dialog/close', (msg, dialogIdOrInstance) => {
-          this.closeDialog(dialogIdOrInstance);
+        PubSub.subscribe('dialog/close', (msg, dialogId) => {
+          this.closeDialog(dialogId);
+        });
+        
+        // 订阅隐藏弹窗的事件
+        PubSub.subscribe('dialog/hide', (msg, dialogId) => {
+          this.hideDialog(dialogId);
+        });
+        
+        // 订阅销毁弹窗的事件
+        PubSub.subscribe('dialog/destroy', (msg, dialogId) => {
+          this.destroyDialog(dialogId);
         });
         
         // 订阅关闭所有弹窗的事件
@@ -563,59 +817,99 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         
         // 常规方式打开弹窗（使用组件对象）
         async openCustomDialog() {
-          try {
-            const { dialogInstance, data, dialogId } = await DialogManager.openDialog(
-              GlobalDialogComponents.CustomDialog,
-              { title: 'AntV 自定义弹窗' },
-              'custom_dialog' // 指定key，防重复打开
-            );
-            console.log('弹窗确认返回数据：', data);
-            this.$message.success(`你输入的内容是：${data.inputValue}（弹窗ID：${dialogId}）`);
-          } catch (error) {
-            console.log('弹窗被取消：', error);
-            this.$message.info('弹窗已取消');
+          const [err, result] = await DialogManager.toOpenDialog(
+            GlobalDialogComponents.CustomDialog,
+            { 
+              title: 'AntV 自定义弹窗',
+              dialogKey: 'custom_dialog' // 包含在props中，防重复打开
+            }
+          );
+
+          if (err) {
+            // 弹窗被取消或发生错误
+            if (err.isCanceled) {
+              console.log('弹窗被取消：', err);
+              this.$message.info('弹窗已取消');
+            } else {
+              // 发生了代码错误
+              console.error('弹窗打开失败：', err);
+              this.$message.error('弹窗打开失败');
+            }
+          } else {
+            // 弹窗成功确认
+            console.log('弹窗确认返回数据：', result.data);
+            this.$message.success(`你输入的内容是：${result.data.inputValue}（弹窗ID：${result.dialogId}）`);
           }
         },
 
         // 常规方式打开确认弹窗（使用组件对象）
         async openConfirmDialog() {
-          try {
-            const { data } = await DialogManager.openDialog(GlobalDialogComponents.ConfirmDialog, {
-              message: '确定要删除这条数据吗？'
-            }, 'confirm_dialog');
+          const [err, result] = await DialogManager.toOpenDialog(
+            GlobalDialogComponents.ConfirmDialog,
+            { 
+              message: '确定要删除这条数据吗？',
+              dialogKey: 'confirm_dialog' // 包含在props中，防重复打开
+            }
+          );
+
+          if (err) {
+            if (err.isCanceled) {
+              console.log('确认弹窗被取消：', err);
+              this.$message.warning('删除操作已取消');
+            } else {
+              console.error('确认弹窗打开失败：', err);
+              this.$message.error('确认弹窗打开失败');
+            }
+          } else {
             this.$message.success('删除操作已确认');
-          } catch (error) {
-            console.log('确认弹窗被取消：', error);
-            this.$message.warning('删除操作已取消');
           }
         },
 
         // 通过组件名打开弹窗（新功能）
         async openByComponentName() {
-          try {
-            const { dialogInstance, data, dialogId } = await DialogManager.openDialog(
-              'CustomDialog', // 使用字符串组件名
-              { title: '通过组件名打开的弹窗' },
-              'component_name_dialog' // 指定key，防重复打开
-            );
-            console.log('组件名弹窗确认返回数据：', data);
-            this.$message.success(`通过组件名打开的弹窗输入内容：${data.inputValue}（弹窗ID：${dialogId}）`);
-          } catch (error) {
-            console.log('组件名弹窗被取消：', error);
-            this.$message.info('组件名弹窗已取消');
+          const [err, result] = await DialogManager.toOpenDialog(
+            'CustomDialog', // 使用字符串组件名
+            { 
+              title: '通过组件名打开的弹窗',
+              dialogKey: 'component_name_dialog' // 包含在props中，防重复打开
+            }
+          );
+
+          if (err) {
+            if (err.isCanceled) {
+              console.log('组件名弹窗被取消：', err);
+              this.$message.info('组件名弹窗已取消');
+            } else {
+              console.error('组件名弹窗打开失败：', err);
+              this.$message.error('组件名弹窗打开失败');
+            }
+          } else {
+            console.log('组件名弹窗确认返回数据：', result.data);
+            this.$message.success(`通过组件名打开的弹窗输入内容：${result.data.inputValue}（弹窗ID：${result.dialogId}）`);
           }
         },
 
         // 通过Pubsub打开弹窗（统一API）
         async openByPubsub() {
-          try {
-            // 使用统一的API
-            const { data } = await DialogManager.pubsubOpenDialog('InfoDialog', {
-              message: '这是通过统一API的Pubsub和组件名打开的提示弹窗！'
-            }, 'pubsub_component_name_dialog');
-            this.$message.success(`Pubsub组件名弹窗返回：已确认`);
-          } catch (error) {
-            console.log('Pubsub组件名弹窗取消：', error);
+          const [err, result] = await DialogManager.toPubsubOpenDialog(
+            'InfoDialog', 
+            {
+              message: '这是通过统一API的Pubsub和组件名打开的提示弹窗！',
+              dialogKey: 'pubsub_component_name_dialog' // 包含在props中
+            }
+          );
+
+          if (err) {
+            if (err.isCanceled) {
+              console.log('Pubsub弹窗被取消：', err);
+              this.$message.info('Pubsub弹窗已取消');
+            } else {
+              console.error('Pubsub弹窗打开失败：', err);
+              this.$message.error('Pubsub弹窗打开失败');
+            }
+          } else {
+            console.log('Pubsub弹窗确认返回数据：', result.data);
+            this.$message.success(`Pubsub弹窗返回：已确认（弹窗ID：${result.dialogId}）`);
           }
         },
 
@@ -625,12 +919,9 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
           this.$message.info('所有弹窗已关闭');
         }
       },
-      // 优化：页面销毁时关闭所有弹窗，防止内存泄漏
+      // 页面销毁时关闭所有弹窗，防止内存泄漏
       beforeDestroy() {
         DialogManager.closeAllDialogs();
-        // 取消Pubsub订阅（可选，根据业务需求）
-        // PubSub.unsubscribe('dialog/open');
-        // PubSub.unsubscribe('dialog/close');
       }
     });
 
