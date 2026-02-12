@@ -225,324 +225,407 @@ async openNestedModalPromise() {
     </div>
   </div>
 
+  <!-- ========== 1. 独立的 ModalManager 模块 ========== -->
   <script>
-    // ========== 模态框管理器核心实现（懒加载 + 隐藏/销毁分离） ==========
-    const ModalManager = {
-      // 存储模态框实例（包含隐藏状态）
-      modals: new Map(),
-      // 缓存组件构造器，避免重复创建
-      constructorCache: new Map(),
-      // 注册的组件（普通组件）
-      registeredComponents: new Map(),
-      // 懒加载组件加载器
-      lazyComponentLoaders: new Map(),
-      // 已加载的懒组件缓存
-      lazyComponentCache: new Map(),
-      // 生成唯一ID
-      generateId() {
-        return `modal_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      },
-
-      // 注册普通组件（立即加载）
-      registerComponent(name, component) {
-        this.registeredComponents.set(name, component);
-        console.log(`组件 ${name} 已注册`);
-      },
-
-      // 注册懒加载组件（调用时才加载）
-      registerLazyComponent(name, loader) {
-        if (typeof loader !== 'function') {
-          throw new Error('懒加载组件的loader必须是返回Promise的函数');
-        }
-        this.lazyComponentLoaders.set(name, loader);
-        console.log(`懒加载组件 ${name} 已注册加载器`);
-      },
-
-      // 加载懒组件（内部使用）
-      async loadLazyComponent(name) {
-        // 先检查缓存
-        if (this.lazyComponentCache.has(name)) {
-          return this.lazyComponentCache.get(name);
-        }
-        
-        // 检查是否有加载器
-        const loader = this.lazyComponentLoaders.get(name);
-        if (!loader) {
-          throw new Error(`未找到名为 "${name}" 的懒加载组件加载器`);
-        }
-        
-        // 执行加载器
-        try {
-          const component = await loader();
-          // 缓存加载结果
-          this.lazyComponentCache.set(name, component);
-          console.log(`懒加载组件 ${name} 已加载并缓存`);
-          return component;
-        } catch (error) {
-          console.error(`加载懒组件 ${name} 失败:`, error);
-          throw new Error(`加载组件 ${name} 失败: ${error.message}`);
-        }
-      },
-
-      // 获取组件（支持对象、字符串组件名、懒加载组件）
-      async getComponent(componentOrName) {
-        // 如果是组件对象，直接返回
-        if (typeof componentOrName === 'object' && componentOrName.template) {
-          return componentOrName;
-        }
-        
-        // 如果是字符串，先查普通组件，再查懒加载组件
-        if (typeof componentOrName === 'string') {
-          const name = componentOrName;
-          
-          // 1. 检查普通组件
-          if (this.registeredComponents.has(name)) {
-            return this.registeredComponents.get(name);
-          }
-          
-          // 2. 检查懒加载组件（异步加载）
-          if (this.lazyComponentLoaders.has(name)) {
-            return await this.loadLazyComponent(name);
-          }
-          
-          // 3. 未找到
-          throw new Error(`未找到名为 "${name}" 的组件（普通组件或懒加载组件）`);
-        }
-        
-        throw new Error('组件参数必须是组件对象或已注册的组件名称');
-      },
-
-      // ========== 核心 API 实现 - Promise 风格 ==========
-      // 打开模态框（Promise风格：原生Promise，需try/catch）
-      async openModal(componentOrName, config = {}) {
-        // 异步获取组件（支持懒加载）
-        const component = await this.getComponent(componentOrName);
-        
-        // 从config中提取modalKey和其他props
-        const { modalKey, ...props } = config;
-        
-        // 防重复打开：如果指定了key且已存在，则返回现有模态框的Promise
-        if (modalKey && this.modals.has(modalKey)) {
-          const existingModal = this.modals.get(modalKey);
-          console.warn(`模态框[${modalKey}]已打开，避免重复创建`);
-          
-          // 如果模态框被隐藏了，重新显示它
-          if (existingModal.hidden) {
-            this.showModal(modalKey);
-          }
-          
-          return existingModal.promise;
-        }
-
-        return new Promise((resolve, reject) => {
-          const modalId = modalKey || this.generateId();
-          // 缓存构造器，提升性能
-          let ModalConstructor = this.constructorCache.get(component);
-          if (!ModalConstructor) {
-            ModalConstructor = Vue.extend(component);
-            this.constructorCache.set(component, ModalConstructor);
-          }
-
-          // 初始化组件实例
-          const modalInstance = new ModalConstructor({
-            el: document.createElement('div'),
-            propsData: {
-              ...props,
-              modalId,
-              resolve: (data) => {
-                console.log('Modal resolved (Promise风格):', data);
-                resolve({ data, modalId });
-                // 移除已完成的模态框
-                this.modals.delete(modalId);
-              },
-              reject: (data) => {
-                console.log('Modal rejected (Promise风格):', data);
-                reject(data);
-                // 移除已取消的模态框
-                this.modals.delete(modalId);
-              }
-            }
-          });
-          
-          // 挂载模态框到页面
-          this.mountModal(modalInstance);
-          
-          // 存储实例和对应的Promise（包含隐藏状态）
-          this.modals.set(modalId, {
-            instance: modalInstance,
-            promise: Promise.resolve({ data: {}, modalId }),
-            title: props.title || component.name || '未知模态框',
-            hidden: false, // 初始状态为非隐藏
-            type: 'normal' // 模态框类型
-          });
-        });
-      },
-
-      // ========== 核心 API 实现 - Await-to-js 风格 ==========
-      // Await-to-js风格的打开模态框方法（返回[err, result]，无需try/catch）
-      async toOpenModal(componentOrName, config = {}) {
-        try {
-          const result = await this.openModal(componentOrName, config);
-          return [null, result]; // [error, result] 格式
-        } catch (error) {
-          // 如果是用户取消，仍然返回错误，但标记为取消
-          if (error.isCanceled) {
-            return [error, null]; // [cancellation, null]
-          }
-          // 如果是其他错误，返回错误对象
-          return [error, null]; // [error, null]
-        }
-      },
-
-      // ========== 基础操作方法 ==========
-      // 显示模态框
-      showModal(modalId) {
-        const modalItem = this.modals.get(modalId);
-        if (!modalItem) {
-          console.warn('未找到要显示的模态框:', modalId);
-          return false;
-        }
-        
-        if (modalItem.instance && !modalItem.hidden) {
-          console.log('模态框已经是显示状态:', modalId);
-          return true;
-        }
-        
-        // 设置模态框可见
-        modalItem.instance.visible = true;
-        modalItem.hidden = false;
-        console.log('模态框已显示:', modalId);
-        return true;
-      },
-
-      // 隐藏模态框（仅隐藏，不销毁实例）
-      hideModal(modalId) {
-        const modalItem = this.modals.get(modalId);
-        if (!modalItem) {
-          console.warn('未找到要隐藏的模态框:', modalId);
-          return false;
-        }
-        
-        if (modalItem.instance && modalItem.hidden) {
-          console.log('模态框已经是隐藏状态:', modalId);
-          return true;
-        }
-        
-        // 隐藏模态框
-        modalItem.instance.visible = false;
-        modalItem.hidden = true;
-        console.log('模态框已隐藏:', modalId);
-        return true;
-      },
-
-      // 销毁模态框（完全销毁，释放内存）
-      destroyModal(modalId) {
-        const modalItem = this.modals.get(modalId);
-        if (!modalItem) {
-          console.warn('未找到要销毁的模态框:', modalId);
-          return false;
-        }
-        
-        const { instance } = modalItem;
-        
-        // 确保模态框可见状态被设置为false
-        if (instance.visible) {
-          instance.visible = false;
-        }
-        
-        // 优化：动态获取动画时长（兼容不同组件的动画）
-        const transitionDuration = this.getTransitionDuration(instance.$el);
-        const delay = transitionDuration || 300;
-
-        // 延迟卸载，适配动画
-        setTimeout(() => {
-          try {
-            // 安全移除DOM：增加父节点校验
-            if (instance.$el && instance.$el.parentNode) {
-              document.body.removeChild(instance.$el);
-            }
-            // 销毁实例前解绑所有事件
-            instance.$off();
-            // 销毁组件实例
-            instance.$destroy();
-            // 清理数据引用
-            for (const key in instance) {
-              if (instance.hasOwnProperty(key) && key !== '$options') {
-                instance[key] = null;
-              }
-            }
-          } catch (e) {
-            console.error('销毁模态框时出错:', e);
-          } finally {
-            // 确保从Map中移除
-            this.modals.delete(modalId);
-            console.log('模态框已完全销毁:', modalId);
-          }
-        }, delay);
-        
-        return true;
-      },
-
-      // 关闭模态框（隐藏+销毁的组合操作）
-      closeModal(modalId) {
-        this.hideModal(modalId);
-        this.destroyModal(modalId);
-      },
-
-      // 关闭所有模态框
-      closeAllModals() {
-        // 转换为数组避免遍历过程中Map结构变化
-        const modalIds = Array.from(this.modals.keys());
-        console.log('准备关闭所有模态框:', modalIds);
-        modalIds.forEach(id => this.destroyModal(id));
-        console.log('已关闭所有模态框');
-      },
-
-      // 检查模态框是否存在
-      hasModal(modalIdOrInstance) {
-        if (typeof modalIdOrInstance === 'string') {
-          return this.modals.has(modalIdOrInstance);
-        }
-        for (const item of this.modals.values()) {
-          if (item.instance === modalIdOrInstance) return true;
-        }
-        return false;
-      },
-
-      // 获取所有打开的模态框列表
-      getOpenModals() {
-        const openModals = [];
-        this.modals.forEach((item, id) => {
-          if (!item.hidden) {
-            openModals.push({
-              id,
-              title: item.title,
-              type: item.type
-            });
-          }
-        });
-        return openModals;
-      },
-
-      // 挂载模态框到body
-      mountModal(modalInstance) {
-        if (!modalInstance.$el || modalInstance.$el.parentNode) return;
-        document.body.appendChild(modalInstance.$el);
-        // 确保DOM渲染完成后再显示
-        Vue.nextTick(() => {
-          modalInstance.visible = true;
-        });
-      },
-
-      // 动态获取元素的过渡动画时长
-      getTransitionDuration(el) {
-        if (!el) return 0;
-        const computedStyle = window.getComputedStyle(el);
-        const transitionDuration = computedStyle.transitionDuration || '0s';
-        return parseFloat(transitionDuration) * 1000;
+    // 模块化封装，支持后续导出为UMD/ES模块
+    (function(window, Vue) {
+      // 防止重复定义
+      if (window.ModalManager) {
+        console.warn('ModalManager 已存在，跳过重复定义');
+        return;
       }
-    };
 
+      // ========== 模态框管理器核心实现（懒加载 + 隐藏/销毁分离） ==========
+      const ModalManager = {
+        // 存储模态框实例（包含隐藏状态）
+        modals: new Map(),
+        // 缓存组件构造器，避免重复创建
+        constructorCache: new Map(),
+        // 注册的组件（普通组件）
+        registeredComponents: new Map(),
+        // 懒加载组件加载器
+        lazyComponentLoaders: new Map(),
+        // 已加载的懒组件缓存
+        lazyComponentCache: new Map(),
+        
+        /**
+         * 生成唯一ID
+         * @returns {string} 唯一模态框ID
+         */
+        generateId() {
+          return `modal_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        },
+
+        /**
+         * 注册普通组件（立即加载）
+         * @param {string} name 组件名称
+         * @param {Object} component Vue组件对象
+         */
+        registerComponent(name, component) {
+          this.registeredComponents.set(name, component);
+          console.log(`组件 ${name} 已注册`);
+        },
+
+        /**
+         * 注册懒加载组件（调用时才加载）
+         * @param {string} name 组件名称
+         * @param {Function} loader 返回Promise的加载函数
+         */
+        registerLazyComponent(name, loader) {
+          if (typeof loader !== 'function') {
+            throw new Error('懒加载组件的loader必须是返回Promise的函数');
+          }
+          this.lazyComponentLoaders.set(name, loader);
+          console.log(`懒加载组件 ${name} 已注册加载器`);
+        },
+
+        /**
+         * 加载懒组件（内部使用）
+         * @param {string} name 组件名称
+         * @returns {Promise<Object>} Vue组件对象
+         */
+        async loadLazyComponent(name) {
+          // 先检查缓存
+          if (this.lazyComponentCache.has(name)) {
+            return this.lazyComponentCache.get(name);
+          }
+          
+          // 检查是否有加载器
+          const loader = this.lazyComponentLoaders.get(name);
+          if (!loader) {
+            throw new Error(`未找到名为 "${name}" 的懒加载组件加载器`);
+          }
+          
+          // 执行加载器
+          try {
+            const component = await loader();
+            // 缓存加载结果
+            this.lazyComponentCache.set(name, component);
+            console.log(`懒加载组件 ${name} 已加载并缓存`);
+            return component;
+          } catch (error) {
+            console.error(`加载懒组件 ${name} 失败:`, error);
+            throw new Error(`加载组件 ${name} 失败: ${error.message}`);
+          }
+        },
+
+        /**
+         * 获取组件（支持对象、字符串组件名、懒加载组件）
+         * @param {string|Object} componentOrName 组件名称或组件对象
+         * @returns {Promise<Object>} Vue组件对象
+         */
+        async getComponent(componentOrName) {
+          // 如果是组件对象，直接返回
+          if (typeof componentOrName === 'object' && componentOrName.template) {
+            return componentOrName;
+          }
+          
+          // 如果是字符串，先查普通组件，再查懒加载组件
+          if (typeof componentOrName === 'string') {
+            const name = componentOrName;
+            
+            // 1. 检查普通组件
+            if (this.registeredComponents.has(name)) {
+              return this.registeredComponents.get(name);
+            }
+            
+            // 2. 检查懒加载组件（异步加载）
+            if (this.lazyComponentLoaders.has(name)) {
+              return await this.loadLazyComponent(name);
+            }
+            
+            // 3. 未找到
+            throw new Error(`未找到名为 "${name}" 的组件（普通组件或懒加载组件）`);
+          }
+          
+          throw new Error('组件参数必须是组件对象或已注册的组件名称');
+        },
+
+        // ========== 核心 API 实现 - Promise 风格 ==========
+        /**
+         * 打开模态框（Promise风格：原生Promise，需try/catch）
+         * @param {string|Object} componentOrName 组件名称或组件对象
+         * @param {Object} config 模态框配置
+         * @returns {Promise<Object>} 包含data和modalId的结果对象
+         */
+        async openModal(componentOrName, config = {}) {
+          // 异步获取组件（支持懒加载）
+          const component = await this.getComponent(componentOrName);
+          
+          // 从config中提取modalKey和其他props
+          const { modalKey, ...props } = config;
+          
+          // 防重复打开：如果指定了key且已存在，则返回现有模态框的Promise
+          if (modalKey && this.modals.has(modalKey)) {
+            const existingModal = this.modals.get(modalKey);
+            console.warn(`模态框[${modalKey}]已打开，避免重复创建`);
+            
+            // 如果模态框被隐藏了，重新显示它
+            if (existingModal.hidden) {
+              this.showModal(modalKey);
+            }
+            
+            return existingModal.promise;
+          }
+
+          return new Promise((resolve, reject) => {
+            const modalId = modalKey || this.generateId();
+            // 缓存构造器，提升性能
+            let ModalConstructor = this.constructorCache.get(component);
+            if (!ModalConstructor) {
+              ModalConstructor = Vue.extend(component);
+              this.constructorCache.set(component, ModalConstructor);
+            }
+
+            // 初始化组件实例
+            const modalInstance = new ModalConstructor({
+              el: document.createElement('div'),
+              propsData: {
+                ...props,
+                modalId,
+                resolve: (data) => {
+                  console.log('Modal resolved (Promise风格):', data);
+                  resolve({ data, modalId });
+                  // 移除已完成的模态框
+                  this.modals.delete(modalId);
+                },
+                reject: (data) => {
+                  console.log('Modal rejected (Promise风格):', data);
+                  reject(data);
+                  // 移除已取消的模态框
+                  this.modals.delete(modalId);
+                }
+              }
+            });
+            
+            // 挂载模态框到页面
+            this.mountModal(modalInstance);
+            
+            // 存储实例和对应的Promise（包含隐藏状态）
+            this.modals.set(modalId, {
+              instance: modalInstance,
+              promise: Promise.resolve({ data: {}, modalId }),
+              title: props.title || component.name || '未知模态框',
+              hidden: false, // 初始状态为非隐藏
+              type: 'normal' // 模态框类型
+            });
+          });
+        },
+
+        // ========== 核心 API 实现 - Await-to-js 风格 ==========
+        /**
+         * Await-to-js风格的打开模态框方法（返回[err, result]，无需try/catch）
+         * @param {string|Object} componentOrName 组件名称或组件对象
+         * @param {Object} config 模态框配置
+         * @returns {Promise<Array>} [err, result] 数组
+         */
+        async toOpenModal(componentOrName, config = {}) {
+          try {
+            const result = await this.openModal(componentOrName, config);
+            return [null, result]; // [error, result] 格式
+          } catch (error) {
+            // 如果是用户取消，仍然返回错误，但标记为取消
+            if (error.isCanceled) {
+              return [error, null]; // [cancellation, null]
+            }
+            // 如果是其他错误，返回错误对象
+            return [error, null]; // [error, null]
+          }
+        },
+
+        // ========== 基础操作方法 ==========
+        /**
+         * 显示模态框
+         * @param {string} modalId 模态框ID
+         * @returns {boolean} 操作是否成功
+         */
+        showModal(modalId) {
+          const modalItem = this.modals.get(modalId);
+          if (!modalItem) {
+            console.warn('未找到要显示的模态框:', modalId);
+            return false;
+          }
+          
+          if (modalItem.instance && !modalItem.hidden) {
+            console.log('模态框已经是显示状态:', modalId);
+            return true;
+          }
+          
+          // 设置模态框可见
+          modalItem.instance.visible = true;
+          modalItem.hidden = false;
+          console.log('模态框已显示:', modalId);
+          return true;
+        },
+
+        /**
+         * 隐藏模态框（仅隐藏，不销毁实例）
+         * @param {string} modalId 模态框ID
+         * @returns {boolean} 操作是否成功
+         */
+        hideModal(modalId) {
+          const modalItem = this.modals.get(modalId);
+          if (!modalItem) {
+            console.warn('未找到要隐藏的模态框:', modalId);
+            return false;
+          }
+          
+          if (modalItem.instance && modalItem.hidden) {
+            console.log('模态框已经是隐藏状态:', modalId);
+            return true;
+          }
+          
+          // 隐藏模态框
+          modalItem.instance.visible = false;
+          modalItem.hidden = true;
+          console.log('模态框已隐藏:', modalId);
+          return true;
+        },
+
+        /**
+         * 销毁模态框（完全销毁，释放内存）
+         * @param {string} modalId 模态框ID
+         * @returns {boolean} 操作是否成功
+         */
+        destroyModal(modalId) {
+          const modalItem = this.modals.get(modalId);
+          if (!modalItem) {
+            console.warn('未找到要销毁的模态框:', modalId);
+            return false;
+          }
+          
+          const { instance } = modalItem;
+          
+          // 确保模态框可见状态被设置为false
+          if (instance.visible) {
+            instance.visible = false;
+          }
+          
+          // 优化：动态获取动画时长（兼容不同组件的动画）
+          const transitionDuration = this.getTransitionDuration(instance.$el);
+          const delay = transitionDuration || 300;
+
+          // 延迟卸载，适配动画
+          setTimeout(() => {
+            try {
+              // 安全移除DOM：增加父节点校验
+              if (instance.$el && instance.$el.parentNode) {
+                document.body.removeChild(instance.$el);
+              }
+              // 销毁实例前解绑所有事件
+              instance.$off();
+              // 销毁组件实例
+              instance.$destroy();
+              // 清理数据引用
+              for (const key in instance) {
+                if (instance.hasOwnProperty(key) && key !== '$options') {
+                  instance[key] = null;
+                }
+              }
+            } catch (e) {
+              console.error('销毁模态框时出错:', e);
+            } finally {
+              // 确保从Map中移除
+              this.modals.delete(modalId);
+              console.log('模态框已完全销毁:', modalId);
+            }
+          }, delay);
+          
+          return true;
+        },
+
+        /**
+         * 关闭模态框（隐藏+销毁的组合操作）
+         * @param {string} modalId 模态框ID
+         */
+        closeModal(modalId) {
+          this.hideModal(modalId);
+          this.destroyModal(modalId);
+        },
+
+        /**
+         * 关闭所有模态框
+         */
+        closeAllModals() {
+          // 转换为数组避免遍历过程中Map结构变化
+          const modalIds = Array.from(this.modals.keys());
+          console.log('准备关闭所有模态框:', modalIds);
+          modalIds.forEach(id => this.destroyModal(id));
+          console.log('已关闭所有模态框');
+        },
+
+        /**
+         * 检查模态框是否存在
+         * @param {string|Object} modalIdOrInstance 模态框ID或实例
+         * @returns {boolean} 是否存在
+         */
+        hasModal(modalIdOrInstance) {
+          if (typeof modalIdOrInstance === 'string') {
+            return this.modals.has(modalIdOrInstance);
+          }
+          for (const item of this.modals.values()) {
+            if (item.instance === modalIdOrInstance) return true;
+          }
+          return false;
+        },
+
+        /**
+         * 获取所有打开的模态框列表
+         * @returns {Array} 模态框列表
+         */
+        getOpenModals() {
+          const openModals = [];
+          this.modals.forEach((item, id) => {
+            if (!item.hidden) {
+              openModals.push({
+                id,
+                title: item.title,
+                type: item.type
+              });
+            }
+          });
+          return openModals;
+        },
+
+        /**
+         * 挂载模态框到body
+         * @param {Object} modalInstance 模态框实例
+         */
+        mountModal(modalInstance) {
+          if (!modalInstance.$el || modalInstance.$el.parentNode) return;
+          document.body.appendChild(modalInstance.$el);
+          // 确保DOM渲染完成后再显示
+          Vue.nextTick(() => {
+            modalInstance.visible = true;
+          });
+        },
+
+        /**
+         * 动态获取元素的过渡动画时长
+         * @param {HTMLElement} el DOM元素
+         * @returns {number} 动画时长(ms)
+         */
+        getTransitionDuration(el) {
+          if (!el) return 0;
+          const computedStyle = window.getComputedStyle(el);
+          const transitionDuration = computedStyle.transitionDuration || '0s';
+          return parseFloat(transitionDuration) * 1000;
+        }
+      };
+
+      // 暴露到全局
+      window.ModalManager = ModalManager;
+
+      // 支持ES模块导出（如果环境支持）
+      if (typeof module !== 'undefined' && module.exports) {
+        module.exports = ModalManager;
+      }
+
+    })(window, Vue);
+  </script>
+
+  <!-- ========== 2. 组件注册和主Vue实例 ========== -->
+  <script>
     // ========== 注册懒加载模态框组件 ==========
     // 注册CustomModal懒加载组件
     ModalManager.registerLazyComponent('CustomModal', () => {
