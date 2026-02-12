@@ -26,6 +26,7 @@
         <a-button type="danger" @click="openConfirmModal" style="margin-left: 10px;">打开确认模态框</a-button>
         <a-button type="dashed" @click="openByComponentName" style="margin-left: 10px;">通过组件名打开模态框</a-button>
         <a-button type="warning" @click="openByPubsub" style="margin-left: 10px;">通过Pubsub打开模态框</a-button>
+        <a-button type="info" @click="openModalPromiseStyle" style="margin-left: 10px;">Promise风格打开</a-button>
         <a-button type="default" @click="closeAllModals" style="margin-left: 10px;">关闭所有模态框</a-button>
       </div>
 
@@ -44,12 +45,39 @@
       <h3>调用方法示例：</h3>
       <div class="code-examples">
         <div class="example-section">
-          <h4>1. 打开模态框（Await-to-js风格）：</h4>
-          <pre><code class="language-javascript">const [err, result] = await ModalManager.toOpenModal(
+          <h4>1. Promise 风格（openModal）：</h4>
+          <pre><code class="language-javascript">// 原生Promise风格，使用try/catch捕获错误
+try {
+  const result = await ModalManager.openModal(
+    GlobalModalComponents.CustomModal,
+    { 
+      title: 'Promise风格模态框',
+      modalKey: 'promise_modal'
+    }
+  );
+  // 模态框成功确认
+  console.log('模态框确认返回数据：', result.data);
+  this.$message.success('操作成功！');
+} catch (error) {
+  // 捕获取消或错误
+  if (error.isCanceled) {
+    console.log('模态框被取消：', error);
+    this.$message.info('操作已取消');
+  } else {
+    console.error('模态框打开失败：', error);
+    this.$message.error('操作失败！');
+  }
+}</code></pre>
+        </div>
+
+        <div class="example-section">
+          <h4>2. Await-to-js 风格（toOpenModal）：</h4>
+          <pre><code class="language-javascript">// Await-to-js风格，无需try/catch，返回[err, result]
+const [err, result] = await ModalManager.toOpenModal(
   GlobalModalComponents.CustomModal,
   { 
-    title: 'AntV 自定义模态框',
-    modalKey: 'custom_modal' // 包含在props中，防重复打开
+    title: 'Await-to-js风格模态框',
+    modalKey: 'await_to_js_modal'
   }
 );
 
@@ -57,17 +85,67 @@ if (err) {
   // 模态框被取消或发生错误
   if (err.isCanceled) {
     console.log('模态框被取消：', err);
+    this.$message.info('操作已取消');
   } else {
     console.error('模态框打开失败：', err);
+    this.$message.error('操作失败！');
   }
 } else {
   // 模态框成功确认
   console.log('模态框确认返回数据：', result.data);
+  this.$message.success(`操作成功：${result.data.inputValue}`);
 }</code></pre>
         </div>
 
         <div class="example-section">
-          <h4>2. 隐藏/销毁模态框：</h4>
+          <h4>3. 两种风格对比（在实际业务中的应用）：</h4>
+          <pre><code class="language-javascript">// 场景1：简单场景，使用Promise风格
+async deleteItem(id) {
+  try {
+    const result = await ModalManager.openModal(
+      GlobalModalComponents.ConfirmModal,
+      { message: `确定删除ID为${id}的项目吗？` }
+    );
+    // 确认后执行删除操作
+    await api.deleteItem(id);
+    this.$message.success('删除成功！');
+  } catch (error) {
+    if (!error.isCanceled) {
+      this.$message.error('删除失败！');
+    }
+  }
+}
+
+// 场景2：复杂场景，使用Await-to-js风格
+async saveFormData(formData) {
+  // 第一步：确认保存
+  const [confirmErr, confirmResult] = await ModalManager.toOpenModal(
+    GlobalModalComponents.ConfirmModal,
+    { message: '确定保存当前表单数据吗？' }
+  );
+  
+  if (confirmErr) return;
+  
+  // 第二步：打开详情模态框补充信息
+  const [detailErr, detailResult] = await ModalManager.toOpenModal(
+    GlobalModalComponents.CustomModal,
+    { title: '补充详情信息', modalKey: 'detail_modal' }
+  );
+  
+  if (detailErr) return;
+  
+  // 第三步：提交数据
+  try {
+    await api.saveData({ ...formData, ...detailResult.data });
+    this.$message.success('保存成功！');
+  } catch (apiError) {
+    this.$message.error('保存失败：' + apiError.message);
+  }
+}</code></pre>
+        </div>
+
+        <div class="example-section">
+          <h4>4. 隐藏/销毁模态框：</h4>
           <pre><code class="language-javascript">// 隐藏模态框（仅隐藏，不销毁实例）
 ModalManager.hideModal('modal_id');
 
@@ -78,25 +156,46 @@ ModalManager.destroyModal('modal_id');
 ModalManager.pubsubHideModal('modal_id');
 ModalManager.pubsubDestroyModal('modal_id');</code></pre>
         </div>
-
+        
         <div class="example-section">
-          <h4>3. 内嵌模态框示例（在模态框中打开另一个模态框）：</h4>
+          <h4>5. 内嵌模态框示例（在模态框中打开另一个模态框）：</h4>
           <pre><code class="language-javascript">export default {
   // 在模态框组件内部打开另一个模态框
   methods: {
-    async openNestedModal() {
-      // 在当前模态框中打开另一个模态框
+    // Promise风格
+    async openNestedModalPromise() {
+      try {
+        const result = await ModalManager.openModal(
+          'NestedModal', 
+          { 
+            title: 'Promise风格内嵌模态框',
+            modalKey: 'nested_modal_' + this.modalId,
+            parentModalId: this.modalId
+          }
+        );
+        console.log('内嵌模态框确认：', result.data);
+        this.$message.success(`内嵌模态框返回: ${JSON.stringify(result.data)}`);
+      } catch (error) {
+        if (!error.isCanceled) {
+          this.$message.error('内嵌模态框操作失败');
+        }
+      }
+    },
+    
+    // Await-to-js风格
+    async openNestedModalAwait() {
       const [err, result] = await ModalManager.toOpenModal(
         'NestedModal', 
         { 
-          title: '内嵌模态框',
+          title: 'Await-to-js风格内嵌模态框',
           modalKey: 'nested_modal_' + this.modalId,
-          parentModalId: this.modalId // 传递父模态框ID
+          parentModalId: this.modalId
         }
       );
       
       if (!err) {
         console.log('内嵌模态框确认：', result.data);
+        this.$message.success(`内嵌模态框返回: ${JSON.stringify(result.data)}`);
       }
     }
   }
@@ -104,44 +203,30 @@ ModalManager.pubsubDestroyModal('modal_id');</code></pre>
         </div>
         
         <div class="example-section">
-          <h4>4. 批量操作模态框：</h4>
-          <pre><code class="language-javascript">// 获取所有打开的模态框列表
-const allModals = ModalManager.getOpenModals();
-console.log('当前打开的模态框数量：', allModals.length);
-
-// 关闭所有模态框
-ModalManager.closeAllModals();
-
-// 检查模态框是否存在
-const exists = ModalManager.hasModal('custom_modal');
-if (exists) {
-  console.log('模态框已存在，执行显示操作');
-  ModalManager.showModal('custom_modal');
-}</code></pre>
-        </div>
-        
-        <div class="example-section">
-          <h4>5. Pubsub全局调用模态框：</h4>
-          <pre><code class="language-javascript">// 方式1：直接发布事件
-PubSub.publish('modal/open', { 
-  componentOrName: 'InfoModal', 
-  config: {
-    message: '全局调用的提示信息',
-    modalKey: 'global_info_modal'
+          <h4>6. Pubsub全局调用（支持两种风格）：</h4>
+          <pre><code class="language-javascript">// Promise风格
+async pubsubPromiseStyle() {
+  try {
+    const result = await ModalManager.pubsubOpenModal(
+      'InfoModal', 
+      { message: 'Promise风格全局调用' }
+    );
+    console.log('Pubsub模态框确认：', result.data);
+  } catch (error) {
+    console.log('Pubsub模态框取消：', error);
   }
-});
+}
 
-// 方式2：使用封装的API（推荐）
-const [err, result] = await ModalManager.toPubsubOpenModal(
-  'ConfirmModal', 
-  {
-    message: '这是通过Pubsub调用的确认框',
-    modalKey: 'pubsub_confirm_modal'
+// Await-to-js风格（推荐）
+async pubsubAwaitStyle() {
+  const [err, result] = await ModalManager.toPubsubOpenModal(
+    'ConfirmModal', 
+    { message: 'Await-to-js风格全局调用' }
+  );
+  
+  if (!err) {
+    console.log('Pubsub模态框确认成功');
   }
-);
-
-if (!err) {
-  console.log('Pubsub模态框确认成功');
 }</code></pre>
         </div>
       </div>
@@ -152,6 +237,7 @@ if (!err) {
           <thead>
             <tr style="background-color: #f0f2f5;">
               <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">方法名</th>
+              <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">API风格</th>
               <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">参数</th>
               <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">返回值</th>
               <th style="border: 1px solid #e8e8e8; padding: 8px; text-align: left;">说明</th>
@@ -159,49 +245,114 @@ if (!err) {
           </thead>
           <tbody>
             <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>openModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Promise</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">componentOrName, config</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Promise&lt;{data, modalId}&gt;</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">原生Promise风格，需用try/catch捕获取消/错误</td>
+            </tr>
+            <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>toOpenModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Await-to-js</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">componentOrName, config</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">[err, result]</td>
-              <td style="border: 1px solid #e8e8e8; padding: 8px;">打开模态框，await-to-js风格</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Await-to-js风格，返回[错误, 结果]，无需try/catch</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>pubsubOpenModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Promise</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">componentOrName, config</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Promise&lt;{data, modalId}&gt;</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Pubsub版本Promise风格，全局调用模态框</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>toPubsubOpenModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Await-to-js</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">componentOrName, config</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">[err, result]</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Pubsub版本Await-to-js风格，推荐全局调用</td>
             </tr>
             <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>showModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">显示已隐藏的模态框</td>
             </tr>
             <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>hideModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">隐藏模态框（不销毁）</td>
             </tr>
             <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>destroyModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">销毁模态框（释放内存）</td>
             </tr>
             <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>closeModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">隐藏+销毁模态框的组合操作</td>
+            </tr>
+            <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>closeAllModals</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">关闭所有模态框</td>
             </tr>
             <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>hasModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">modalIdOrInstance</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">检查模态框是否存在</td>
             </tr>
             <tr>
               <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>getOpenModals</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">基础</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">Array</td>
               <td style="border: 1px solid #e8e8e8; padding: 8px;">获取所有打开的模态框列表</td>
             </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>pubsubHideModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Pubsub</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">通过Pubsub隐藏模态框</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>pubsubDestroyModal</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Pubsub</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">modalId</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Boolean</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">通过Pubsub销毁模态框</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;"><code>pubsubCloseAllModals</code></td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">Pubsub</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">无</td>
+              <td style="border: 1px solid #e8e8e8; padding: 8px;">通过Pubsub关闭所有模态框</td>
+            </tr>
           </tbody>
         </table>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #e6f7ff; border-radius: 4px;">
+          <h4 style="margin-top: 0; color: #1890ff;">API 风格选择指南</h4>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>Promise 风格 (openModal)</strong>：适合简单场景，代码简洁，使用传统的 try/catch 处理错误</li>
+            <li><strong>Await-to-js 风格 (toOpenModal)</strong>：适合复杂业务场景，多个异步操作串联，无需嵌套 try/catch</li>
+            <li><strong>Pubsub 版本</strong>：适合跨组件/全局调用模态框，两种风格都提供对应的实现</li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
@@ -250,8 +401,9 @@ if (!err) {
               style="margin-top: 10px;"
             />
             <div style="margin-top: 10px;">
-              <a-button type="primary" size="small" @click="openNestedModal">打开内嵌模态框</a-button>
-              <a-button type="dashed" size="small" @click="hideCurrentModal" style="margin-left: 8px;">隐藏当前模态框</a-button>
+              <a-button type="primary" size="small" @click="openNestedModalPromise">Promise风格内嵌</a-button>
+              <a-button type="dashed" size="small" @click="openNestedModalAwait" style="margin-left: 8px;">Await风格内嵌</a-button>
+              <a-button type="default" size="small" @click="hideCurrentModal" style="margin-left: 8px;">隐藏当前模态框</a-button>
             </div>
           </a-modal>
         `,
@@ -283,20 +435,39 @@ if (!err) {
             // 最后关闭模态框
             ModalManager.destroyModal(this.modalId);
           },
-          async openNestedModal() {
-            // 在当前模态框中打开另一个模态框
+          // Promise风格打开内嵌模态框
+          async openNestedModalPromise() {
+            try {
+              const result = await ModalManager.openModal(
+                'NestedModal', 
+                { 
+                  title: 'Promise风格内嵌模态框',
+                  modalKey: 'nested_promise_' + this.modalId,
+                  parentModalId: this.modalId
+                }
+              );
+              console.log('Promise风格内嵌模态框确认：', result.data);
+              this.$message.success(`Promise内嵌返回: ${JSON.stringify(result.data)}`);
+            } catch (error) {
+              if (!error.isCanceled) {
+                this.$message.error('Promise内嵌模态框操作失败');
+              }
+            }
+          },
+          // Await-to-js风格打开内嵌模态框
+          async openNestedModalAwait() {
             const [err, result] = await ModalManager.toOpenModal(
               'NestedModal', 
               { 
-                title: '内嵌模态框',
-                modalKey: 'nested_modal_' + this.modalId,
-                parentModalId: this.modalId // 传递父模态框ID
+                title: 'Await-to-js风格内嵌模态框',
+                modalKey: 'nested_await_' + this.modalId,
+                parentModalId: this.modalId
               }
             );
             
             if (!err) {
-              console.log('内嵌模态框确认：', result.data);
-              this.$message.success(`内嵌模态框返回: ${JSON.stringify(result.data)}`);
+              console.log('Await-to-js风格内嵌模态框确认：', result.data);
+              this.$message.success(`Await内嵌返回: ${JSON.stringify(result.data)}`);
             }
           },
           hideCurrentModal() {
@@ -347,7 +518,8 @@ if (!err) {
           >
             <div style="color: #666;">{{ message }}</div>
             <div style="margin-top: 10px;">
-              <a-button type="primary" size="small" @click="openNestedConfirm">打开内嵌确认模态框</a-button>
+              <a-button type="primary" size="small" @click="openNestedConfirmPromise">Promise内嵌确认</a-button>
+              <a-button type="dashed" size="small" @click="openNestedConfirmAwait" style="margin-left: 8px;">Await内嵌确认</a-button>
             </div>
           </a-modal>
         `,
@@ -374,21 +546,41 @@ if (!err) {
             // 最后关闭模态框
             ModalManager.destroyModal(this.modalId);
           },
-          async openNestedConfirm() {
-            // 在当前模态框中打开另一个确认模态框
+          // Promise风格
+          async openNestedConfirmPromise() {
+            try {
+              const result = await ModalManager.openModal(
+                'ConfirmModal', 
+                { 
+                  message: 'Promise风格内嵌确认！',
+                  title: 'Promise内嵌确认',
+                  modalKey: 'nested_confirm_promise_' + this.modalId,
+                  parentModalId: this.modalId
+                }
+              );
+              console.log('Promise风格内嵌确认：', result.data);
+              this.$message.success('Promise内嵌确认已完成');
+            } catch (error) {
+              if (!error.isCanceled) {
+                this.$message.error('Promise内嵌确认失败');
+              }
+            }
+          },
+          // Await-to-js风格
+          async openNestedConfirmAwait() {
             const [err, result] = await ModalManager.toOpenModal(
               'ConfirmModal', 
               { 
-                message: '这是内嵌的确认模态框！',
-                title: '内嵌确认',
-                modalKey: 'nested_confirm_' + this.modalId,
+                message: 'Await-to-js风格内嵌确认！',
+                title: 'Await内嵌确认',
+                modalKey: 'nested_confirm_await_' + this.modalId,
                 parentModalId: this.modalId
               }
             );
             
             if (!err) {
-              console.log('内嵌确认模态框确认：', result.data);
-              this.$message.success('内嵌确认模态框已确认');
+              console.log('Await-to-js风格内嵌确认：', result.data);
+              this.$message.success('Await内嵌确认已完成');
             }
           }
         }
@@ -433,7 +625,8 @@ if (!err) {
               {{ message }}
             </div>
             <div style="margin-top: 10px; text-align: center;">
-              <a-button type="primary" size="small" @click="openNestedInfo">打开内嵌提示模态框</a-button>
+              <a-button type="primary" size="small" @click="openNestedInfoPromise">Promise内嵌提示</a-button>
+              <a-button type="dashed" size="small" @click="openNestedInfoAwait" style="margin-left: 8px;">Await内嵌提示</a-button>
             </div>
           </a-modal>
         `,
@@ -460,21 +653,41 @@ if (!err) {
             // 最后关闭模态框
             ModalManager.destroyModal(this.modalId);
           },
-          async openNestedInfo() {
-            // 在当前模态框中打开另一个提示模态框
+          // Promise风格
+          async openNestedInfoPromise() {
+            try {
+              const result = await ModalManager.openModal(
+                'InfoModal', 
+                { 
+                  message: 'Promise风格内嵌提示！',
+                  title: 'Promise内嵌提示',
+                  modalKey: 'nested_info_promise_' + this.modalId,
+                  parentModalId: this.modalId
+                }
+              );
+              console.log('Promise风格内嵌提示：', result.data);
+              this.$message.success('Promise内嵌提示已确认');
+            } catch (error) {
+              if (!error.isCanceled) {
+                this.$message.error('Promise内嵌提示失败');
+              }
+            }
+          },
+          // Await-to-js风格
+          async openNestedInfoAwait() {
             const [err, result] = await ModalManager.toOpenModal(
               'InfoModal', 
               { 
-                message: '这是内嵌的提示模态框！',
-                title: '内嵌提示',
-                modalKey: 'nested_info_' + this.modalId,
+                message: 'Await-to-js风格内嵌提示！',
+                title: 'Await内嵌提示',
+                modalKey: 'nested_info_await_' + this.modalId,
                 parentModalId: this.modalId
               }
             );
             
             if (!err) {
-              console.log('内嵌提示模态框确认：', result.data);
-              this.$message.success('内嵌提示模态框已确认');
+              console.log('Await-to-js风格内嵌提示：', result.data);
+              this.$message.success('Await内嵌提示已确认');
             }
           }
         }
@@ -594,7 +807,8 @@ if (!err) {
         }
       },
 
-      // 打开模态框（原版：返回Promise）
+      // ========== 核心 API 实现 - Promise 风格 ==========
+      // 打开模态框（Promise风格：原生Promise，需try/catch）
       openModal(componentOrName, config = {}) {
         // 解析组件
         const component = this.getComponent(componentOrName);
@@ -631,13 +845,13 @@ if (!err) {
               ...props,
               modalId,
               resolve: (data) => {
-                console.log('Modal resolved:', data);
+                console.log('Modal resolved (Promise风格):', data);
                 resolve({ data, modalId });
                 // 移除已完成的模态框
                 this.modals.delete(modalId);
               },
               reject: (data) => {
-                console.log('Modal rejected:', data);
+                console.log('Modal rejected (Promise风格):', data);
                 reject(data);
                 // 移除已取消的模态框
                 this.modals.delete(modalId);
@@ -651,7 +865,7 @@ if (!err) {
           // 存储实例和对应的Promise（包含隐藏状态）
           this.modals.set(modalId, {
             instance: modalInstance,
-            promise: Promise.resolve({ modalId }),
+            promise: Promise.resolve({ data: {}, modalId }),
             title: props.title || component.name || '未知模态框',
             hidden: false, // 初始状态为非隐藏
             type: 'normal' // 模态框类型
@@ -659,11 +873,12 @@ if (!err) {
         });
       },
 
-      // Await-to-js风格的打开模态框方法
+      // ========== 核心 API 实现 - Await-to-js 风格 ==========
+      // Await-to-js风格的打开模态框方法（返回[err, result]，无需try/catch）
       async toOpenModal(componentOrName, config = {}) {
         try {
           const result = await this.openModal(componentOrName, config);
-          return [null, result]; // [error, result]
+          return [null, result]; // [error, result] 格式
         } catch (error) {
           // 如果是用户取消，仍然返回错误，但标记为取消
           if (error.isCanceled) {
@@ -674,6 +889,19 @@ if (!err) {
         }
       },
 
+      // ========== Pubsub API 实现 ==========
+      // 通过Pubsub打开模态框（Promise风格）
+      pubsubOpenModal(componentOrName, config = {}) {
+        return new Promise((resolve, reject) => {
+          PubSub.publish('modal/open', { 
+            componentOrName, 
+            config,
+            resolve,
+            reject
+          });
+        });
+      },
+      
       // Await-to-js风格的Pubsub打开模态框方法
       async toPubsubOpenModal(componentOrName, config = {}) {
         try {
@@ -689,6 +917,22 @@ if (!err) {
         }
       },
 
+      // 通过Pubsub隐藏模态框
+      pubsubHideModal(modalId) {
+        return PubSub.publish('modal/hide', modalId);
+      },
+      
+      // 通过Pubsub销毁模态框
+      pubsubDestroyModal(modalId) {
+        return PubSub.publish('modal/destroy', modalId);
+      },
+      
+      // 通过Pubsub关闭所有模态框
+      pubsubCloseAllModals() {
+        return PubSub.publish('modal/closeAll');
+      },
+
+      // ========== 基础操作方法 ==========
       // 显示模态框
       showModal(modalId) {
         const modalItem = this.modals.get(modalId);
@@ -821,52 +1065,13 @@ if (!err) {
         return parseFloat(transitionDuration) * 1000;
       },
 
-      // ========== 统一的 Pubsub API ==========
-      // 通过Pubsub打开模态框（统一API）
-      pubsubOpenModal(componentOrName, config = {}) {
-        return PubSub.publish('modal/open', { componentOrName, config });
-      },
-      
-      // 通过Pubsub关闭模态框（统一API）
-      pubsubCloseModal(modalId) {
-        return PubSub.publish('modal/close', modalId);
-      },
-      
-      // 通过Pubsub隐藏模态框（统一API）
-      pubsubHideModal(modalId) {
-        return PubSub.publish('modal/hide', modalId);
-      },
-      
-      // 通过Pubsub销毁模态框（统一API）
-      pubsubDestroyModal(modalId) {
-        return PubSub.publish('modal/destroy', modalId);
-      },
-      
-      // 通过Pubsub关闭所有模态框（统一API）
-      pubsubCloseAllModals() {
-        return PubSub.publish('modal/closeAll');
-      },
-
-      // 获取当前打开的模态框列表
-      getOpenModals() {
-        const modals = [];
-        for (const [id, item] of this.modals.entries()) {
-          modals.push({
-            id,
-            title: item.title,
-            instance: item.instance,
-            hidden: item.hidden,
-            type: item.type
-          });
-        }
-        return modals;
-      },
-
       // 初始化Pubsub订阅
       initPubsub() {
         // 订阅打开模态框的事件
-        PubSub.subscribe('modal/open', (msg, { componentOrName, config }) => {
-          return this.openModal(componentOrName, config);
+        PubSub.subscribe('modal/open', (msg, { componentOrName, config, resolve, reject }) => {
+          this.openModal(componentOrName, config)
+            .then(result => resolve && resolve(result))
+            .catch(error => reject && reject(error));
         });
         
         // 订阅关闭模态框的事件
@@ -1010,6 +1215,31 @@ if (!err) {
           } else {
             console.log('Pubsub模态框确认返回数据：', result.data);
             this.$message.success(`Pubsub模态框返回：已确认（模态框ID：${result.modalId}）`);
+          }
+        },
+
+        // Promise风格打开模态框（新增示例）
+        async openModalPromiseStyle() {
+          try {
+            const result = await ModalManager.openModal(
+              GlobalModalComponents.CustomModal,
+              { 
+                title: 'Promise风格模态框示例',
+                modalKey: 'promise_demo_modal'
+              }
+            );
+            // 模态框成功确认
+            console.log('Promise风格模态框返回：', result.data);
+            this.$message.success(`Promise风格：你输入的内容是 ${result.data.inputValue}`);
+          } catch (error) {
+            // 捕获取消或错误
+            if (error.isCanceled) {
+              console.log('Promise风格模态框被取消：', error);
+              this.$message.info('Promise风格模态框已取消');
+            } else {
+              console.error('Promise风格模态框出错：', error);
+              this.$message.error('Promise风格模态框操作失败');
+            }
           }
         },
 
