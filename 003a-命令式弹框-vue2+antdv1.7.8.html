@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vue2 + Ant Design Vue 弹窗管理器 (修复滚动 + 统一API)</title>
+  <title>Vue2 + Ant Design Vue 弹窗管理器 (修复弹框真正关闭)</title>
   <!-- 引入 Ant Design Vue 样式 -->
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/ant-design-vue/1.7.8/antd.min.css">
   <!-- 引入 Vue 2 -->
@@ -27,6 +27,18 @@
         <a-button type="dashed" @click="openByComponentName" style="margin-left: 10px;">通过组件名打开弹窗</a-button>
         <a-button type="warning" @click="openByPubsub" style="margin-left: 10px;">通过Pubsub打开弹窗</a-button>
         <a-button type="default" @click="closeAllDialogs" style="margin-left: 10px;">关闭所有弹窗</a-button>
+      </div>
+
+      <h3>当前打开的弹窗:</h3>
+      <div style="margin-bottom: 20px;">
+        <span v-if="openDialogs.length === 0">无</span>
+        <a-tag 
+          v-for="dialog in openDialogs" 
+          :key="dialog.id" 
+          color="blue"
+        >
+          {{ dialog.title }} (ID: {{ dialog.id }})
+        </a-tag>
       </div>
 
       <h3>调用方法示例：</h3>
@@ -148,12 +160,20 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         methods: {
           handleCancel() {
             console.log('CustomDialog handleCancel called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行reject回调
             this.reject({ reason: '用户关闭/取消弹窗', dialogId: this.dialogId });
+            // 最后关闭弹窗
             DialogManager.closeDialog(this.dialogId);
           },
           handleConfirm() {
             console.log('CustomDialog handleConfirm called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行resolve回调
             this.resolve({ inputValue: this.inputValue, dialogId: this.dialogId });
+            // 最后关闭弹窗
             DialogManager.closeDialog(this.dialogId);
           }
         },
@@ -203,12 +223,20 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         methods: {
           handleCancel() {
             console.log('ConfirmDialog handleCancel called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行reject回调
             this.reject({ reason: '用户取消操作', dialogId: this.dialogId });
+            // 最后关闭弹窗
             DialogManager.closeDialog(this.dialogId);
           },
           handleConfirm() {
             console.log('ConfirmDialog handleConfirm called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行resolve回调
             this.resolve({ confirmed: true, dialogId: this.dialogId });
+            // 最后关闭弹窗
             DialogManager.closeDialog(this.dialogId);
           }
         }
@@ -257,19 +285,27 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         methods: {
           handleCancel() {
             console.log('InfoDialog handleCancel called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行reject回调
             this.reject({ reason: '用户关闭提示弹窗', dialogId: this.dialogId });
+            // 最后关闭弹窗
             DialogManager.closeDialog(this.dialogId);
           },
           handleConfirm() {
             console.log('InfoDialog handleConfirm called');
+            // 首先隐藏弹窗
+            this.visible = false;
+            // 然后执行resolve回调
             this.resolve({ confirmed: true, dialogId: this.dialogId });
+            // 最后关闭弹窗
             DialogManager.closeDialog(this.dialogId);
           }
         }
       }
     };
 
-    // ========== 弹窗管理器核心实现（修复滚动 + 统一API） ==========
+    // ========== 弹窗管理器核心实现（修复弹框真正关闭） ==========
     const DialogManager = {
       // 存储弹窗实例
       dialogs: new Map(),
@@ -346,12 +382,13 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
           // 存储实例和对应的Promise
           this.dialogs.set(dialogId, {
             instance: dialogInstance,
-            promise: Promise.resolve({ dialogInstance, dialogId })
+            promise: Promise.resolve({ dialogInstance, dialogId }),
+            title: props.title || component.name || '未知弹窗'
           });
         });
       },
 
-      // 关闭弹窗（优化：增加多重校验，避免无效DOM操作）
+      // 关闭弹窗（修复：确保真正关闭）
       closeDialog(dialogIdOrInstance) {
         let dialogId, dialogInstance;
         
@@ -378,8 +415,10 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         
         console.log('开始关闭弹窗:', dialogId);
         
-        // 隐藏弹窗
-        dialogInstance.visible = false;
+        // 确保弹窗可见状态被设置为false
+        if (dialogInstance.visible) {
+          dialogInstance.visible = false;
+        }
         
         // 优化：动态获取动画时长（兼容不同组件的动画）
         const transitionDuration = this.getTransitionDuration(dialogInstance.$el);
@@ -466,6 +505,19 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
         return PubSub.publish('dialog/closeAll');
       },
 
+      // 获取当前打开的弹窗列表
+      getOpenDialogs() {
+        const dialogs = [];
+        for (const [id, item] of this.dialogs.entries()) {
+          dialogs.push({
+            id,
+            title: item.title,
+            instance: item.instance
+          });
+        }
+        return dialogs;
+      },
+
       // 初始化Pubsub订阅
       initPubsub() {
         // 订阅打开弹窗的事件
@@ -493,7 +545,22 @@ DialogManager.pubsubCloseAllDialogs();</code></pre>
     // ========== 主 Vue 实例 ==========
     new Vue({
       el: '#app',
+      data() {
+        return {
+          openDialogs: []
+        };
+      },
+      mounted() {
+        // 定期更新打开的弹窗列表
+        setInterval(() => {
+          this.updateOpenDialogs();
+        }, 1000); // 每秒更新一次
+      },
       methods: {
+        updateOpenDialogs() {
+          this.openDialogs = DialogManager.getOpenDialogs();
+        },
+        
         // 常规方式打开弹窗（使用组件对象）
         async openCustomDialog() {
           try {
