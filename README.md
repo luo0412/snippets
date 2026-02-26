@@ -15,14 +15,23 @@ https://github.com/dayun-cloud/tools/blob/main/build/ranking.html
 
 - [003a-命令式弹框-vue2+antdv1.7.8.html](https://luo0412.github.io/snippets/003a-命令式弹框-vue2+antdv1.7.8.html)
 
+- [003b-命令式弹框-提取版本.html](https://luo0412.github.io/snippets/003b-命令式弹框-提取版本.html)
+
 - [003-命令式弹框.html](https://luo0412.github.io/snippets/003-命令式弹框.html)
 
 - [002a-Mybatis挖空填充器-beetlsql改版.html](https://luo0412.github.io/snippets/002a-Mybatis挖空填充器-beetlsql改版.html)
 
 - [002-Mybatis挖空填充器.html](https://luo0412.github.io/snippets/002-Mybatis挖空填充器.html)
 
+- [004-collapse-tree.html](https://luo0412.github.io/snippets/004-collapse-tree.html)
 ![](https://raw.githubusercontent.com/luo0412/static/main/20260211213515.png)
 
 - [001-CRUD代码生成器.html](https://luo0412.github.io/snippets/001-CRUD代码生成器.html)
+
+## 组件库
+
+- [modal-manager/](https://github.com/luo0412/snippets/tree/main/modal-manager) - 命令式模态框管理器
+
+- [collapse-tree/](https://github.com/luo0412/snippets/tree/main/collapse-tree) - 树形折叠面板组件
 
 ![](https://raw.githubusercontent.com/luo0412/static/main/20260211213533.png)
