@@ -49,8 +49,8 @@ new Vue({
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         data: [
-          { provinceCode: '1', provinceName: '江苏省' },
-          { provinceCode: '2', provinceName: '浙江省' },
+          { provinceCode: '1', provinceName: '省份A' },
+          { provinceCode: '2', provinceName: '省份B' },
         ]
       };
     },
@@ -58,12 +58,12 @@ new Vue({
       await new Promise(resolve => setTimeout(resolve, 500));
       const dataMap = {
         '1': [
-          { id: '11', buildUnitCode: '11', name: '江苏省建筑总公司' },
-          { id: '12', buildUnitCode: '12', name: '南京城建集团' },
+          { id: '11', buildUnitCode: '11', name: '建筑公司A' },
+          { id: '12', buildUnitCode: '12', name: '建筑公司B' },
         ],
         '2': [
-          { id: '21', buildUnitCode: '21', name: '浙江省建工集团' },
-          { id: '22', buildUnitCode: '22', name: '杭州城建集团' },
+          { id: '21', buildUnitCode: '21', name: '建筑公司C' },
+          { id: '22', buildUnitCode: '22', name: '建筑公司D' },
         ]
       };
       return {
@@ -74,20 +74,20 @@ new Vue({
       await new Promise(resolve => setTimeout(resolve, 500));
       const dataMap = {
         '11': [
-          { id: '111', singleProjectCode: '111', name: '南京奥体中心项目' },
-          { id: '112', singleProjectCode: '112', name: '苏州工业园区项目' },
+          { id: '111', singleProjectCode: '111', name: '项目A' },
+          { id: '112', singleProjectCode: '112', name: '项目B' },
         ],
         '12': [
-          { id: '121', singleProjectCode: '121', name: '南京长江大桥改造项目' },
-          { id: '122', singleProjectCode: '122', name: '南京地铁5号线项目' },
+          { id: '121', singleProjectCode: '121', name: '项目C' },
+          { id: '122', singleProjectCode: '122', name: '项目D' },
         ],
         '21': [
-          { id: '211', singleProjectCode: '211', name: '杭州亚运会场馆项目' },
-          { id: '212', singleProjectCode: '212', name: '杭州湾跨海大桥项目' },
+          { id: '211', singleProjectCode: '211', name: '项目E' },
+          { id: '212', singleProjectCode: '212', name: '项目F' },
         ],
         '22': [
-          { id: '221', singleProjectCode: '221', name: '杭州地铁10号线项目' },
-          { id: '222', singleProjectCode: '222', name: '杭州西湖景区改造项目' },
+          { id: '221', singleProjectCode: '221', name: '项目G' },
+          { id: '222', singleProjectCode: '222', name: '项目H' },
         ]
       };
       return {
