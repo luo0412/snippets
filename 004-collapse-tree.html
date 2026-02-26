@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>DeviceCollapseTree - Vue2 + antdv cdn</title>
+  <!-- Vue 2 -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <!-- antdv 1.x (适配Vue2) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.js"></script>
+</head>
+<body>
+  <div style="padding: 20px; max-width: 800px;">
+    <h2>设备树形折叠面板演示</h2>
+    <div id="app"></div>
+  </div>
+
+<script>
+Vue.use(antd);
+
+new Vue({
+  el: '#app',
+  data() {
+    return {
+      activeKey: [],
+      firstLevelData: [],
+      selectedKeys: [],
+      codeKeys: [
+        'id',
+        'code',
+        'singleProjectCode',
+        'buildUnitCode',
+        'provinceCode',
+      ],
+      titleKeys: [
+        'name',
+        'singleProjectName',
+        'buildUnitName',
+        'provinceName',
+      ],
+      maxLevel: 3,
+    };
+  },
+  mounted() {
+    this.loadFirstLevelData();
+  },
+  methods: {
+    async firstLevelApi() {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        data: [
+          { provinceCode: '1', provinceName: '江苏省' },
+          { provinceCode: '2', provinceName: '浙江省' },
+        ]
+      };
+    },
+    async secondLevelApi({ provinceCode }) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const dataMap = {
+        '1': [
+          { id: '11', buildUnitCode: '11', name: '江苏省建筑总公司' },
+          { id: '12', buildUnitCode: '12', name: '南京城建集团' },
+        ],
+        '2': [
+          { id: '21', buildUnitCode: '21', name: '浙江省建工集团' },
+          { id: '22', buildUnitCode: '22', name: '杭州城建集团' },
+        ]
+      };
+      return {
+        data: dataMap[provinceCode] || []
+      };
+    },
+    async thirdLevelApi({ buildUnitCode }) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const dataMap = {
+        '11': [
+          { id: '111', singleProjectCode: '111', name: '南京奥体中心项目' },
+          { id: '112', singleProjectCode: '112', name: '苏州工业园区项目' },
+        ],
+        '12': [
+          { id: '121', singleProjectCode: '121', name: '南京长江大桥改造项目' },
+          { id: '122', singleProjectCode: '122', name: '南京地铁5号线项目' },
+        ],
+        '21': [
+          { id: '211', singleProjectCode: '211', name: '杭州亚运会场馆项目' },
+          { id: '212', singleProjectCode: '212', name: '杭州湾跨海大桥项目' },
+        ],
+        '22': [
+          { id: '221', singleProjectCode: '221', name: '杭州地铁10号线项目' },
+          { id: '222', singleProjectCode: '222', name: '杭州西湖景区改造项目' },
+        ]
+      };
+      return {
+        data: dataMap[buildUnitCode] || []
+      };
+    },
+    getTreeTitleMaybe(item) {
+      for (const key of this.titleKeys) {
+        const val = item[key];
+        if (val != null && val !== '') return val;
+      }
+      return '未知节点';
+    },
+    getTreeCodeMaybe(item) {
+      for (const key of this.codeKeys) {
+        const val = item[key];
+        if (val != null && val !== '') return val;
+      }
+      return '';
+    },
+    async loadFirstLevelData() {
+      try {
+        const result = await this.firstLevelApi();
+        this.firstLevelData = (result.data || []).map(item => ({
+          ...item,
+          key: this.getTreeCodeMaybe(item),
+          title: this.getTreeTitleMaybe(item),
+          isLeaf: this.maxLevel <= 1,
+          children: this.maxLevel > 1 ? item.children || [] : null,
+        }));
+      } catch (err) {
+        console.error('加载一级数据失败:', err);
+      }
+    },
+    async loadTreeData(treeNode) {
+      if (treeNode.dataRef.children?.length) return;
+      
+      try {
+        const res = await this.thirdLevelApi({
+          buildUnitCode: treeNode.dataRef.key,
+        });
+        const children = (res.data || []).map(item => ({
+          ...item,
+          key: this.getTreeCodeMaybe(item),
+          title: this.getTreeTitleMaybe(item),
+          isLeaf: true,
+          children: null,
+        }));
+        this.$nextTick(() => {
+          treeNode.dataRef.children = children;
+          treeNode.setState({ loaded: true });
+        });
+      } catch (err) {
+        console.error('加载树形数据失败:', err);
+      }
+    },
+    async onCollapseChange(activeKey) {
+      this.activeKey = activeKey;
+      if (!activeKey || activeKey.length === 0) return;
+      
+      const match = this.firstLevelData.find(it => it.key === activeKey[0]);
+      if (!match || match.children?.length) return;
+      
+      try {
+        const res = await this.secondLevelApi({ provinceCode: activeKey[0] });
+        match.children = (res.data || []).map(item => ({
+          ...item,
+          key: this.getTreeCodeMaybe(item),
+          title: this.getTreeTitleMaybe(item),
+          isLeaf: false,
+          children: [],
+        }));
+      } catch (err) {
+        console.error('加载二级数据失败:', err);
+      }
+    },
+    onSelect(selectedKeys, info) {
+      this.selectedKeys = selectedKeys;
+      console.log('选中节点:', {
+        key: selectedKeys[0] || this.getTreeCodeMaybe(info?.node?.dataRef || {}),
+        data: info?.node?.dataRef
+      });
+    },
+    onExpand(expandedKeys, info) {
+      console.log('展开节点:', {
+        keys: expandedKeys,
+        data: info?.node?.dataRef
+      });
+    },
+  },
+  template: `
+    <a-collapse
+      v-model="activeKey"
+      class="w-full"
+      accordion
+      :bordered="false"
+      :destroy-inactive-panel="true"
+      expand-icon-position="right"
+      @change="onCollapseChange"
+    >
+      <a-collapse-panel
+        v-for="item in firstLevelData"
+        :key="item.key"
+        :header="item.title"
+      >
+        <a-tree
+          v-if="item.isLeaf === false && item.children && item.children.length > 0"
+          style="min-height: 50px;width: 100%;"
+          :tree-data="item.children"
+          :load-data="loadTreeData"
+          :field-names="{ title: 'title', key: 'key', children: 'children' }"
+          :default-expand-all="false"
+          :default-expanded-keys="[]"
+          :show-icon="true"
+          :lazy="true"
+          @select="onSelect"
+          @expand="onExpand"
+        >
+          <template slot="title" slot-scope="{ title, key }">
+            <div class="cursor-pointer" style="width: calc(300px - 60px - 25px);">
+              {{ title }}
+            </div>
+          </template>
+        </a-tree>
+        <a-spin
+          v-else-if="item.isLeaf === false"
+          spinning
+          class="w-full p-10"
+        />
+        <div v-else>{{ item.title }}</div>
+      </a-collapse-panel>
+    </a-collapse>
+  `
+});
+</script>
+
+<style>
+.w-full { width: 100%; }
+.cursor-pointer { cursor: pointer; }
+.p-10 { padding: 10px; }
+
+.ant-collapse-content-box {
+  padding: 0 10px 0 0 !important;
+}
+.ant-tree {
+  border-left: 3px solid #def2f4;
+  margin-left: 8px;
+  margin: 10px 0 10px 8px;
+  padding-left: 10px;
+}
+.ant-tree li ul {
+  max-height: 300px;
+  overflow-y: auto;
+  border-left: 3px solid #def2f4;
+  margin: 10px 0 10px 8px;
+  padding-left: 10px;
+}
+.ant-collapse-header {
+  background: rgba(40, 182, 180, .05);
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #154772;
+}
+.ant-collapse-item-active .ant-collapse-header {
+  background-image: linear-gradient(90deg, #08d2be, #4dacfe);
+  color: #fff;
+}
+.ant-collapse-borderless > .ant-collapse-item {
+  border-bottom: none;
+  margin-bottom: 10px;
+}
+.ant-tree li span.ant-tree-switcher {
+  opacity: 1;
+  width: 16px;
+}
+.ant-tree li span.ant-tree-iconEle {
+  opacity: 1;
+  width: 16px;
+}
+.ant-tree li span.ant-tree-switcher.ant-tree-switcher-noop {
+  display: inline-block;
+}
+.ant-tree-node-content-wrapper.ant-tree-node-selected {
+  background: transparent !important;
+}
+</style>
+</body>
+</html>
