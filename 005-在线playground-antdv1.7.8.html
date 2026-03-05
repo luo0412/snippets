@@ -4,8 +4,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>Element UI Playground</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui/lib/theme-chalk/index.css">
+  <title>Ant Design Vue Playground</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror/lib/codemirror.css">
   <style>
     *,
@@ -57,10 +57,10 @@
   <div class="code-area">
     <textarea id="code"><template>
   <div class="page">
-    <el-button @click="visible = true">Button</el-button>
-    <el-dialog :visible.sync="visible" title="Hello world">
-      <p>Try Element UI</p>
-    </el-dialog>
+    <a-button type="primary" @click="visible = true">按钮</a-button>
+    <a-modal v-model:visible="visible" title="Hello world">
+      <p>Try Ant Design Vue</p>
+    </a-modal>
   </div>
 </template>
 
@@ -84,7 +84,7 @@ export default {
   <div id="app" class="preview-area"></div>
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue-template-compiler"></script>
-  <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror/lib/codemirror.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror/addon/mode/overlay.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror/addon/edit/matchbrackets.js"></script>
@@ -113,6 +113,9 @@ export default {
         compiler.script.content.replace('export default', 'return')
       )()
       option.template = compiler.template.content
+
+      // register Antd components globally if needed
+      Vue.use(antd)
 
       const vueStyle = document.getElementById('vue-style')
       if (vueStyle) document.getElementsByTagName('head')[0].removeChild(vueStyle)
