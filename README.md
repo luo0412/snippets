@@ -14,6 +14,7 @@ https://github.com/dayun-cloud/tools/blob/main/build/ranking.html
 
 ![](https://raw.githubusercontent.com/luo0412/static/main/20260211213455.png)
 
+- https://huangmingfu.github.io/ant-design-vue-playground/
 
 - [005-在线playground-vue2.html](005-在线playground-vue2.html)
 - [004-组合折叠树collapse-tree.html](004-组合折叠树collapse-tree.html)

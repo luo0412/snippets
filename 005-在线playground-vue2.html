@@ -48,9 +48,10 @@
   <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/mode-javascript.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/mode-css.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/theme-monokai.js"></script>
-  <!-- vue-code-view 核心 -->
-  <script src="https://cdn.jsdelivr.net/npm/vue-code-view@0.6.1/dist/vue-code-view.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vue-code-view@0.6.1/dist/vue-code-view.min.css">
+  <!-- vue-code-view 核心 (使用 GitHub 提供的 jsDelivr 版本，避免 npm CDN 问题) -->
+  <script src="https://cdn.jsdelivr.net/gh/andurils/vue-code-view@0.6.1/dist/vue-code-view.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/andurils/vue-code-view@0.6.1/dist/vue-code-view.min.css">
+  <!-- 也可考虑改为本地文件以提高稳定性 -->
 </head>
 <body>
   <div id="app" class="playground-container">
@@ -115,8 +116,8 @@ methods: {
     this.loading = !this.loading;
   }
 }
-};
-</script>
+}
+<\\/script>
 
 <style scoped>
 /* 自定义样式 */
@@ -154,6 +155,3 @@ margin: 0 4px;
     }
   });
 </script>
-</body>
-
-</html>
