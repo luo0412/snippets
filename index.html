@@ -148,8 +148,35 @@ export default {
       }, 500)
     })
 
-    // 初始化 - 页面加载时执行一次
-    run()
+    // 从URL参数加载Vue文件
+    async function loadFromUrl() {
+      const params = new URLSearchParams(window.location.search)
+      const url = params.get('url')
+      
+      if (url) {
+        try {
+          const response = await fetch(url)
+          if (response.ok) {
+            const content = await response.text()
+            editor.setValue(content)
+            // 加载后立即运行
+            setTimeout(() => run(), 100)
+          } else {
+            console.error('Failed to load file:', response.status)
+            run()
+          }
+        } catch (error) {
+          console.error('Error loading file:', error)
+          run()
+        }
+      } else {
+        // 初始化 - 页面加载时执行一次
+        run()
+      }
+    }
+
+    // 初始化
+    loadFromUrl()
   </script>
 </body>
 </html>
