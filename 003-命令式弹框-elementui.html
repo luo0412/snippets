@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue2 + ElementUI 弹窗管理器 (CDN 版)</title>
+  <!-- 引入 ElementUI 样式 -->
+  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.14/theme-chalk/index.css">
+  <!-- 引入 Vue 2 -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.16/vue.min.js"></script>
+  <!-- 引入 ElementUI -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.14/index.js"></script>
+</head>
+<body>
+  <div id="app">
+    <el-button @click="openCustomDialog">打开自定义弹窗</el-button>
+    <el-button @click="openConfirmDialog">打开确认弹窗</el-button>
+  </div>
+
+  <script>
+    // ========== 弹窗管理器核心实现 ==========
+    const DialogManager = {
+      dialogs: new Set(),
+
+      // 打开弹窗
+      openDialog(component, props = {}) {
+        return new Promise((resolve, reject) => {
+          // 创建组件构造器
+          const DialogConstructor = Vue.extend(component);
+          // 初始化组件实例
+          const dialogInstance = new DialogConstructor({
+            el: document.createElement('div'),
+            propsData: {
+              ...props,
+              // 注入 resolve/reject 供弹窗内部调用
+              resolve: (data) => resolve({ dialogInstance, data }),
+              reject: (data) => reject({ dialogInstance, data })
+            }
+          });
+          
+          // 挂载弹窗到页面
+          this.mountDialog(dialogInstance);
+          this.dialogs.add(dialogInstance);
+        });
+      },
+
+      // 关闭弹窗
+      closeDialog(dialogInstance) {
+        if (!this.dialogs.has(dialogInstance)) return;
+        
+        // 隐藏弹窗并卸载 DOM
+        dialogInstance.visible = false;
+        setTimeout(() => {
+          if (dialogInstance.$el && dialogInstance.$el.parentNode) {
+            document.body.removeChild(dialogInstance.$el);
+          }
+          // 销毁组件实例
+          dialogInstance.$destroy();
+          this.dialogs.delete(dialogInstance);
+        }, 300); // 配合 ElementUI 弹窗的关闭动画
+      },
+
+      // 检查弹窗是否存在
+      hasDialog(dialogInstance) {
+        return this.dialogs.has(dialogInstance);
+      },
+
+      // 挂载弹窗
+      mountDialog(dialogInstance) {
+        document.body.appendChild(dialogInstance.$el);
+        // 确保 DOM 渲染完成后再显示弹窗
+        Vue.nextTick(() => {
+          dialogInstance.visible = true;
+        });
+      }
+    };
+
+    // ========== 自定义弹窗组件示例 ==========
+    // 示例1：自定义内容弹窗
+    const CustomDialog = {
+      props: {
+        title: {
+          type: String,
+          default: '自定义弹窗'
+        },
+        visible: {
+          type: Boolean,
+          default: false
+        },
+        resolve: {
+          type: Function,
+          required: true
+        },
+        reject: {
+          type: Function,
+          required: true
+        }
+      },
+      template: `
+        <el-dialog
+          :title="title"
+          :visible.sync="visible"
+          width="400px"
+          @close="handleClose"
+          @open="handleOpen"
+        >
+          <div>这是通过 DialogManager 管理的自定义弹窗</div>
+          <div>
+            <el-input v-model="inputValue" placeholder="请输入内容"></el-input>
+          </div>
+          <div slot="footer" class="dialog-footer">
+            <el-button @click="handleCancel">取消</el-button>
+            <el-button type="primary" @click="handleConfirm">确定</el-button>
+          </div>
+        </el-dialog>
+      `,
+      data() {
+        return {
+          inputValue: ''
+        };
+      },
+      methods: {
+        handleOpen() {
+          console.log('弹窗打开了');
+        },
+        handleClose() {
+          this.reject({ reason: '用户关闭弹窗' });
+          // 通知管理器关闭弹窗
+          DialogManager.closeDialog(this);
+        },
+        handleCancel() {
+          this.visible = false;
+        },
+        handleConfirm() {
+          this.resolve({ inputValue: this.inputValue });
+          this.visible = false;
+        }
+      }
+    };
+
+    // 示例2：确认弹窗（简化版）
+    const ConfirmDialog = {
+      props: {
+        message: {
+          type: String,
+          default: '确定要执行此操作吗？'
+        },
+        visible: {
+          type: Boolean,
+          default: false
+        },
+        resolve: {
+          type: Function,
+          required: true
+        },
+        reject: {
+          type: Function,
+          required: true
+        }
+      },
+      template: `
+        <el-dialog
+          title="确认操作"
+          :visible.sync="visible"
+          width="300px"
+          :show-close="false"
+        >
+          <div>{{ message }}</div>
+          <div slot="footer" class="dialog-footer">
+            <el-button @click="handleCancel">取消</el-button>
+            <el-button type="primary" @click="handleConfirm">确定</el-button>
+          </div>
+        </el-dialog>
+      `,
+      methods: {
+        handleCancel() {
+          this.reject({ reason: '用户取消' });
+          this.visible = false;
+        },
+        handleConfirm() {
+          this.resolve({ confirmed: true });
+          this.visible = false;
+        }
+      },
+      watch: {
+        visible(newVal) {
+          if (!newVal) {
+            setTimeout(() => {
+              DialogManager.closeDialog(this);
+            }, 300);
+          }
+        }
+      }
+    };
+
+    // ========== 主 Vue 实例 ==========
+    new Vue({
+      el: '#app',
+      methods: {
+        // 打开自定义弹窗
+        async openCustomDialog() {
+          try {
+            // 调用弹窗管理器打开弹窗
+            const { dialogInstance, data } = await DialogManager.openDialog(CustomDialog, {
+              title: '我的自定义弹窗'
+            });
+            console.log('弹窗确认返回数据：', data);
+            this.$message.success(`你输入的内容是：${data.inputValue}`);
+          } catch (error) {
+            console.log('弹窗被关闭/取消：', error);
+            this.$message.info('弹窗已取消');
+          }
+        },
+
+        // 打开确认弹窗
+        async openConfirmDialog() {
+          try {
+            const { data } = await DialogManager.openDialog(ConfirmDialog, {
+              message: '确定要删除这条数据吗？'
+            });
+            this.$message.success('操作已确认');
+          } catch (error) {
+            this.$message.info('操作已取消');
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

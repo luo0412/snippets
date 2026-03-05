@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue2 Antd Playground</title>
+  <!-- 基础样式 -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .playground-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header {
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e8e8e8;
+    }
+    /* 修复按钮间距 */
+    .ant-btn {
+      margin-right: 8px;
+    }
+  </style>
+
+  <!-- CDN 依赖引入（严格按顺序） -->
+  <!-- Vue 2.6.14 完整版（包含编译器） -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <!-- ant-design-vue 1.7.8 样式 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.css">
+  <!-- ant-design-vue 1.7.8 核心库 -->
+  <script src="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.js"></script>
+  <!-- Ace 编辑器核心 -->
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/ace.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/ext-language_tools.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/mode-html.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/mode-javascript.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/mode-css.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-min-noconflict/theme-monokai.js"></script>
+  <!-- vue-code-view 核心 -->
+  <script src="https://cdn.jsdelivr.net/npm/vue-code-view@0.6.1/dist/vue-code-view.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vue-code-view@0.6.1/dist/vue-code-view.min.css">
+</head>
+<body>
+  <div id="app" class="playground-container">
+    <div class="header">
+      <h2>Ant Design Vue 组件调试 Playground</h2>
+      <a-button type="primary" @click="refreshCode">刷新预览</a-button>
+    </div>
+    
+    <!-- vue-code-view 核心组件 -->
+    <Repl 
+      ref="repl"
+      :code="code"
+      theme="monokai"
+      :show-code="true"
+      :show-preview="true"
+      height="600px"
+    ></Repl>
+  </div>
+
+<script>
+  // 1. 全局注册 Antd 到主 Vue 实例
+  Vue.use(window.antd);
+
+  // 2. 初始化 Vue 实例
+  new Vue({
+    el: '#app',
+    components: {
+      // 正确注册 vue-code-view 组件
+      Repl: window.Repl
+    },
+    data() {
+      return {
+        // 修复：使用模板字符串正确处理缩进，避免解析错误
+        code: `<template>
+<div style="padding: 20px;">
+  <h3>Antd Button 组件示例</h3>
+  <a-space>
+    <a-button type="primary">主按钮</a-button>
+    <a-button>普通按钮</a-button>
+    <a-button type="dashed">虚线按钮</a-button>
+    <a-button type="danger">危险按钮</a-button>
+    <a-button type="link">链接按钮</a-button>
+  </a-space>
+  
+  <div style="margin-top: 20px;">
+    <a-button type="primary" :loading="loading" @click="toggleLoading">
+      加载状态按钮
+    </a-button>
+  </div>
+</div>
+</template>
+
+<script>
+export default {
+data() {
+  return {
+    loading: false
+  };
+},
+methods: {
+  toggleLoading() {
+    this.loading = !this.loading;
+  }
+}
+};
+</script>
+
+<style scoped>
+/* 自定义样式 */
+.ant-btn {
+margin: 0 4px;
+}
+</style>`
+      };
+    },
+    methods: {
+      // 刷新预览
+      refreshCode() {
+        if (this.$refs.repl) {
+          this.$refs.repl.refresh();
+          // 修复：使用 Antd 全局 message 方法
+          this.$message.success('预览已刷新！');
+        }
+      }
+    },
+    mounted() {
+      // 修复：兼容 vue-code-view 内部环境的 Antd 注册
+      this.$nextTick(() => {
+        try {
+          // 方式1：给内部环境注入 Antd 组件
+          const replVM = this.$refs.repl;
+          if (replVM && replVM.vueInstance) {
+            replVM.vueInstance.use(window.antd);
+          }
+          // 方式2：全局挂载，确保内部环境能访问到
+          window.Vue.use(window.antd);
+        } catch (e) {
+          console.warn('Antd 内部注册兼容:', e.message);
+        }
+      });
+    }
+  });
+</script>
+</body>
+
+</html>
