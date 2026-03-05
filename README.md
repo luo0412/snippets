@@ -1,6 +1,10 @@
 # 目录
 
-下面按工作区内的真实文件名倒序列出（用于在 GitHub Pages 上作为相对链接访问）。
+# 简单示例
+
+- https://luo0412.github.io/snippets?url=https://luo0412.github.io/snippets/demo.vue
+
+# 代码片段
 
 - [101a-从夯到拉排行榜-豆包鞭策版.html](https://luo0412.github.io/snippets/101a-从夯到拉排行榜-豆包鞭策版.html)
 - [101-从夯到拉排行榜-dayun@nice.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜-dayun@nice.html)
