@@ -1,9 +1,8 @@
-<!-- https://juejin.cn/post/7262270605852426295 -->
- 
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Ant Design Vue Playground</title>
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
@@ -19,18 +18,40 @@
     body {
       height: 100vh;
       display: flex;
+      /* 移动端改为垂直排列 */
+      flex-direction: column;
     }
-    .code-area {
-      /* flex: 1; */
-      width: 50%;
-      resize: horizontal;
-      overflow: hidden;
-      flex-shrink: 0;
-      border-right: 1px solid #ccc;
+    /* 适配PC端 */
+    @media (min-width: 768px) {
+      body {
+        flex-direction: row;
+      }
+      .code-area {
+        width: 50%;
+        resize: horizontal;
+        overflow: hidden;
+        flex-shrink: 0;
+        border-right: 1px solid #ccc;
+        height: 100vh;
+      }
+      .preview-area {
+        flex: 1;
+        overflow: auto;
+        height: 100vh;
+      }
     }
-    .preview-area {
-      flex: 1;
-      overflow: auto;
+    /* 移动端样式 */
+    @media (max-width: 767px) {
+      .code-area {
+        width: 100%;
+        height: 50vh;
+        border-bottom: 1px solid #ccc;
+      }
+      .preview-area {
+        width: 100%;
+        flex: 1;
+        overflow: auto;
+      }
     }
     #code {
       display: none;
@@ -38,7 +59,8 @@
     .run {
       position: fixed;
       top: 0;
-      right: calc(50% + 20px);
+      /* 适配移动端位置 */
+      right: 20px;
       padding: 3px 10px;
       color: #fff;
       background-color: #52c41a;
@@ -48,10 +70,54 @@
       cursor: default;
       font-size: 12px;
     }
+    /* PC端调整run按钮位置 */
+    @media (min-width: 768px) {
+      .run {
+        right: calc(50% + 20px);
+      }
+    }
     .CodeMirror {
       font-family: consolas;
       font-size: 14px;
       height: 100%;
+    }
+    /* 全屏按钮样式 */
+    .fullscreen-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 999;
+      padding: 6px 12px;
+      background: #1890ff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    /* 全屏状态样式 */
+    .preview-fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 998;
+      background: white;
+    }
+    /* 退出全屏按钮样式 */
+    .exit-fullscreen-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999;
+      padding: 6px 12px;
+      background: #ff4d4f;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
     }
   </style>
 </head>
@@ -87,6 +153,9 @@ export default {
   </div>
   <span class="run">✓ 自动刷新中</span>
   <div id="app" class="preview-area"></div>
+  <!-- 全屏按钮 -->
+  <button class="fullscreen-btn" id="fullscreenBtn">全屏预览</button>
+  
   <script src="static/js/vue.js"></script>
   <script src="static/js/vue-template-compiler.js"></script>
   <script src="static/js/antd.min.js"></script>
@@ -104,6 +173,7 @@ export default {
   <script>
     const code = document.getElementById('code')
     const app = document.getElementById('app')
+    const fullscreenBtn = document.getElementById('fullscreenBtn')
     const editor = CodeMirror.fromTextArea(code, {
       lineNumbers: true,
       matchBrackets: true,
@@ -113,6 +183,7 @@ export default {
     })
 
     let debounceTimeout;
+    let isFullscreen = false;
     
     function run() {
       const compiler = VueTemplateCompiler.parseComponent(editor.getValue())
@@ -174,6 +245,39 @@ export default {
         run()
       }
     }
+
+    // 全屏功能实现
+    function toggleFullscreen() {
+      if (!isFullscreen) {
+        // 进入全屏
+        app.classList.add('preview-fullscreen')
+        fullscreenBtn.style.display = 'none'
+        
+        // 创建退出全屏按钮
+        const exitBtn = document.createElement('button')
+        exitBtn.className = 'exit-fullscreen-btn'
+        exitBtn.id = 'exitFullscreenBtn'
+        exitBtn.textContent = '退出全屏'
+        document.body.appendChild(exitBtn)
+        
+        // 绑定退出全屏事件
+        exitBtn.addEventListener('click', toggleFullscreen)
+      } else {
+        // 退出全屏
+        app.classList.remove('preview-fullscreen')
+        fullscreenBtn.style.display = 'block'
+        
+        // 移除退出全屏按钮
+        const exitBtn = document.getElementById('exitFullscreenBtn')
+        if (exitBtn) {
+          document.body.removeChild(exitBtn)
+        }
+      }
+      isFullscreen = !isFullscreen
+    }
+
+    // 绑定全屏按钮事件
+    fullscreenBtn.addEventListener('click', toggleFullscreen)
 
     // 初始化
     loadFromUrl()
