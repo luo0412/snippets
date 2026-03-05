@@ -5,9 +5,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Ant Design Vue Playground</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui/lib/theme-chalk/index.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror/lib/codemirror.css">
+  <link rel="stylesheet" href="static/css/antd.min.css">
+  <link rel="stylesheet" href="static/css/element-ui.min.css">
+  <link rel="stylesheet" href="static/css/codemirror.css">
   <style>
     *,
     *::before,
@@ -72,6 +72,7 @@
 export default {
   data() {
     return {
+      date: null,
       visible: false
     }
   }
@@ -86,20 +87,20 @@ export default {
   </div>
   <span class="run">✓ 自动刷新中</span>
   <div id="app" class="preview-area"></div>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vue-template-compiler"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/lib/codemirror.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/addon/mode/overlay.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/addon/edit/matchbrackets.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/addon/edit/closebrackets.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/addon/edit/closetag.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/mode/xml/xml.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/mode/javascript/javascript.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/mode/css/css.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/mode/htmlmixed/htmlmixed.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/codemirror/mode/vue/vue.js"></script>
+  <script src="static/js/vue.js"></script>
+  <script src="static/js/vue-template-compiler.js"></script>
+  <script src="static/js/antd.min.js"></script>
+  <script src="static/js/element-ui.min.js"></script>
+  <script src="static/codemirror/codemirror.js"></script>
+  <script src="static/codemirror/overlay.js"></script>
+  <script src="static/codemirror/matchbrackets.js"></script>
+  <script src="static/codemirror/closebrackets.js"></script>
+  <script src="static/codemirror/closetag.js"></script>
+  <script src="static/codemirror/xml.js"></script>
+  <script src="static/codemirror/javascript.js"></script>
+  <script src="static/codemirror/css.js"></script>
+  <script src="static/codemirror/htmlmixed.js"></script>
+  <script src="static/codemirror/vue.js"></script>
   <script>
     const code = document.getElementById('code')
     const app = document.getElementById('app')
