@@ -365,7 +365,7 @@ export default {
     // 检查SplitPanes是否加载成功
     function checkSplitPanesAvailability() {
       try {
-        isSplitPanesAvailable = typeof window.Splitpanes !== 'undefined';
+        isSplitPanesAvailable = typeof window.splitpanes !== 'undefined';
         return isSplitPanesAvailable;
       } catch (e) {
         isSplitPanesAvailable = false;
@@ -505,7 +505,7 @@ export default {
       
       // 初始化 SplitPane
       try {
-        splitPaneInstance = new Splitpanes(document.querySelector('.splitpanes'), {
+        splitPaneInstance = new splitpanes(document.querySelector('.splitpanes'), {
           resizerThickness: isMobile ? 8 : 8,
           cursor: isMobile ? 'row-resize' : 'col-resize'
         });
