@@ -7,9 +7,7 @@
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
-  <!-- 替换为可靠的 splitpane 样式 CDN -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/splitpanes@3.1.5/dist/splitpanes.min.css">
-  <!-- 引入 Font Awesome 图标库 -->
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     *,
@@ -23,7 +21,6 @@
       height: 100vh;
       overflow: hidden;
     }
-    /* SplitPane 容器样式 */
     #app-container {
       height: 100vh;
     }
@@ -32,6 +29,9 @@
     }
     .splitpanes__pane {
       overflow: hidden;
+      /* 修复移动端pane高度问题 */
+      height: 100% !important;
+      width: 100% !important;
     }
     .splitpanes__splitter {
       background-color: #ccc;
@@ -56,6 +56,18 @@
       .splitpanes--horizontal > .splitpanes__splitter {
         width: 8px !important;
       }
+      /* 移动端编辑器容器强制高度 */
+      #editorPane,
+      .splitpanes__pane:first-child {
+        height: 50vh !important;
+        min-height: 200px !important;
+      }
+      /* 移动端CodeMirror适配 */
+      #codemirror-container {
+        height: 100% !important;
+        width: 100% !important;
+        min-height: 200px;
+      }
     }
     #code {
       display: none;
@@ -73,7 +85,6 @@
       cursor: default;
       font-size: 12px;
     }
-    /* 编辑器切换按钮样式 */
     .editor-switch {
       position: fixed;
       top: 0;
@@ -96,25 +107,32 @@
     .editor-switch .icon {
       font-size: 12px;
     }
-    /* PC端调整按钮位置 */
     @media (min-width: 768px) {
       .run {
         right: 20px;
       }
     }
-    /* CodeMirror 样式 */
+    /* CodeMirror 核心样式修复 */
     .CodeMirror {
       font-family: consolas;
       font-size: 14px;
-      height: 100%;
+      height: 100% !important; /* 强制高度100% */
+      width: 100% !important;  /* 强制宽度100% */
+      min-height: 200px;       /* 移动端最小高度 */
     }
-    /* Monaco Editor 容器样式 */
+    .CodeMirror-scroll {
+      height: 100% !important; /* 修复滚动容器高度 */
+    }
+    .CodeMirror-gutter,
+    .CodeMirror-gutters {
+      min-height: 100% !important;
+    }
     #monaco-editor-container {
       width: 100%;
       height: 100%;
       display: none;
+      min-height: 200px;
     }
-    /* 全屏按钮样式 - 贴边小图标 */
     .fullscreen-btn {
       position: fixed;
       bottom: 10px;
@@ -137,7 +155,6 @@
       background: #40a9ff;
       transform: scale(1.05);
     }
-    /* 全屏状态样式 */
     .preview-fullscreen {
       position: fixed;
       top: 0;
@@ -147,7 +164,6 @@
       z-index: 998;
       background: white;
     }
-    /* 退出全屏按钮样式 - 贴边小图标 */
     .exit-fullscreen-btn {
       position: fixed;
       top: 10px;
@@ -170,16 +186,13 @@
       background: #ff7875;
       transform: scale(1.05);
     }
-    /* 图标样式 */
     .icon {
       font-size: 16px;
     }
-    /* 预览区域样式 */
     .preview-area {
       height: 100%;
       overflow: auto;
     }
-    /* 备用分割线样式（防止splitpanes加载失败） */
     .fallback-splitter {
       width: 8px;
       height: 100%;
@@ -201,7 +214,6 @@
       border-radius: 50%;
       background-color: #999;
     }
-    /* 加载提示样式 */
     .loading-tip {
       position: fixed;
       top: 30px;
@@ -217,17 +229,14 @@
   </style>
 </head>
 <body>
-  <!-- 使用 splitpane 作为容器 -->
   <div id="app-container"></div>
   
-  <!-- 备用的 CodeMirror 文本域 -->
   <textarea id="code"><template>
   <div class="page">
     <a-button type="primary" @click="visible = true">按钮</a-button>
     <el-button type="primary" @click="visible = true">按钮</el-button>
     <el-date-picker placeholder="请选择日期(ElementUI)" v-model="date" style="margin: 0 10px;" />
     
-    <!-- 丰富的a-date-picker示例 -->
     <a-date-picker 
       placeholder="基础日期选择(AntD)" 
       v-model="antdDate" 
@@ -270,7 +279,6 @@ export default {
       dateRange: null,
       monthDate: null,
       visible: false,
-      // 快捷日期范围
       presetRanges: {
         '今天': [moment(), moment()],
         '昨天': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
@@ -280,13 +288,10 @@ export default {
     }
   },
   methods: {
-    // 日期变更回调
     handleDateChange(date, dateString) {
       console.log('选中日期:', date, '日期字符串:', dateString);
     },
-    // 禁用日期
     disabledDate(current) {
-      // 禁用未来日期
       return current && current > moment().endOf('day');
     }
   }
@@ -297,31 +302,25 @@ export default {
 .page {
   padding: 20px;
 }
-/* 调整日期选择器间距 */
 .ant-picker {
   margin-bottom: 10px;
 }
 </style></textarea>
 
-  <!-- 自动刷新提示 -->
   <span class="run">✓ 自动刷新中</span>
   
-  <!-- 编辑器切换按钮 -->
   <div class="editor-switch" id="editorSwitchBtn">
     <i class="fas fa-edit icon"></i>
     <span id="editorTypeText">CodeMirror</span>
     <i class="fas fa-chevron-down icon"></i>
   </div>
   
-  <!-- 加载提示 -->
   <div class="loading-tip" id="loadingTip">正在加载 Monaco Editor...</div>
   
-  <!-- 全屏按钮 -->
   <button class="fullscreen-btn" id="fullscreenBtn">
     <i class="fas fa-expand icon"></i>
   </button>
 
-  <!-- 引入基础依赖 -->
   <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/zh-cn.js"></script>
   <script src="static/js/vue.js"></script>
@@ -329,10 +328,8 @@ export default {
   <script src="static/js/antd.min.js"></script>
   <script src="static/js/element-ui.min.js"></script>
   
-  <!-- 替换为可靠的 splitpane JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/splitpanes@3.1.5/dist/splitpanes.umd.js"></script>
   
-  <!-- 引入 CodeMirror -->
   <script src="static/codemirror/codemirror.js"></script>
   <script src="static/codemirror/overlay.js"></script>
   <script src="static/codemirror/matchbrackets.js"></script>
@@ -345,28 +342,25 @@ export default {
   <script src="static/codemirror/vue.js"></script>
 
   <script>
-    // 全局变量
-    let editor = null; // 编辑器实例（Monaco/CodeMirror）
-    let isMonacoLoaded = false; // 是否成功加载Monaco
-    let monacoEditor = null; // Monaco编辑器实例
-    let currentEditorType = 'codemirror'; // 当前编辑器类型: codemirror / monaco
+    let editor = null;
+    let isMonacoLoaded = false;
+    let monacoEditor = null;
+    let currentEditorType = 'codemirror';
     let debounceTimeout;
     let isFullscreen = false;
-    let currentLayout = 'horizontal'; // 默认水平布局
-    let splitPaneInstance = null; // SplitPane实例
-    let isSplitPanesAvailable = false; // SplitPanes是否加载成功
-    let isMonacoLoading = false; // 是否正在加载Monaco
-    let splitPanesRetryCount = 0; // SplitPanes重试次数
-    const MAX_SPLITPANES_RETRIES = 3; // 最大重试次数
-    const SPLITPANES_RETRY_DELAY = 1000; // 重试延迟(ms)
-    let initialCode = ''; // 保存初始代码内容
+    let currentLayout = 'horizontal';
+    let splitPaneInstance = null;
+    let isSplitPanesAvailable = false;
+    let isMonacoLoading = false;
+    let splitPanesRetryCount = 0;
+    const MAX_SPLITPANES_RETRIES = 3;
+    const SPLITPANES_RETRY_DELAY = 1000;
+    let initialCode = '';
     
-    // DOM元素
     const loadingTip = document.getElementById('loadingTip');
     const editorTypeText = document.getElementById('editorTypeText');
     const editorSwitchBtn = document.getElementById('editorSwitchBtn');
     
-    // 延迟检查SplitPanes是否加载成功（带重试机制）
     function checkSplitPanesAvailabilityWithRetry() {
       return new Promise((resolve) => {
         const check = () => {
@@ -397,24 +391,19 @@ export default {
           }
         };
         
-        // 立即执行第一次检查
         check();
       });
     }
     
-    // 初始化原生分割面板（备用方案）
     function initFallbackSplitPane() {
       const container = document.getElementById('app-container');
       const isMobile = window.innerWidth <= 767;
       currentLayout = isMobile ? 'vertical' : 'horizontal';
       
-      // 创建原生分割面板结构
       container.innerHTML = `
         <div style="display: ${isMobile ? 'flex; flex-direction: column;' : 'flex;'}; height: 100%; width: 100%;">
-          <div style="${isMobile ? 'height: 50vh;' : 'width: 50%;'}" id="editorPane">
-            <!-- Monaco Editor 容器 -->
+          <div style="${isMobile ? 'height: 50vh; min-height: 200px;' : 'width: 50%;'}" id="editorPane">
             <div id="monaco-editor-container"></div>
-            <!-- CodeMirror 容器 -->
             <div id="codemirror-container"></div>
           </div>
           <div class="fallback-splitter ${isMobile ? 'fallback-splitter-vertical' : ''}" id="fallback-splitter"></div>
@@ -424,7 +413,6 @@ export default {
         </div>
       `;
       
-      // 绑定原生分割面板的拖拽事件
       const splitter = document.getElementById('fallback-splitter');
       const editorPane = document.getElementById('editorPane');
       let isDragging = false;
@@ -438,11 +426,9 @@ export default {
         startWidth = editorPane.offsetWidth;
         startHeight = editorPane.offsetHeight;
         
-        // 添加鼠标事件监听
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', stopDrag);
         
-        // 防止默认行为
         e.preventDefault();
       });
       
@@ -452,28 +438,27 @@ export default {
         const container = document.getElementById('app-container');
         
         if (currentLayout === 'horizontal') {
-          // 水平布局（PC端）
           const deltaX = e.clientX - startX;
           const newWidth = startWidth + deltaX;
           const containerWidth = container.offsetWidth;
           
-          // 限制最小宽度
           if (newWidth > 100 && newWidth < containerWidth - 100) {
             editorPane.style.width = `${newWidth}px`;
           }
         } else {
-          // 垂直布局（移动端）
           const deltaY = e.clientY - startY;
           const newHeight = startHeight + deltaY;
           const containerHeight = container.offsetHeight;
           
-          // 限制最小高度
-          if (newHeight > 100 && newHeight < containerHeight - 100) {
+          if (newHeight > 200 && newHeight < containerHeight - 100) {
             editorPane.style.height = `${newHeight}px`;
           }
         }
         
-        // 调整编辑器大小
+        // 关键修复：拖动时刷新CodeMirror尺寸
+        if (editor && editor instanceof CodeMirror) {
+          editor.refresh();
+        }
         if (monacoEditor) {
           monacoEditor.layout();
         }
@@ -485,26 +470,30 @@ export default {
         document.removeEventListener('mouseup', stopDrag);
       }
       
-      // 监听窗口大小变化
       window.addEventListener('resize', debounce(function() {
         const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
         if (newLayout !== currentLayout) {
           currentLayout = newLayout;
           initFallbackSplitPane();
-          // 重新初始化当前编辑器
           if (currentEditorType === 'monaco' && isMonacoLoaded) {
             initMonacoEditor();
           } else {
             initCodeMirror();
           }
           run();
+        } else {
+          // 仅调整尺寸，不重建DOM
+          if (editor && editor instanceof CodeMirror) {
+            editor.refresh(); // 刷新CodeMirror
+          }
+          if (monacoEditor) {
+            monacoEditor.layout();
+          }
         }
       }, 300));
     }
     
-    // 初始化 SplitPane 容器
     async function initSplitPane() {
-      // 使用带重试的检查机制
       const splitPanesLoaded = await checkSplitPanesAvailabilityWithRetry();
       
       if (!splitPanesLoaded) {
@@ -516,13 +505,10 @@ export default {
       const isMobile = window.innerWidth <= 767;
       currentLayout = isMobile ? 'vertical' : 'horizontal';
       
-      // 创建 SplitPane 结构
       container.innerHTML = `
         <div class="splitpanes ${isMobile ? 'splitpanes--vertical' : 'splitpanes--horizontal'}">
-          <div class="splitpanes__pane" ${isMobile ? 'style="height: 50vh;"' : 'style="width: 50%;"'}>
-            <!-- Monaco Editor 容器 -->
+          <div class="splitpanes__pane" ${isMobile ? 'style="height: 50vh; min-height: 200px;"' : 'style="width: 50%;"'}>
             <div id="monaco-editor-container"></div>
-            <!-- CodeMirror 容器 -->
             <div id="codemirror-container"></div>
           </div>
           <div class="splitpanes__splitter"></div>
@@ -532,11 +518,20 @@ export default {
         </div>
       `;
       
-      // 初始化 SplitPane
       try {
         splitPaneInstance = new window.splitpanes.Splitpanes(document.querySelector('.splitpanes'), {
           resizerThickness: isMobile ? 8 : 8,
           cursor: isMobile ? 'row-resize' : 'col-resize'
+        });
+        
+        // 监听分割面板调整事件，刷新CodeMirror
+        splitPaneInstance.on('resize', () => {
+          if (editor && editor instanceof CodeMirror) {
+            editor.refresh(); // 关键：调整后刷新编辑器
+          }
+          if (monacoEditor) {
+            monacoEditor.layout();
+          }
         });
       } catch (error) {
         console.error('初始化SplitPanes失败:', error);
@@ -544,25 +539,29 @@ export default {
         return;
       }
       
-      // 监听窗口大小变化，切换布局
       window.addEventListener('resize', debounce(function() {
         const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
         if (newLayout !== currentLayout) {
           currentLayout = newLayout;
           initSplitPane();
-          // 重新初始化当前编辑器
           if (currentEditorType === 'monaco' && isMonacoLoaded) {
             initMonacoEditor();
           } else {
             initCodeMirror();
           }
-          // 重新运行代码
           run();
+        } else {
+          // 仅刷新尺寸，避免重复重建
+          if (editor && editor instanceof CodeMirror) {
+            editor.refresh();
+          }
+          if (monacoEditor) {
+            monacoEditor.layout();
+          }
         }
       }, 300));
     }
     
-    // 防抖函数
     function debounce(func, wait) {
       let timeout;
       return function() {
@@ -571,11 +570,10 @@ export default {
       };
     }
     
-    // 初始化 CodeMirror（优化默认加载逻辑）
+    // 修复后的CodeMirror初始化函数
     function initCodeMirror() {
       console.log('初始化CodeMirror编辑器');
       
-      // 确保DOM元素存在
       const codeMirrorContainer = document.getElementById('codemirror-container');
       const monacoContainer = document.getElementById('monaco-editor-container');
       
@@ -584,73 +582,71 @@ export default {
         return;
       }
       
-      // 如果当前已经是CodeMirror且已初始化，直接返回
       if (currentEditorType === 'codemirror' && editor && editor instanceof CodeMirror) {
-        console.log('CodeMirror已初始化，无需重复初始化');
+        // 仅刷新尺寸，不重建
+        editor.refresh();
+        console.log('CodeMirror已初始化，仅刷新尺寸');
         return;
       }
       
-      // 保存当前编辑器内容（确保内容不丢失）
       let currentContent = getEditorContent() || initialCode;
       
-      // 销毁Monaco编辑器（如果存在）
       if (monacoEditor) {
         monacoEditor.dispose();
         monacoEditor = null;
       }
       
-      // 显示 CodeMirror 容器，隐藏 Monaco 容器
       codeMirrorContainer.style.display = 'block';
       if (monacoContainer) monacoContainer.style.display = 'none';
       
-      // 先销毁已存在的CodeMirror实例（防止重复创建）
       if (editor && editor.toTextArea) {
-        editor.toTextArea(); // 销毁旧实例
+        editor.toTextArea();
         editor = null;
       }
       
-      // 清空容器内容
       codeMirrorContainer.innerHTML = '';
       
-      // 创建临时textarea元素用于CodeMirror初始化
       const tempTextarea = document.createElement('textarea');
       tempTextarea.id = 'temp-code-' + Date.now();
       tempTextarea.value = currentContent;
       codeMirrorContainer.appendChild(tempTextarea);
       
-      // 初始化 CodeMirror
       editor = CodeMirror.fromTextArea(tempTextarea, {
-        lineNumbers: true,           // 显示行号
-        matchBrackets: true,         // 匹配括号
-        autoCloseBrackets: true,     // 自动闭合括号
-        autoCloseTags: true,         // 自动闭合标签
-        mode: { name: 'vue' },       // Vue语法高亮
-        theme: 'default',            // 默认主题
-        indentUnit: 2,               // 缩进单位
-        tabSize: 2,                  // Tab大小
-        lineWrapping: true           // 自动换行
+        lineNumbers: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        autoCloseTags: true,
+        mode: { name: 'vue' },
+        theme: 'default',
+        indentUnit: 2,
+        tabSize: 2,
+        lineWrapping: true,
+        // 移动端触摸支持
+        touchEvents: true,
+        // 禁用滚动优化，修复移动端滚动问题
+        scrollbarStyle: 'native'
       });
       
-      // 设置编辑器内容（确保内容正确加载）
       if (currentContent) {
         editor.setValue(currentContent);
       }
       
-      // 绑定内容变更事件（确保只绑定一次）
       editor.off('change', handleEditorChange);
       editor.on('change', handleEditorChange);
       
-      // 更新当前编辑器类型
+      // 关键修复：初始化后立即刷新
+      setTimeout(() => {
+        editor.refresh();
+      }, 100);
+      
       currentEditorType = 'codemirror';
       editorTypeText.textContent = 'CodeMirror';
       
       console.log('CodeMirror初始化完成');
     }
     
-    // 延迟加载 Monaco Editor
     function loadMonacoEditor() {
       return new Promise((resolve, reject) => {
-        // 如果正在加载中，等待加载完成
         if (isMonacoLoading) {
           const checkLoading = setInterval(() => {
             if (window.monaco) {
@@ -665,27 +661,22 @@ export default {
           return;
         }
         
-        // 检查是否已加载
         if (window.monaco) {
           isMonacoLoaded = true;
           resolve(true);
           return;
         }
         
-        // 显示加载提示
         loadingTip.style.display = 'block';
         isMonacoLoading = true;
         
-        // 动态加载 Monaco Editor
         const script = document.createElement('script');
         script.src = 'https://cdn.bootcdn.net/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js';
         script.async = true;
         
         script.onload = () => {
-          // 配置 Monaco 路径
           window.require.config({ paths: { 'vs': 'https://cdn.bootcdn.net/ajax/libs/monaco-editor/0.47.0/min/vs' } });
           
-          // 加载 Monaco 编辑器
           window.require(['vs/editor/editor.main'], () => {
             isMonacoLoaded = true;
             isMonacoLoading = false;
@@ -708,10 +699,9 @@ export default {
       });
     }
     
-    // 初始化 Monaco Editor
     function initMonacoEditor() {
-      // 如果当前已经是Monaco且已初始化，直接返回
       if (currentEditorType === 'monaco' && monacoEditor) {
+        monacoEditor.layout();
         return;
       }
       
@@ -721,19 +711,15 @@ export default {
       
       if (!container) return;
       
-      // 保存当前编辑器内容
       let currentContent = getEditorContent();
       
-      // 显示 Monaco 容器，隐藏 CodeMirror 容器
       container.style.display = 'block';
       if (codeMirrorContainer) codeMirrorContainer.style.display = 'none';
       
-      // 销毁原有实例
       if (monacoEditor) {
         monacoEditor.dispose();
       }
       
-      // 初始化 Monaco Editor
       try {
         monacoEditor = monaco.editor.create(container, {
           value: currentContent || codeTextarea.value,
@@ -748,10 +734,8 @@ export default {
           matchBrackets: 'always'
         });
         
-        // 绑定内容变更事件
         monacoEditor.onDidChangeModelContent(handleEditorChange);
         
-        // 监听容器大小变化
         window.addEventListener('resize', () => {
           if (monacoEditor) {
             monacoEditor.layout();
@@ -760,21 +744,17 @@ export default {
         
         editor = monacoEditor;
         
-        // 更新当前编辑器类型
         currentEditorType = 'monaco';
         editorTypeText.textContent = 'Monaco Editor';
         
       } catch (error) {
         console.error('初始化Monaco Editor失败:', error);
-        // 失败则切回CodeMirror
         initCodeMirror();
       }
     }
     
-    // 切换编辑器
     async function switchEditor() {
       if (currentEditorType === 'codemirror') {
-        // 切换到Monaco
         try {
           await loadMonacoEditor();
           initMonacoEditor();
@@ -783,12 +763,10 @@ export default {
           alert('加载Monaco Editor失败，请检查网络或稍后再试');
         }
       } else {
-        // 切换到CodeMirror
         initCodeMirror();
       }
     }
     
-    // 获取编辑器内容
     function getEditorContent() {
       try {
         if (currentEditorType === 'monaco' && isMonacoLoaded && monacoEditor) {
@@ -803,7 +781,6 @@ export default {
       }
     }
     
-    // 编辑器内容变更处理
     function handleEditorChange() {
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
@@ -811,7 +788,6 @@ export default {
       }, 500);
     }
     
-    // 运行代码
     function run() {
       const app = document.getElementById('app');
       if (!app) return;
@@ -825,12 +801,10 @@ export default {
         )();
         option.template = compiler.template.content;
 
-        // 配置moment并注册Antd
         window.moment = moment;
         moment.locale('zh-cn');
         Vue.use(antd);
 
-        // 处理样式
         const vueStyle = document.getElementById('vue-style');
         if (vueStyle) {
           document.head.removeChild(vueStyle);
@@ -842,7 +816,6 @@ export default {
           document.head.appendChild(style);
         }
 
-        // 渲染组件
         const component = new Vue(option).$mount();
         app.innerHTML = '';
         app.appendChild(component.$el);
@@ -852,7 +825,6 @@ export default {
       }
     }
     
-    // 全屏功能
     function toggleFullscreen() {
       const app = document.getElementById('app');
       if (!app) return;
@@ -860,11 +832,9 @@ export default {
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       
       if (!isFullscreen) {
-        // 进入全屏
         app.classList.add('preview-fullscreen');
         fullscreenBtn.style.display = 'none';
         
-        // 创建退出全屏按钮
         const exitBtn = document.createElement('button');
         exitBtn.className = 'exit-fullscreen-btn';
         exitBtn.id = 'exitFullscreenBtn';
@@ -872,11 +842,9 @@ export default {
         document.body.appendChild(exitBtn);
         exitBtn.addEventListener('click', toggleFullscreen);
       } else {
-        // 退出全屏
         app.classList.remove('preview-fullscreen');
         fullscreenBtn.style.display = 'flex';
         
-        // 移除退出全屏按钮
         const exitBtn = document.getElementById('exitFullscreenBtn');
         if (exitBtn) {
           document.body.removeChild(exitBtn);
@@ -885,7 +853,6 @@ export default {
       isFullscreen = !isFullscreen;
     }
     
-    // 从URL加载代码
     async function loadFromUrl() {
       const params = new URLSearchParams(window.location.search);
       const url = params.get('url');
@@ -895,7 +862,6 @@ export default {
           const response = await fetch(url);
           if (response.ok) {
             const content = await response.text();
-            // 更新编辑器内容
             if (currentEditorType === 'monaco' && isMonacoLoaded && monacoEditor) {
               monacoEditor.setValue(content);
             } else if (editor && editor.setValue) {
@@ -913,44 +879,35 @@ export default {
       }
     }
     
-    // 初始化流程
     async function init() {
       console.log('开始初始化应用');
       
-      // 0. 保存初始代码内容（在DOM被重建之前）
       const codeTextarea = document.getElementById('code');
       if (codeTextarea && !initialCode) {
         initialCode = codeTextarea.value;
         console.log('初始代码已保存');
       }
       
-      // 1. 初始化 SplitPane（带重试机制）
       await initSplitPane();
       
-      // 2. 优先初始化CodeMirror（默认编辑器）
       initCodeMirror();
       
-      // 3. 绑定编辑器切换事件
       if (editorSwitchBtn) {
         editorSwitchBtn.addEventListener('click', switchEditor);
       }
       
-      // 4. 绑定全屏按钮事件
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleFullscreen);
       }
       
-      // 5. 从URL加载代码
       await loadFromUrl();
       
-      // 6. 首次运行代码
       run();
       
       console.log('应用初始化完成');
     }
     
-    // 确保DOM加载完成后初始化
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {
