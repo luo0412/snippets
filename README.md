@@ -1,6 +1,6 @@
 # 目录
 
-# 简单示例
+# 简单用例
 
 - https://luo0412.github.io/snippets?url=https://luo0412.github.io/snippets/demo.vue
 
