@@ -7,7 +7,9 @@
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
-  <!-- 引入图标库 -->
+  <!-- 引入 splitpane 样式 -->
+  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/splitpanes/3.1.5/splitpanes.min.css">
+  <!-- 引入 Font Awesome 图标库 -->
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     *,
@@ -19,40 +21,40 @@
     }
     body {
       height: 100vh;
-      display: flex;
-      /* 移动端改为垂直排列 */
-      flex-direction: column;
+      overflow: hidden;
     }
-    /* 适配PC端 */
-    @media (min-width: 768px) {
-      body {
-        flex-direction: row;
-      }
-      .code-area {
-        width: 50%;
-        resize: horizontal;
-        overflow: hidden;
-        flex-shrink: 0;
-        border-right: 1px solid #ccc;
-        height: 100vh;
-      }
-      .preview-area {
-        flex: 1;
-        overflow: auto;
-        height: 100vh;
-      }
+    /* SplitPane 容器样式 */
+    #app-container {
+      height: 100vh;
     }
-    /* 移动端样式 */
+    .splitpanes {
+      height: 100%;
+    }
+    .splitpanes__pane {
+      overflow: hidden;
+    }
+    .splitpanes__splitter {
+      background-color: #ccc;
+      position: relative;
+    }
+    .splitpanes__splitter::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: #999;
+    }
+    /* 移动端 SplitPane 样式适配 */
     @media (max-width: 767px) {
-      .code-area {
-        width: 100%;
-        height: 50vh;
-        border-bottom: 1px solid #ccc;
+      .splitpanes--vertical > .splitpanes__splitter {
+        height: 8px !important;
       }
-      .preview-area {
-        width: 100%;
-        flex: 1;
-        overflow: auto;
+      .splitpanes--horizontal > .splitpanes__splitter {
+        width: 8px !important;
       }
     }
     #code {
@@ -61,7 +63,6 @@
     .run {
       position: fixed;
       top: 0;
-      /* 适配移动端位置 */
       right: 20px;
       padding: 3px 10px;
       color: #fff;
@@ -75,15 +76,22 @@
     /* PC端调整run按钮位置 */
     @media (min-width: 768px) {
       .run {
-        right: calc(50% + 20px);
+        right: 20px;
       }
     }
+    /* CodeMirror 样式 */
     .CodeMirror {
       font-family: consolas;
       font-size: 14px;
       height: 100%;
     }
-    /* 优化全屏按钮样式 - 贴边小图标 */
+    /* Monaco Editor 容器样式 */
+    #monaco-editor-container {
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+    /* 全屏按钮样式 - 贴边小图标 */
     .fullscreen-btn {
       position: fixed;
       bottom: 10px;
@@ -116,7 +124,7 @@
       z-index: 998;
       background: white;
     }
-    /* 优化退出全屏按钮样式 - 贴边小图标 */
+    /* 退出全屏按钮样式 - 贴边小图标 */
     .exit-fullscreen-btn {
       position: fixed;
       top: 10px;
@@ -143,11 +151,19 @@
     .icon {
       font-size: 16px;
     }
+    /* 预览区域样式 */
+    .preview-area {
+      height: 100%;
+      overflow: auto;
+    }
   </style>
 </head>
 <body>
-  <div class="code-area">
-    <textarea id="code"><template>
+  <!-- 使用 splitpane 作为容器 -->
+  <div id="app-container"></div>
+  
+  <!-- 备用的 CodeMirror 文本域 -->
+  <textarea id="code"><template>
   <div class="page">
     <a-button type="primary" @click="visible = true">按钮</a-button>
     <el-button type="primary" @click="visible = true">按钮</el-button>
@@ -228,23 +244,27 @@ export default {
   margin-bottom: 10px;
 }
 </style></textarea>
-  </div>
+
+  <!-- 自动刷新提示 -->
   <span class="run">✓ 自动刷新中</span>
-  <div id="app" class="preview-area"></div>
   
-  <!-- 优化后的全屏按钮（图标样式） -->
+  <!-- 全屏按钮 -->
   <button class="fullscreen-btn" id="fullscreenBtn">
     <i class="fas fa-expand icon"></i>
   </button>
-  
-  <!-- 引入moment.js -->
+
+  <!-- 引入基础依赖 -->
   <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/zh-cn.js"></script>
-  
   <script src="static/js/vue.js"></script>
   <script src="static/js/vue-template-compiler.js"></script>
   <script src="static/js/antd.min.js"></script>
   <script src="static/js/element-ui.min.js"></script>
+  
+  <!-- 引入 splitpane -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/splitpanes/3.1.5/splitpanes.min.js"></script>
+  
+  <!-- 引入 CodeMirror -->
   <script src="static/codemirror/codemirror.js"></script>
   <script src="static/codemirror/overlay.js"></script>
   <script src="static/codemirror/matchbrackets.js"></script>
@@ -255,120 +275,313 @@ export default {
   <script src="static/codemirror/css.js"></script>
   <script src="static/codemirror/htmlmixed.js"></script>
   <script src="static/codemirror/vue.js"></script>
-  <script>
-    const code = document.getElementById('code')
-    const app = document.getElementById('app')
-    const fullscreenBtn = document.getElementById('fullscreenBtn')
-    const editor = CodeMirror.fromTextArea(code, {
-      lineNumbers: true,
-      matchBrackets: true,
-      autoCloseBrackets: true,
-      autoCloseTags: true,
-      mode: { name: 'vue' }
-    })
 
+  <script>
+    // 全局变量
+    let editor = null; // 编辑器实例（Monaco/CodeMirror）
+    let isMonacoLoaded = false; // 是否成功加载Monaco
+    let monacoEditor = null; // Monaco编辑器实例
     let debounceTimeout;
     let isFullscreen = false;
+    let currentLayout = 'horizontal'; // 默认水平布局
     
-    function run() {
-      const compiler = VueTemplateCompiler.parseComponent(editor.getValue())
-
-      const option = new Function(
-        compiler.script.content.replace('export default', 'return')
-      )()
-      option.template = compiler.template.content
-
-      // 配置moment并注册Antd
-      window.moment = moment;
-      moment.locale('zh-cn'); // 设置中文
+    // 初始化 SplitPane 容器
+    function initSplitPane() {
+      const container = document.getElementById('app-container');
+      const isMobile = window.innerWidth <= 767;
+      currentLayout = isMobile ? 'vertical' : 'horizontal';
       
-      // 正确注册Ant Design Vue
-      Vue.use(antd)
-
-      const vueStyle = document.getElementById('vue-style')
-      if (vueStyle) document.getElementsByTagName('head')[0].removeChild(vueStyle)
-      if (compiler.styles[0]) {
-        const style = document.createElement('style')
-        style.id = 'vue-style'
-        style.innerHTML = compiler.styles[0].content
-        document.getElementsByTagName('head')[0].appendChild(style)
-      }
-
-      const component = new Vue(option).$mount()
-      app.innerHTML = ''
-      app.appendChild(component.$el)
+      // 创建 SplitPane 结构
+      container.innerHTML = `
+        <div class="splitpanes ${isMobile ? 'splitpanes--vertical' : 'splitpanes--horizontal'}">
+          <div class="splitpanes__pane" ${isMobile ? 'style="height: 50vh;"' : 'style="width: 50%;"'}>
+            <!-- Monaco Editor 容器 -->
+            <div id="monaco-editor-container"></div>
+            <!-- CodeMirror 容器 -->
+            <div id="codemirror-container"></div>
+          </div>
+          <div class="splitpanes__splitter"></div>
+          <div class="splitpanes__pane">
+            <div id="app" class="preview-area"></div>
+          </div>
+        </div>
+      `;
+      
+      // 初始化 SplitPane
+      new Splitpanes(document.querySelector('.splitpanes'), {
+        resizerThickness: isMobile ? 8 : 8,
+        cursor: isMobile ? 'row-resize' : 'col-resize'
+      });
+      
+      // 监听窗口大小变化，切换布局
+      window.addEventListener('resize', debounce(function() {
+        const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
+        if (newLayout !== currentLayout) {
+          currentLayout = newLayout;
+          initSplitPane();
+          // 重新初始化编辑器
+          if (isMonacoLoaded) {
+            initMonacoEditor();
+          } else {
+            initCodeMirror();
+          }
+          // 重新运行代码
+          run();
+        }
+      }, 300));
     }
+    
+    // 防抖函数
+    function debounce(func, wait) {
+      let timeout;
+      return function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, arguments), wait);
+      };
+    }
+    
+    // 初始化 CodeMirror（备用方案）
+    function initCodeMirror() {
+      const codeMirrorContainer = document.getElementById('codemirror-container');
+      const codeTextarea = document.getElementById('code');
+      
+      // 显示 CodeMirror 容器，隐藏 Monaco 容器
+      codeMirrorContainer.style.display = 'block';
+      document.getElementById('monaco-editor-container').style.display = 'none';
+      
+      // 初始化 CodeMirror
+      editor = CodeMirror.fromTextArea(codeTextarea, {
+        lineNumbers: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        autoCloseTags: true,
+        mode: { name: 'vue' },
+        theme: 'default'
+      });
+      
+      // 绑定内容变更事件
+      editor.on('change', handleEditorChange);
+    }
+    
+    // 延迟加载 Monaco Editor
+    function loadMonacoEditor() {
+      return new Promise((resolve, reject) => {
+        // 检查是否已加载
+        if (window.monaco) {
+          resolve(true);
+          return;
+        }
+        
+        // 动态加载 Monaco Editor
+        const script = document.createElement('script');
+        script.src = 'https://cdn.bootcdn.net/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js';
+        script.async = true;
+        
+        script.onload = () => {
+          // 配置 Monaco 路径
+          window.require.config({ paths: { 'vs': 'https://cdn.bootcdn.net/ajax/libs/monaco-editor/0.47.0/min/vs' } });
+          
+          // 加载 Monaco 编辑器
+          window.require(['vs/editor/editor.main'], () => {
+            isMonacoLoaded = true;
+            resolve(true);
+          }, (err) => {
+            reject(err);
+          });
+        };
+        
+        script.onerror = (err) => {
+          reject(err);
+        };
+        
+        document.head.appendChild(script);
+      });
+    }
+    
+    // 初始化 Monaco Editor
+    function initMonacoEditor() {
+      const container = document.getElementById('monaco-editor-container');
+      const codeTextarea = document.getElementById('code');
+      
+      // 显示 Monaco 容器，隐藏 CodeMirror 容器
+      container.style.display = 'block';
+      document.getElementById('codemirror-container').style.display = 'none';
+      
+      // 销毁原有实例
+      if (monacoEditor) {
+        monacoEditor.dispose();
+      }
+      
+      // 初始化 Monaco Editor
+      monacoEditor = monaco.editor.create(container, {
+        value: codeTextarea.value,
+        language: 'vue',
+        theme: 'vs-light',
+        minimap: { enabled: true },
+        scrollBeyondLastLine: false,
+        fontSize: 14,
+        lineNumbers: 'on',
+        autoClosingBrackets: 'always',
+        autoClosingTags: 'always',
+        matchBrackets: 'always'
+      });
+      
+      // 绑定内容变更事件
+      monacoEditor.onDidChangeModelContent(handleEditorChange);
+      
+      // 监听容器大小变化
+      window.addEventListener('resize', () => {
+        if (monacoEditor) {
+          monacoEditor.layout();
+        }
+      });
+      
+      editor = monacoEditor;
+    }
+    
+    // 获取编辑器内容
+    function getEditorContent() {
+      if (isMonacoLoaded && monacoEditor) {
+        return monacoEditor.getValue();
+      } else if (editor) {
+        return editor.getValue();
+      }
+      return document.getElementById('code').value;
+    }
+    
+    // 编辑器内容变更处理
+    function handleEditorChange() {
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(() => {
+        run();
+      }, 500);
+    }
+    
+    // 运行代码
+    function run() {
+      const app = document.getElementById('app');
+      const codeContent = getEditorContent();
+      
+      try {
+        const compiler = VueTemplateCompiler.parseComponent(codeContent);
+        const option = new Function(
+          compiler.script.content.replace('export default', 'return')
+        )();
+        option.template = compiler.template.content;
 
-    // 防抖函数：当编辑器内容变化时，延迟 500ms 执行
-    editor.on('change', function() {
-      clearTimeout(debounceTimeout)
-      debounceTimeout = setTimeout(function() {
-        run()
-      }, 500)
-    })
+        // 配置moment并注册Antd
+        window.moment = moment;
+        moment.locale('zh-cn');
+        Vue.use(antd);
 
-    // 从URL参数加载Vue文件
+        // 处理样式
+        const vueStyle = document.getElementById('vue-style');
+        if (vueStyle) {
+          document.head.removeChild(vueStyle);
+        }
+        if (compiler.styles[0]) {
+          const style = document.createElement('style');
+          style.id = 'vue-style';
+          style.innerHTML = compiler.styles[0].content;
+          document.head.appendChild(style);
+        }
+
+        // 渲染组件
+        const component = new Vue(option).$mount();
+        app.innerHTML = '';
+        app.appendChild(component.$el);
+      } catch (error) {
+        console.error('代码运行出错:', error);
+        app.innerHTML = `<div style="padding: 20px; color: red;">代码运行出错: ${error.message}</div>`;
+      }
+    }
+    
+    // 全屏功能
+    function toggleFullscreen() {
+      const app = document.getElementById('app');
+      const fullscreenBtn = document.getElementById('fullscreenBtn');
+      
+      if (!isFullscreen) {
+        // 进入全屏
+        app.classList.add('preview-fullscreen');
+        fullscreenBtn.style.display = 'none';
+        
+        // 创建退出全屏按钮
+        const exitBtn = document.createElement('button');
+        exitBtn.className = 'exit-fullscreen-btn';
+        exitBtn.id = 'exitFullscreenBtn';
+        exitBtn.innerHTML = '<i class="fas fa-compress icon"></i>';
+        document.body.appendChild(exitBtn);
+        exitBtn.addEventListener('click', toggleFullscreen);
+      } else {
+        // 退出全屏
+        app.classList.remove('preview-fullscreen');
+        fullscreenBtn.style.display = 'flex';
+        
+        // 移除退出全屏按钮
+        const exitBtn = document.getElementById('exitFullscreenBtn');
+        if (exitBtn) {
+          document.body.removeChild(exitBtn);
+        }
+      }
+      isFullscreen = !isFullscreen;
+    }
+    
+    // 从URL加载代码
     async function loadFromUrl() {
-      const params = new URLSearchParams(window.location.search)
-      const url = params.get('url')
+      const params = new URLSearchParams(window.location.search);
+      const url = params.get('url');
       
       if (url) {
         try {
-          const response = await fetch(url)
+          const response = await fetch(url);
           if (response.ok) {
-            const content = await response.text()
-            editor.setValue(content)
-            // 加载后立即运行
-            setTimeout(() => run(), 100)
+            const content = await response.text();
+            // 更新编辑器内容
+            if (isMonacoLoaded && monacoEditor) {
+              monacoEditor.setValue(content);
+            } else if (editor) {
+              editor.setValue(content);
+            } else {
+              document.getElementById('code').value = content;
+            }
+            setTimeout(() => run(), 100);
           } else {
-            console.error('Failed to load file:', response.status)
-            run()
+            console.error('加载文件失败:', response.status);
           }
         } catch (error) {
-          console.error('Error loading file:', error)
-          run()
-        }
-      } else {
-        // 初始化 - 页面加载时执行一次
-        run()
-      }
-    }
-
-    // 全屏功能实现
-    function toggleFullscreen() {
-      if (!isFullscreen) {
-        // 进入全屏
-        app.classList.add('preview-fullscreen')
-        fullscreenBtn.style.display = 'none'
-        
-        // 创建退出全屏按钮（图标样式）
-        const exitBtn = document.createElement('button')
-        exitBtn.className = 'exit-fullscreen-btn'
-        exitBtn.id = 'exitFullscreenBtn'
-        exitBtn.innerHTML = '<i class="fas fa-compress icon"></i>'
-        document.body.appendChild(exitBtn)
-        
-        // 绑定退出全屏事件
-        exitBtn.addEventListener('click', toggleFullscreen)
-      } else {
-        // 退出全屏
-        app.classList.remove('preview-fullscreen')
-        fullscreenBtn.style.display = 'flex'
-        
-        // 移除退出全屏按钮
-        const exitBtn = document.getElementById('exitFullscreenBtn')
-        if (exitBtn) {
-          document.body.removeChild(exitBtn)
+          console.error('加载文件出错:', error);
         }
       }
-      isFullscreen = !isFullscreen
     }
-
-    // 绑定全屏按钮事件
-    fullscreenBtn.addEventListener('click', toggleFullscreen)
-
-    // 初始化
-    loadFromUrl()
+    
+    // 初始化流程
+    async function init() {
+      // 1. 初始化 SplitPane
+      initSplitPane();
+      
+      // 2. 尝试加载 Monaco Editor
+      try {
+        await loadMonacoEditor();
+        initMonacoEditor();
+        console.log('Monaco Editor 加载成功');
+      } catch (error) {
+        console.warn('Monaco Editor 加载失败，使用 CodeMirror 替代:', error);
+        initCodeMirror();
+      }
+      
+      // 3. 绑定全屏按钮事件
+      document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+      
+      // 4. 从URL加载代码
+      await loadFromUrl();
+      
+      // 5. 首次运行代码
+      run();
+    }
+    
+    // 启动应用
+    init();
   </script>
 </body>
 </html>
