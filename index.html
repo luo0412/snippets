@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
+  <!-- 引入图标库 -->
+  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     *,
     *::before,
@@ -81,19 +83,28 @@
       font-size: 14px;
       height: 100%;
     }
-    /* 全屏按钮样式 */
+    /* 优化全屏按钮样式 - 贴边小图标 */
     .fullscreen-btn {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      bottom: 10px;
+      right: 10px;
       z-index: 999;
-      padding: 6px 12px;
+      width: 36px;
+      height: 36px;
       background: #1890ff;
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 50%;
       cursor: pointer;
-      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: all 0.2s ease;
+    }
+    .fullscreen-btn:hover {
+      background: #40a9ff;
+      transform: scale(1.05);
     }
     /* 全屏状态样式 */
     .preview-fullscreen {
@@ -105,19 +116,32 @@
       z-index: 998;
       background: white;
     }
-    /* 退出全屏按钮样式 */
+    /* 优化退出全屏按钮样式 - 贴边小图标 */
     .exit-fullscreen-btn {
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 10px;
+      right: 10px;
       z-index: 999;
-      padding: 6px 12px;
+      width: 36px;
+      height: 36px;
       background: #ff4d4f;
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 50%;
       cursor: pointer;
-      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: all 0.2s ease;
+    }
+    .exit-fullscreen-btn:hover {
+      background: #ff7875;
+      transform: scale(1.05);
+    }
+    /* 图标样式 */
+    .icon {
+      font-size: 16px;
     }
   </style>
 </head>
@@ -127,9 +151,37 @@
   <div class="page">
     <a-button type="primary" @click="visible = true">按钮</a-button>
     <el-button type="primary" @click="visible = true">按钮</el-button>
-    <el-date-picker placeholder="请选择日期" v-model="date" />
+    <el-date-picker placeholder="请选择日期(ElementUI)" v-model="date" style="margin: 0 10px;" />
+    
+    <!-- 丰富的a-date-picker示例 -->
+    <a-date-picker 
+      placeholder="基础日期选择(AntD)" 
+      v-model="antdDate" 
+      style="margin: 0 10px;"
+      @change="handleDateChange"
+    />
+    <a-date-picker 
+      placeholder="带快捷选项" 
+      v-model="antdDate2" 
+      style="margin: 0 10px;"
+      :disabled-date="disabledDate"
+      :preset-ranges="presetRanges"
+    />
+    <a-range-picker 
+      placeholder="日期范围选择" 
+      v-model="dateRange" 
+      style="margin: 0 10px;"
+    />
+    <a-date-picker 
+      placeholder="月份选择器" 
+      v-model="monthDate" 
+      style="margin: 0 10px;"
+      picker="month"
+    />
+    
     <a-modal v-model:visible="visible" title="Hello world">
       <p>Try Ant Design Vue</p>
+      <div>已选日期: {{ antdDate ? antdDate.format('YYYY-MM-DD') : '未选择' }}</div>
     </a-modal>
   </div>
 </template>
@@ -139,7 +191,29 @@ export default {
   data() {
     return {
       date: null,
-      visible: false
+      antdDate: null,
+      antdDate2: null,
+      dateRange: null,
+      monthDate: null,
+      visible: false,
+      // 快捷日期范围
+      presetRanges: {
+        '今天': [moment(), moment()],
+        '昨天': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+        '近7天': [moment().subtract(6, 'days'), moment()],
+        '近30天': [moment().subtract(29, 'days'), moment()]
+      }
+    }
+  },
+  methods: {
+    // 日期变更回调
+    handleDateChange(date, dateString) {
+      console.log('选中日期:', date, '日期字符串:', dateString);
+    },
+    // 禁用日期
+    disabledDate(current) {
+      // 禁用未来日期
+      return current && current > moment().endOf('day');
     }
   }
 }
@@ -149,12 +223,23 @@ export default {
 .page {
   padding: 20px;
 }
+/* 调整日期选择器间距 */
+.ant-picker {
+  margin-bottom: 10px;
+}
 </style></textarea>
   </div>
   <span class="run">✓ 自动刷新中</span>
   <div id="app" class="preview-area"></div>
-  <!-- 全屏按钮 -->
-  <button class="fullscreen-btn" id="fullscreenBtn">全屏预览</button>
+  
+  <!-- 优化后的全屏按钮（图标样式） -->
+  <button class="fullscreen-btn" id="fullscreenBtn">
+    <i class="fas fa-expand icon"></i>
+  </button>
+  
+  <!-- 引入moment.js -->
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/zh-cn.js"></script>
   
   <script src="static/js/vue.js"></script>
   <script src="static/js/vue-template-compiler.js"></script>
@@ -193,9 +278,12 @@ export default {
       )()
       option.template = compiler.template.content
 
-      // register Antd and ElementUI components globally if needed
+      // 配置moment并注册Antd
+      window.moment = moment;
+      moment.locale('zh-cn'); // 设置中文
+      
+      // 正确注册Ant Design Vue
       Vue.use(antd)
-      // Vue.use(ElementUI)
 
       const vueStyle = document.getElementById('vue-style')
       if (vueStyle) document.getElementsByTagName('head')[0].removeChild(vueStyle)
@@ -253,11 +341,11 @@ export default {
         app.classList.add('preview-fullscreen')
         fullscreenBtn.style.display = 'none'
         
-        // 创建退出全屏按钮
+        // 创建退出全屏按钮（图标样式）
         const exitBtn = document.createElement('button')
         exitBtn.className = 'exit-fullscreen-btn'
         exitBtn.id = 'exitFullscreenBtn'
-        exitBtn.textContent = '退出全屏'
+        exitBtn.innerHTML = '<i class="fas fa-compress icon"></i>'
         document.body.appendChild(exitBtn)
         
         // 绑定退出全屏事件
@@ -265,7 +353,7 @@ export default {
       } else {
         // 退出全屏
         app.classList.remove('preview-fullscreen')
-        fullscreenBtn.style.display = 'block'
+        fullscreenBtn.style.display = 'flex'
         
         // 移除退出全屏按钮
         const exitBtn = document.getElementById('exitFullscreenBtn')
