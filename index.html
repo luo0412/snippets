@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
-  <!-- 引入 splitpane 样式 -->
-  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/splitpanes/3.1.5/splitpanes.min.css">
+  <!-- 替换为可靠的 splitpane 样式 CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/splitpanes@3.1.5/dist/splitpanes.min.css">
   <!-- 引入 Font Awesome 图标库 -->
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -156,6 +156,28 @@
       height: 100%;
       overflow: auto;
     }
+    /* 备用分割线样式（防止splitpanes加载失败） */
+    .fallback-splitter {
+      width: 8px;
+      height: 100%;
+      background-color: #ccc;
+      cursor: col-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .fallback-splitter-vertical {
+      width: 100%;
+      height: 8px;
+      cursor: row-resize;
+    }
+    .fallback-splitter::after {
+      content: '';
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: #999;
+    }
   </style>
 </head>
 <body>
@@ -261,8 +283,8 @@ export default {
   <script src="static/js/antd.min.js"></script>
   <script src="static/js/element-ui.min.js"></script>
   
-  <!-- 引入 splitpane -->
-  <script src="https://cdn.bootcdn.net/ajax/libs/splitpanes/3.1.5/splitpanes.min.js"></script>
+  <!-- 替换为可靠的 splitpane JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/splitpanes@3.1.5/dist/splitpanes.min.js"></script>
   
   <!-- 引入 CodeMirror -->
   <script src="static/codemirror/codemirror.js"></script>
@@ -284,9 +306,129 @@ export default {
     let debounceTimeout;
     let isFullscreen = false;
     let currentLayout = 'horizontal'; // 默认水平布局
+    let splitPaneInstance = null; // SplitPane实例
+    let isSplitPanesAvailable = false; // SplitPanes是否加载成功
+    
+    // 检查SplitPanes是否加载成功
+    function checkSplitPanesAvailability() {
+      try {
+        isSplitPanesAvailable = typeof window.Splitpanes !== 'undefined';
+        return isSplitPanesAvailable;
+      } catch (e) {
+        isSplitPanesAvailable = false;
+        return false;
+      }
+    }
+    
+    // 初始化原生分割面板（备用方案）
+    function initFallbackSplitPane() {
+      const container = document.getElementById('app-container');
+      const isMobile = window.innerWidth <= 767;
+      currentLayout = isMobile ? 'vertical' : 'horizontal';
+      
+      // 创建原生分割面板结构
+      container.innerHTML = `
+        <div style="display: ${isMobile ? 'flex; flex-direction: column;' : 'flex;'}; height: 100%; width: 100%;">
+          <div style="${isMobile ? 'height: 50vh;' : 'width: 50%;'}">
+            <!-- Monaco Editor 容器 -->
+            <div id="monaco-editor-container"></div>
+            <!-- CodeMirror 容器 -->
+            <div id="codemirror-container"></div>
+          </div>
+          <div class="fallback-splitter ${isMobile ? 'fallback-splitter-vertical' : ''}" id="fallback-splitter"></div>
+          <div style="${isMobile ? 'flex: 1;' : 'flex: 1;'}">
+            <div id="app" class="preview-area"></div>
+          </div>
+        </div>
+      `;
+      
+      // 绑定原生分割面板的拖拽事件
+      const splitter = document.getElementById('fallback-splitter');
+      let isDragging = false;
+      let startX, startY, startWidth, startHeight;
+      
+      splitter.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        const editorPane = splitter.previousElementSibling;
+        startWidth = editorPane.offsetWidth;
+        startHeight = editorPane.offsetHeight;
+        
+        // 添加鼠标事件监听
+        document.addEventListener('mousemove', handleDrag);
+        document.addEventListener('mouseup', stopDrag);
+        
+        // 防止默认行为
+        e.preventDefault();
+      });
+      
+      function handleDrag(e) {
+        if (!isDragging) return;
+        
+        const editorPane = document.getElementById('fallback-splitter').previousElementSibling;
+        const container = document.getElementById('app-container');
+        
+        if (currentLayout === 'horizontal') {
+          // 水平布局（PC端）
+          const deltaX = e.clientX - startX;
+          const newWidth = startWidth + deltaX;
+          const containerWidth = container.offsetWidth;
+          
+          // 限制最小宽度
+          if (newWidth > 100 && newWidth < containerWidth - 100) {
+            editorPane.style.width = `${newWidth}px`;
+          }
+        } else {
+          // 垂直布局（移动端）
+          const deltaY = e.clientY - startY;
+          const newHeight = startHeight + deltaY;
+          const containerHeight = container.offsetHeight;
+          
+          // 限制最小高度
+          if (newHeight > 100 && newHeight < containerHeight - 100) {
+            editorPane.style.height = `${newHeight}px`;
+          }
+        }
+        
+        // 调整编辑器大小
+        if (monacoEditor) {
+          monacoEditor.layout();
+        }
+      }
+      
+      function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', handleDrag);
+        document.removeEventListener('mouseup', stopDrag);
+      }
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', debounce(function() {
+        const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
+        if (newLayout !== currentLayout) {
+          currentLayout = newLayout;
+          initFallbackSplitPane();
+          if (isMonacoLoaded) {
+            initMonacoEditor();
+          } else {
+            initCodeMirror();
+          }
+          run();
+        }
+      }, 300));
+    }
     
     // 初始化 SplitPane 容器
     function initSplitPane() {
+      // 先检查SplitPanes是否可用
+      if (!checkSplitPanesAvailability()) {
+        console.warn('SplitPanes CDN加载失败，使用原生分割面板替代');
+        initFallbackSplitPane();
+        return;
+      }
+      
       const container = document.getElementById('app-container');
       const isMobile = window.innerWidth <= 767;
       currentLayout = isMobile ? 'vertical' : 'horizontal';
@@ -308,10 +450,16 @@ export default {
       `;
       
       // 初始化 SplitPane
-      new Splitpanes(document.querySelector('.splitpanes'), {
-        resizerThickness: isMobile ? 8 : 8,
-        cursor: isMobile ? 'row-resize' : 'col-resize'
-      });
+      try {
+        splitPaneInstance = new Splitpanes(document.querySelector('.splitpanes'), {
+          resizerThickness: isMobile ? 8 : 8,
+          cursor: isMobile ? 'row-resize' : 'col-resize'
+        });
+      } catch (error) {
+        console.error('初始化SplitPanes失败:', error);
+        initFallbackSplitPane();
+        return;
+      }
       
       // 监听窗口大小变化，切换布局
       window.addEventListener('resize', debounce(function() {
@@ -347,7 +495,8 @@ export default {
       
       // 显示 CodeMirror 容器，隐藏 Monaco 容器
       codeMirrorContainer.style.display = 'block';
-      document.getElementById('monaco-editor-container').style.display = 'none';
+      const monacoContainer = document.getElementById('monaco-editor-container');
+      if (monacoContainer) monacoContainer.style.display = 'none';
       
       // 初始化 CodeMirror
       editor = CodeMirror.fromTextArea(codeTextarea, {
@@ -401,11 +550,14 @@ export default {
     // 初始化 Monaco Editor
     function initMonacoEditor() {
       const container = document.getElementById('monaco-editor-container');
+      if (!container) return;
+      
       const codeTextarea = document.getElementById('code');
       
       // 显示 Monaco 容器，隐藏 CodeMirror 容器
       container.style.display = 'block';
-      document.getElementById('codemirror-container').style.display = 'none';
+      const codeMirrorContainer = document.getElementById('codemirror-container');
+      if (codeMirrorContainer) codeMirrorContainer.style.display = 'none';
       
       // 销毁原有实例
       if (monacoEditor) {
@@ -413,30 +565,35 @@ export default {
       }
       
       // 初始化 Monaco Editor
-      monacoEditor = monaco.editor.create(container, {
-        value: codeTextarea.value,
-        language: 'vue',
-        theme: 'vs-light',
-        minimap: { enabled: true },
-        scrollBeyondLastLine: false,
-        fontSize: 14,
-        lineNumbers: 'on',
-        autoClosingBrackets: 'always',
-        autoClosingTags: 'always',
-        matchBrackets: 'always'
-      });
-      
-      // 绑定内容变更事件
-      monacoEditor.onDidChangeModelContent(handleEditorChange);
-      
-      // 监听容器大小变化
-      window.addEventListener('resize', () => {
-        if (monacoEditor) {
-          monacoEditor.layout();
-        }
-      });
-      
-      editor = monacoEditor;
+      try {
+        monacoEditor = monaco.editor.create(container, {
+          value: codeTextarea.value,
+          language: 'vue',
+          theme: 'vs-light',
+          minimap: { enabled: true },
+          scrollBeyondLastLine: false,
+          fontSize: 14,
+          lineNumbers: 'on',
+          autoClosingBrackets: 'always',
+          autoClosingTags: 'always',
+          matchBrackets: 'always'
+        });
+        
+        // 绑定内容变更事件
+        monacoEditor.onDidChangeModelContent(handleEditorChange);
+        
+        // 监听容器大小变化
+        window.addEventListener('resize', () => {
+          if (monacoEditor) {
+            monacoEditor.layout();
+          }
+        });
+        
+        editor = monacoEditor;
+      } catch (error) {
+        console.error('初始化Monaco Editor失败:', error);
+        initCodeMirror();
+      }
     }
     
     // 获取编辑器内容
@@ -460,6 +617,8 @@ export default {
     // 运行代码
     function run() {
       const app = document.getElementById('app');
+      if (!app) return;
+      
       const codeContent = getEditorContent();
       
       try {
@@ -499,6 +658,8 @@ export default {
     // 全屏功能
     function toggleFullscreen() {
       const app = document.getElementById('app');
+      if (!app) return;
+      
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       
       if (!isFullscreen) {
@@ -557,10 +718,13 @@ export default {
     
     // 初始化流程
     async function init() {
-      // 1. 初始化 SplitPane
+      // 1. 检查SplitPanes是否加载成功
+      checkSplitPanesAvailability();
+      
+      // 2. 初始化 SplitPane（优先使用官方库，失败则用原生）
       initSplitPane();
       
-      // 2. 尝试加载 Monaco Editor
+      // 3. 尝试加载 Monaco Editor
       try {
         await loadMonacoEditor();
         initMonacoEditor();
@@ -570,18 +734,25 @@ export default {
         initCodeMirror();
       }
       
-      // 3. 绑定全屏按钮事件
-      document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+      // 4. 绑定全屏按钮事件
+      const fullscreenBtn = document.getElementById('fullscreenBtn');
+      if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+      }
       
-      // 4. 从URL加载代码
+      // 5. 从URL加载代码
       await loadFromUrl();
       
-      // 5. 首次运行代码
+      // 6. 首次运行代码
       run();
     }
     
-    // 启动应用
-    init();
+    // 确保DOM加载完成后初始化
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
