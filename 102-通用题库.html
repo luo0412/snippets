@@ -491,6 +491,72 @@
             font-size: 13px;
         }
         
+        /* 二次确认弹窗样式 */
+        .confirm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 10px;
+        }
+        
+        .confirm-content {
+            background-color: #fff;
+            border-radius: 6px;
+            width: 90%;
+            max-width: 400px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .confirm-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .confirm-body {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .confirm-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .confirm-btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 80px;
+        }
+        
+        .confirm-cancel {
+            background-color: #ecf0f1;
+            color: #7f8c8d;
+        }
+        
+        .confirm-ok {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        
         /* H5适配 */
         @media (max-width: 768px) {
             body {
@@ -563,7 +629,7 @@
                     <i class="fa fa-filter"></i> 仅看错题
                 </button>
                 <button class="title-btn title-btn-reset" id="btn-reset">
-                    <i class="fa fa-refresh"></i> 重置
+                    <i class="fa fa-refresh"></i> 重置题库
                 </button>
             </div>
         </div>
@@ -684,6 +750,21 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 二次确认弹窗 -->
+        <div class="confirm-modal" id="reset-confirm-modal">
+            <div class="confirm-content">
+                <div class="confirm-header">确认重置题库</div>
+                <div class="confirm-body">
+                    此操作将清空所有题库数据和答题记录，<br>
+                    且无法恢复，是否确定重置？
+                </div>
+                <div class="confirm-buttons">
+                    <button class="confirm-btn confirm-cancel" id="confirm-cancel">取消</button>
+                    <button class="confirm-btn confirm-ok" id="confirm-ok">确认重置</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -721,6 +802,10 @@
         const feedbackInfo = document.querySelector('.feedback-info');
         const currentPageEl = document.getElementById('current-page');
         const totalPagesEl = document.getElementById('total-pages');
+        // 二次确认弹窗元素
+        const resetConfirmModal = document.getElementById('reset-confirm-modal');
+        const confirmCancelBtn = document.getElementById('confirm-cancel');
+        const confirmOkBtn = document.getElementById('confirm-ok');
         
         // ========== 本地存储功能 ==========
         // 从localStorage加载数据
@@ -777,7 +862,75 @@
             if (e.target === formatModal) {
                 formatModal.style.display = 'none';
             }
+            if (e.target === resetConfirmModal) {
+                resetConfirmModal.style.display = 'none';
+            }
         });
+        
+        // ========== 重置题库二次确认 ==========
+        // 打开确认弹窗
+        btnReset.addEventListener('click', function() {
+            resetConfirmModal.style.display = 'flex';
+        });
+        
+        // 取消重置
+        confirmCancelBtn.addEventListener('click', function() {
+            resetConfirmModal.style.display = 'none';
+        });
+        
+        // 确认重置
+        confirmOkBtn.addEventListener('click', function() {
+            // 清空所有数据
+            resetAllData();
+            // 关闭弹窗
+            resetConfirmModal.style.display = 'none';
+            // 显示提示
+            showFeedback('重置成功', '已清空所有题库数据和答题记录', 'info');
+        });
+        
+        // 重置所有数据并恢复初始界面
+        function resetAllData() {
+            // 清空本地存储
+            clearLocalStorage();
+            
+            // 重置全局变量
+            questionBank = [];
+            originalQuestionBank = [];
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            answeredCount = 0;
+            correctCount = 0;
+            showOnlyWrongQuestions = false;
+            
+            // 销毁swiper实例
+            if (swiper) {
+                swiper.destroy(true, true);
+                swiper = null;
+            }
+            
+            // 清空题目容器
+            questionContainer.innerHTML = '';
+            
+            // 恢复初始界面
+            titleBar.style.display = 'none';
+            questionSwiper.style.display = 'none';
+            paginationBottom.style.display = 'none';
+            importSection.style.display = 'block';
+            initialTip.style.display = 'block';
+            
+            // 重置统计显示
+            titleCurrent.textContent = '1';
+            titleTotal.textContent = '0';
+            titleRate.textContent = '0';
+            currentPageEl.textContent = '1';
+            totalPagesEl.textContent = '0';
+            
+            // 隐藏反馈信息
+            feedback.style.display = 'none';
+            
+            // 重置按钮文本
+            btnWrong.innerHTML = '<i class="fa fa-filter"></i> 仅看错题';
+        }
         
         // ========== Excel导入功能 ==========
         excelFileInput.addEventListener('change', handleExcelUpload);
@@ -1088,7 +1241,7 @@
             updatePagination();
         }
         
-        // 选项点击事件
+        // 选项点击事件 - 保留多选取消勾选功能
         function addOptionClickEvents() {
             document.querySelectorAll('.option-item').forEach(option => {
                 option.addEventListener('click', function() {
@@ -1118,14 +1271,15 @@
                         userAnswers[questionId].hasBeenCounted = false;
                         userAnswers[questionId].wasCorrect = false;
                     } else if (question.type.includes('多选')) {
-                        // 多选题：切换选中状态
+                        // 多选题：切换选中状态（支持取消勾选）
                         this.classList.toggle('selected');
-                        if (this.classList.contains('selected')) {
-                            if (!userAnswers[questionId].includes(optionId)) {
-                                userAnswers[questionId].push(optionId);
-                            }
+                        const optionIndex = userAnswers[questionId].indexOf(optionId);
+                        if (optionIndex > -1) {
+                            // 取消勾选
+                            userAnswers[questionId].splice(optionIndex, 1);
                         } else {
-                            userAnswers[questionId] = userAnswers[questionId].filter(id => id !== optionId);
+                            // 勾选
+                            userAnswers[questionId].push(optionId);
                         }
                     }
                     
@@ -1139,7 +1293,7 @@
             });
         }
         
-        // 立即判题
+        // 立即判题 - 简化多选题提示
         function checkAnswerImmediately(questionId) {
             const question = questionBank.find(q => q.id === questionId);
             const userSelected = userAnswers[questionId] || [];
@@ -1160,8 +1314,8 @@
             userAnswers[questionId].wasCorrect = isCorrect;
             userAnswers[questionId].hasBeenCounted = true;
             
-            // 更新选项样式
-            if (isCorrect || (question.type.includes('多选') && userSelected.length >= question.answers.length)) {
+            // 更新选项样式（仅在完全正确时显示）
+            if (isCorrect) {
                 document.querySelectorAll(`#options-${questionId} .option-item`).forEach(option => {
                     const optId = option.getAttribute('data-option');
                     const isUserSel = userSelected.includes(optId);
@@ -1177,24 +1331,14 @@
                 });
             }
             
-            // 优化多选题提示逻辑
+            // 简化多选题提示（不显示具体数量和错误选项提示）
             const correctAnswer = question.answers.join('、');
             if (isCorrect) {
                 showFeedback('回答正确！', `正确答案：${correctAnswer}`, 'correct');
             } else {
                 if (question.type.includes('多选')) {
-                    // 多选提示细分
-                    const selectedCorrectCount = userSelected.filter(id => question.answers.includes(id)).length;
-                    const unselectedCorrectCount = question.answers.filter(id => !userSelected.includes(id)).length;
-                    const selectedIncorrectCount = userSelected.filter(id => !question.answers.includes(id)).length;
-                    
-                    if (selectedIncorrectCount > 0) {
-                        // 选了错误选项
-                        showFeedback('回答错误', `包含错误选项，正确答案：${correctAnswer}`, 'incorrect');
-                    } else if (unselectedCorrectCount > 0) {
-                        // 漏选正确选项
-                        showFeedback('答案不全', `还需要选择 ${unselectedCorrectCount} 个正确选项`, 'info');
-                    }
+                    // 多选题仅提示"答案不正确"，不显示具体原因
+                    showFeedback('答案不正确', '请重新选择正确选项', 'incorrect');
                 } else {
                     // 单选/判断错误
                     showFeedback('回答错误', `正确答案：${correctAnswer}`, 'incorrect');
@@ -1280,29 +1424,6 @@
             }
         }
         
-        // 重置当前题目
-        function resetCurrentQuestion() {
-            if (questionBank.length === 0) return;
-            
-            const currentQuestion = questionBank[currentQuestionIndex];
-            const questionId = currentQuestion.id;
-            
-            // 清除当前题目答案
-            if (userAnswers[questionId]) delete userAnswers[questionId];
-            
-            // 重置选项样式
-            document.querySelectorAll(`#options-${questionId} .option-item`).forEach(option => {
-                option.classList.remove('selected', 'correct', 'incorrect');
-            });
-            
-            // 保存重置结果
-            saveToLocalStorage();
-            
-            feedback.style.display = 'none';
-            updateStats();
-            showFeedback('已重置', '当前题目答案已清空', 'info');
-        }
-        
         // 绑定按钮事件
         function bindEvents() {
             // 上一题
@@ -1332,9 +1453,6 @@
             
             // 仅看错题
             btnWrong.addEventListener('click', filterWrongQuestions);
-            
-            // 重置
-            btnReset.addEventListener('click', resetCurrentQuestion);
         }
         
         // 初始化
