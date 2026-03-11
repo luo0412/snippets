@@ -24,6 +24,8 @@
             line-height: 1.5;
             padding: 8px 0;
             min-height: 100vh;
+            /* 防止整体滚动 */
+            overflow-x: hidden;
         }
         
         .container {
@@ -31,9 +33,11 @@
             margin: 0 auto;
             padding: 8px;
             width: 100%;
+            /* 限制容器最大宽度，防止溢出 */
+            overflow: hidden;
         }
         
-        /* 标题栏 - 紧凑设计 */
+        /* 标题栏 - 优化布局，防止换行扭曲 */
         .title-bar {
             background-color: #fff;
             border-radius: 6px;
@@ -44,12 +48,19 @@
             justify-content: space-between;
             align-items: center;
             font-size: 14px;
+            /* 强制不换行，溢出隐藏 */
+            white-space: nowrap;
+            /* 最小高度保证布局稳定 */
+            min-height: 44px;
         }
         
         .title-main {
             font-size: 16px;
             font-weight: 600;
             color: #2c3e50;
+            /* 固定宽度，防止挤压 */
+            flex: 0 0 auto;
+            margin-right: 10px;
         }
         
         .title-sub {
@@ -58,12 +69,18 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            /* 自适应中间空间，溢出隐藏 */
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
-        /* 右上角功能按钮组 */
+        /* 右上角功能按钮组 - 固定宽度，防止换行 */
         .title-actions {
             display: flex;
             gap: 6px;
+            /* 固定宽度，防止挤压 */
+            flex: 0 0 auto;
         }
         
         .title-btn {
@@ -77,6 +94,8 @@
             align-items: center;
             justify-content: center;
             gap: 4px;
+            /* 固定最小宽度，保证按钮大小一致 */
+            min-width: 70px;
         }
         
         .title-btn-wrong {
@@ -105,18 +124,21 @@
             margin-bottom: 8px;
         }
         
-        /* 导入按钮组 */
+        /* 导入按钮组 - 等宽布局 */
         .import-btn-group {
             display: flex;
             gap: 6px;
             justify-content: center;
-            flex-wrap: nowrap;
+            /* 强制等宽布局 */
+            width: 100%;
         }
         
         .file-upload {
             position: relative;
+            /* 等宽分配 */
             flex: 1;
-            min-width: 120px;
+            /* 固定最小宽度，防止过窄 */
+            min-width: 100px;
         }
         
         .file-input {
@@ -129,7 +151,7 @@
             cursor: pointer;
         }
         
-        /* 通用按钮样式 */
+        /* 通用按钮样式 - 等宽 */
         .btn {
             padding: 6px 8px;
             border-radius: 4px;
@@ -141,14 +163,19 @@
             align-items: center;
             justify-content: center;
             gap: 4px;
+            /* 强制等宽 */
             flex: 1;
-            min-width: 90px;
+            /* 统一最小宽度 */
+            min-width: 100px;
+            max-width: 150px;
             white-space: nowrap;
         }
         
         .upload-btn {
             background-color: #3498db;
             color: #fff;
+            /* 继承父级宽度 */
+            width: 100%;
         }
         
         .template-btn {
@@ -166,6 +193,8 @@
             font-size: 11px;
             color: #7f8c8d;
             line-height: 1.4;
+            /* 防止提示文本换行溢出 */
+            word-wrap: break-word;
         }
         
         /* 初始提示区域 */
@@ -196,12 +225,15 @@
             line-height: 1.4;
         }
         
-        /* Swiper容器 */
+        /* Swiper容器 - 优化高度，适配一屏显示 */
         .swiper {
             width: 100%;
-            height: calc(100vh - 120px);
+            /* 动态计算高度，减去标题栏和导入区域，适配一屏 */
+            height: calc(100vh - 180px);
             margin-bottom: 6px;
             display: none;
+            /* 防止swiper内部滚动 */
+            overflow: hidden;
         }
         
         .swiper-slide {
@@ -212,6 +244,8 @@
             height: 100% !important;
             display: flex;
             flex-direction: column;
+            /* 防止slide内容溢出 */
+            overflow: hidden;
         }
         
         .question-card {
@@ -219,6 +253,8 @@
             flex-direction: column;
             height: 100%;
             width: 100%;
+            /* 防止卡片内容溢出 */
+            overflow: hidden;
         }
         
         .question-header {
@@ -228,6 +264,8 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            /* 固定高度，防止挤压 */
+            flex: 0 0 auto;
         }
         
         .question-type {
@@ -259,14 +297,20 @@
             color: #2c3e50;
             line-height: 1.5;
             width: 100%;
+            /* 标题溢出换行 */
+            word-wrap: break-word;
+            flex: 0 0 auto;
         }
         
-        /* 选项容器 */
+        /* 选项容器 - 自适应高度，滚动优化 */
         .options-container {
             margin: 8px 0;
+            /* 自适应剩余高度 */
             flex-grow: 1;
             width: 100%;
             overflow-y: auto;
+            /* 优化滚动条样式 */
+            -webkit-overflow-scrolling: touch;
         }
         
         .option-item {
@@ -302,6 +346,8 @@
         .option-content {
             flex-grow: 1;
             line-height: 1.4;
+            /* 选项内容溢出换行 */
+            word-wrap: break-word;
         }
         
         /* 选项状态样式 */
@@ -344,6 +390,8 @@
             padding-top: 8px;
             border-top: 1px solid #eee;
             width: 100%;
+            /* 固定高度，防止挤压 */
+            flex: 0 0 auto;
         }
         
         .nav-btn {
@@ -378,6 +426,8 @@
             font-size: 12px;
             color: #7f8c8d;
             display: none;
+            /* 固定高度 */
+            flex: 0 0 auto;
         }
         
         .pagination-bottom span {
@@ -394,6 +444,8 @@
             display: none;
             width: 100%;
             line-height: 1.4;
+            /* 固定高度，防止挤压 */
+            flex: 0 0 auto;
         }
         
         .feedback.correct {
@@ -557,29 +609,50 @@
             color: #fff;
         }
         
-        /* H5适配 */
+        /* H5适配 - 重点优化一屏显示和布局 */
         @media (max-width: 768px) {
             body {
                 padding: 4px 0;
+                /* 彻底禁止H5滚动 */
+                overflow: hidden;
+                height: 100vh;
             }
             
             .container {
                 padding: 4px;
+                /* 容器高度适配屏幕 */
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                /* 防止容器溢出 */
+                overflow: hidden;
             }
             
+            /* 标题栏 - 移动端优化 */
             .title-bar {
                 flex-direction: row;
                 flex-wrap: nowrap;
                 font-size: 12px;
+                padding: 6px 8px;
+                min-height: 40px;
+                /* 标题栏固定高度，不挤压其他区域 */
+                flex: 0 0 40px;
+                margin-bottom: 4px;
             }
             
             .title-main {
                 font-size: 14px;
+                margin-right: 5px;
+                /* 缩小主标题宽度 */
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             
             .title-sub {
-                font-size: 12px;
-                gap: 6px;
+                font-size: 11px;
+                gap: 5px;
+                /* 移动端缩小间距 */
             }
             
             .title-actions {
@@ -590,26 +663,82 @@
                 padding: 3px 6px;
                 font-size: 11px;
                 min-width: 60px;
+                /* 缩小按钮内边距 */
+            }
+            
+            /* 导入区域 - 移动端适配 */
+            .import-section {
+                padding: 8px 6px;
+                margin-bottom: 4px;
+                /* 固定高度，不挤压答题区 */
+                flex: 0 0 auto;
+            }
+            
+            .import-section h2 {
+                font-size: 14px;
+                margin-bottom: 6px;
             }
             
             .import-btn-group {
                 flex-wrap: nowrap;
+                gap: 4px;
             }
             
             .btn {
                 font-size: 12px;
                 padding: 5px 6px;
-                min-width: 70px;
+                /* 移动端统一按钮宽度 */
+                min-width: 80px;
+                max-width: 100px;
             }
             
+            /* Swiper答题区 - 移动端一屏显示核心 */
             .swiper {
-                height: calc(100vh - 100px);
+                /* 自适应剩余高度 */
+                flex: 1;
+                height: auto !important;
+                margin-bottom: 4px;
             }
             
             .nav-btn {
                 padding: 6px 8px;
                 font-size: 11px;
                 min-width: 70px;
+            }
+            
+            /* 初始提示区域 - 移动端适配 */
+            .initial-tip {
+                padding: 15px 10px;
+                /* 自适应剩余高度 */
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            
+            .initial-tip i {
+                font-size: 28px;
+            }
+            
+            .initial-tip h3 {
+                font-size: 14px;
+            }
+            
+            .initial-tip p {
+                font-size: 12px;
+            }
+            
+            /* 页码和反馈 - 移动端缩小 */
+            .pagination-bottom {
+                font-size: 11px;
+                padding: 2px 0;
+                flex: 0 0 auto;
+            }
+            
+            .feedback {
+                font-size: 12px;
+                padding: 4px 6px;
+                flex: 0 0 auto;
             }
         }
     </style>
