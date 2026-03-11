@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>通用题库系统</title>
+    <title>题库</title>
     <!-- 仅保留必要CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
@@ -45,13 +45,21 @@
             margin-bottom: 8px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column; /* 改为列布局，功能按钮单独成行 */
+            align-items: flex-start;
             font-size: 14px;
             /* 强制不换行，溢出隐藏 */
             white-space: nowrap;
             /* 最小高度保证布局稳定 */
             min-height: 44px;
+            gap: 8px; /* 增加行间距 */
+        }
+        
+        .title-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
         }
         
         .title-main {
@@ -75,16 +83,18 @@
             text-overflow: ellipsis;
         }
         
-        /* 右上角功能按钮组 - 固定宽度，防止换行 */
+        /* 右上角功能按钮组 - 改为单列布局，单独成行 */
         .title-actions {
             display: flex;
-            gap: 6px;
+            gap: 8px; /* 增加按钮间距 */
             /* 固定宽度，防止挤压 */
             flex: 0 0 auto;
+            width: 100%;
+            justify-content: flex-start;
         }
         
         .title-btn {
-            padding: 4px 8px;
+            padding: 6px 12px;
             border-radius: 4px;
             border: none;
             font-size: 12px;
@@ -95,11 +105,16 @@
             justify-content: center;
             gap: 4px;
             /* 固定最小宽度，保证按钮大小一致 */
-            min-width: 70px;
+            min-width: 100px;
         }
         
         .title-btn-wrong {
             background-color: #9b59b6;
+            color: #fff;
+        }
+        
+        .title-btn-unanswered {
+            background-color: #3498db;
             color: #fff;
         }
         
@@ -124,18 +139,17 @@
             margin-bottom: 8px;
         }
         
-        /* 导入按钮组 - 等宽布局 */
+        /* 导入按钮组 - 三等分flex布局，保留空隙 */
         .import-btn-group {
             display: flex;
-            gap: 6px;
-            justify-content: center;
-            /* 强制等宽布局 */
+            gap: 10px; /* 按钮间空隙 */
+            justify-content: space-between; /* 三等分并保留空隙 */
             width: 100%;
         }
         
         .file-upload {
             position: relative;
-            /* 等宽分配 */
+            /* 三等分 */
             flex: 1;
             /* 固定最小宽度，防止过窄 */
             min-width: 100px;
@@ -151,9 +165,9 @@
             cursor: pointer;
         }
         
-        /* 通用按钮样式 - 等宽 */
+        /* 通用按钮样式 - 三等分 */
         .btn {
-            padding: 6px 8px;
+            padding: 8px 12px;
             border-radius: 4px;
             border: none;
             font-size: 13px;
@@ -163,11 +177,11 @@
             align-items: center;
             justify-content: center;
             gap: 4px;
-            /* 强制等宽 */
+            /* 三等分 */
             flex: 1;
             /* 统一最小宽度 */
             min-width: 100px;
-            max-width: 150px;
+            max-width: none; /* 取消最大宽度限制 */
             white-space: nowrap;
         }
         
@@ -229,7 +243,7 @@
         .swiper {
             width: 100%;
             /* 动态计算高度，减去标题栏和导入区域，适配一屏 */
-            height: calc(100vh - 180px);
+            height: calc(100vh - 200px);
             margin-bottom: 6px;
             display: none;
             /* 防止swiper内部滚动 */
@@ -630,14 +644,19 @@
             
             /* 标题栏 - 移动端优化 */
             .title-bar {
-                flex-direction: row;
+                flex-direction: column;
                 flex-wrap: nowrap;
                 font-size: 12px;
                 padding: 6px 8px;
-                min-height: 40px;
-                /* 标题栏固定高度，不挤压其他区域 */
-                flex: 0 0 40px;
+                min-height: auto;
+                /* 标题栏自适应高度 */
+                flex: 0 0 auto;
                 margin-bottom: 4px;
+                gap: 6px;
+            }
+            
+            .title-top {
+                width: 100%;
             }
             
             .title-main {
@@ -656,13 +675,15 @@
             }
             
             .title-actions {
-                gap: 4px;
+                gap: 6px;
+                width: 100%;
+                flex-wrap: wrap; /* 移动端允许换行 */
             }
             
             .title-btn {
-                padding: 3px 6px;
+                padding: 4px 8px;
                 font-size: 11px;
-                min-width: 60px;
+                min-width: 80px;
                 /* 缩小按钮内边距 */
             }
             
@@ -681,15 +702,15 @@
             
             .import-btn-group {
                 flex-wrap: nowrap;
-                gap: 4px;
+                gap: 6px;
             }
             
             .btn {
                 font-size: 12px;
-                padding: 5px 6px;
+                padding: 6px 8px;
                 /* 移动端统一按钮宽度 */
                 min-width: 80px;
-                max-width: 100px;
+                max-width: none;
             }
             
             /* Swiper答题区 - 移动端一屏显示核心 */
@@ -747,15 +768,20 @@
     <div class="container">
         <!-- 标题栏 -->
         <div class="title-bar" id="title-bar" style="display: none;">
-            <div class="title-main">通用题库系统</div>
-            <div class="title-sub">
-                <span>第 <span id="title-current">1</span> 题 / 共 <span id="title-total">0</span> 题</span>
-                <span>正确率：<span id="title-rate">0</span>%</span>
+            <div class="title-top">
+                <div class="title-main">题库</div>
+                <div class="title-sub">
+                    <span>第 <span id="title-current">1</span> 题 / 共 <span id="title-total">0</span> 题</span>
+                    <span>正确率：<span id="title-rate">0</span>%</span>
+                </div>
             </div>
-            <!-- 右上角功能按钮 -->
+            <!-- 功能按钮组 - 单独成行 -->
             <div class="title-actions">
                 <button class="title-btn title-btn-wrong" id="btn-wrong">
                     <i class="fa fa-filter"></i> 仅看错题
+                </button>
+                <button class="title-btn title-btn-unanswered" id="btn-unanswered">
+                    <i class="fa fa-question-circle"></i> 仅看未回答
                 </button>
                 <button class="title-btn title-btn-reset" id="btn-reset">
                     <i class="fa fa-refresh"></i> 重置题库
@@ -766,7 +792,7 @@
         <!-- Excel导入区域 -->
         <div class="import-section" id="import-section">
             <h2>题库文件导入</h2>
-            <!-- 导入按钮组 -->
+            <!-- 导入按钮组 - flex三等分布局 -->
             <div class="import-btn-group">
                 <div class="file-upload">
                     <button class="btn upload-btn">
@@ -905,6 +931,7 @@
         let answeredCount = 0;
         let correctCount = 0;
         let showOnlyWrongQuestions = false;
+        let showOnlyUnansweredQuestions = false; // 新增：仅看未回答标识
         let swiper = null;
         
         // DOM元素
@@ -925,6 +952,7 @@
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
         const btnWrong = document.getElementById('btn-wrong');
+        const btnUnanswered = document.getElementById('btn-unanswered'); // 新增：仅看未回答按钮
         const btnReset = document.getElementById('btn-reset');
         const feedback = document.getElementById('feedback');
         const feedbackContent = document.querySelector('.feedback-content');
@@ -942,6 +970,8 @@
             const savedQuestions = localStorage.getItem('questionBank');
             const savedUserAnswers = localStorage.getItem('userAnswers');
             const savedCurrentIndex = localStorage.getItem('currentQuestionIndex');
+            const savedWrongFilter = localStorage.getItem('showOnlyWrongQuestions');
+            const savedUnansweredFilter = localStorage.getItem('showOnlyUnansweredQuestions');
             
             if (savedQuestions) {
                 originalQuestionBank = JSON.parse(savedQuestions);
@@ -956,11 +986,28 @@
                 currentQuestionIndex = parseInt(savedCurrentIndex);
             }
             
+            // 恢复筛选状态
+            if (savedWrongFilter) {
+                showOnlyWrongQuestions = JSON.parse(savedWrongFilter);
+            }
+            
+            if (savedUnansweredFilter) {
+                showOnlyUnansweredQuestions = JSON.parse(savedUnansweredFilter);
+            }
+            
             // 如果有本地数据，更新UI
             if (originalQuestionBank.length > 0) {
                 updateUIAfterImport();
+                // 应用筛选状态
+                if (showOnlyWrongQuestions) {
+                    filterWrongQuestions(true); // 静默筛选
+                } else if (showOnlyUnansweredQuestions) {
+                    filterUnansweredQuestions(true); // 静默筛选
+                }
                 renderQuestions();
                 updateStats();
+                // 恢复选项高亮状态
+                restoreAnswerHighlights();
             }
         }
         
@@ -969,6 +1016,8 @@
             localStorage.setItem('questionBank', JSON.stringify(originalQuestionBank));
             localStorage.setItem('userAnswers', JSON.stringify(userAnswers));
             localStorage.setItem('currentQuestionIndex', currentQuestionIndex);
+            localStorage.setItem('showOnlyWrongQuestions', JSON.stringify(showOnlyWrongQuestions));
+            localStorage.setItem('showOnlyUnansweredQuestions', JSON.stringify(showOnlyUnansweredQuestions));
         }
         
         // 清除localStorage数据
@@ -976,6 +1025,8 @@
             localStorage.removeItem('questionBank');
             localStorage.removeItem('userAnswers');
             localStorage.removeItem('currentQuestionIndex');
+            localStorage.removeItem('showOnlyWrongQuestions');
+            localStorage.removeItem('showOnlyUnansweredQuestions');
         }
         
         // ========== 弹窗功能 ==========
@@ -1030,6 +1081,7 @@
             answeredCount = 0;
             correctCount = 0;
             showOnlyWrongQuestions = false;
+            showOnlyUnansweredQuestions = false; // 重置未回答筛选
             
             // 销毁swiper实例
             if (swiper) {
@@ -1059,6 +1111,7 @@
             
             // 重置按钮文本
             btnWrong.innerHTML = '<i class="fa fa-filter"></i> 仅看错题';
+            btnUnanswered.innerHTML = '<i class="fa fa-question-circle"></i> 仅看未回答'; // 重置未回答按钮
         }
         
         // ========== Excel导入功能 ==========
@@ -1099,6 +1152,8 @@
                     questionBank = [...originalQuestionBank];
                     userAnswers = {};
                     currentQuestionIndex = 0;
+                    showOnlyWrongQuestions = false;
+                    showOnlyUnansweredQuestions = false; // 重置筛选状态
                     
                     // 保存到本地存储
                     saveToLocalStorage();
@@ -1252,16 +1307,27 @@
                     }
                 }
             });
+            
+            // 恢复到之前的题目位置
+            if (currentQuestionIndex > 0 && currentQuestionIndex < questionBank.length) {
+                swiper.slideTo(currentQuestionIndex, 0, false);
+            }
         }
         
         // 筛选错题
-        function filterWrongQuestions() {
+        function filterWrongQuestions(silent = false) {
             if (questionBank.length === 0) {
-                showFeedback('提示', '请先导入题库', 'info');
+                if (!silent) showFeedback('提示', '请先导入题库', 'info');
                 return;
             }
             
-            showOnlyWrongQuestions = !showOnlyWrongQuestions;
+            // 关闭未回答筛选
+            showOnlyUnansweredQuestions = false;
+            btnUnanswered.innerHTML = '<i class="fa fa-question-circle"></i> 仅看未回答';
+            
+            if (!silent) {
+                showOnlyWrongQuestions = !showOnlyWrongQuestions;
+            }
             
             if (showOnlyWrongQuestions) {
                 const wrongQuestionIds = [];
@@ -1273,7 +1339,7 @@
                 });
                 
                 if (wrongQuestionIds.length === 0) {
-                    showFeedback('提示', '暂无答错的题目', 'info');
+                    if (!silent) showFeedback('提示', '暂无答错的题目', 'info');
                     showOnlyWrongQuestions = false;
                     return;
                 }
@@ -1283,11 +1349,11 @@
                 );
                 
                 btnWrong.innerHTML = '<i class="fa fa-refresh"></i> 显示全部';
-                showFeedback('筛选完成', `共 ${questionBank.length} 道错题`, 'correct');
+                if (!silent) showFeedback('筛选完成', `共 ${questionBank.length} 道错题`, 'correct');
             } else {
                 questionBank = [...originalQuestionBank];
                 btnWrong.innerHTML = '<i class="fa fa-filter"></i> 仅看错题';
-                showFeedback('已重置', '显示全部题目', 'info');
+                if (!silent) showFeedback('已重置', '显示全部题目', 'info');
             }
             
             currentQuestionIndex = 0;
@@ -1295,6 +1361,64 @@
             saveToLocalStorage();
             renderQuestions();
             updatePagination();
+            // 恢复选项高亮
+            restoreAnswerHighlights();
+        }
+        
+        // 新增：筛选未回答题目
+        function filterUnansweredQuestions(silent = false) {
+            if (questionBank.length === 0) {
+                if (!silent) showFeedback('提示', '请先导入题库', 'info');
+                return;
+            }
+            
+            // 关闭错题筛选
+            showOnlyWrongQuestions = false;
+            btnWrong.innerHTML = '<i class="fa fa-filter"></i> 仅看错题';
+            
+            if (!silent) {
+                showOnlyUnansweredQuestions = !showOnlyUnansweredQuestions;
+            }
+            
+            if (showOnlyUnansweredQuestions) {
+                const unansweredQuestionIds = [];
+                
+                // 遍历所有题目，找出未回答的
+                originalQuestionBank.forEach(question => {
+                    const questionId = question.id;
+                    // 未回答：1. 无答案记录 2. 有记录但为空 3. 未标记为已检查
+                    if (!userAnswers[questionId] || 
+                        userAnswers[questionId].length === 0 || 
+                        !userAnswers[questionId].hasBeenCounted) {
+                        unansweredQuestionIds.push(questionId);
+                    }
+                });
+                
+                if (unansweredQuestionIds.length === 0) {
+                    if (!silent) showFeedback('提示', '暂无未回答的题目', 'info');
+                    showOnlyUnansweredQuestions = false;
+                    return;
+                }
+                
+                questionBank = originalQuestionBank.filter(question => 
+                    unansweredQuestionIds.includes(question.id)
+                );
+                
+                btnUnanswered.innerHTML = '<i class="fa fa-refresh"></i> 显示全部';
+                if (!silent) showFeedback('筛选完成', `共 ${questionBank.length} 道未回答题目`, 'correct');
+            } else {
+                questionBank = [...originalQuestionBank];
+                btnUnanswered.innerHTML = '<i class="fa fa-question-circle"></i> 仅看未回答';
+                if (!silent) showFeedback('已重置', '显示全部题目', 'info');
+            }
+            
+            currentQuestionIndex = 0;
+            // 保存筛选后的状态
+            saveToLocalStorage();
+            renderQuestions();
+            updatePagination();
+            // 恢复选项高亮
+            restoreAnswerHighlights();
         }
         
         // 渲染题目
@@ -1370,6 +1494,48 @@
             updatePagination();
         }
         
+        // 恢复答案高亮状态（页面刷新后）
+        function restoreAnswerHighlights() {
+            if (Object.keys(userAnswers).length === 0) return;
+            
+            // 遍历所有已答题
+            Object.keys(userAnswers).forEach(questionId => {
+                const qId = parseInt(questionId);
+                const userAnswer = userAnswers[qId];
+                
+                // 如果已经检查过答案，恢复高亮
+                if (userAnswer.checked) {
+                    const question = questionBank.find(q => q.id === qId);
+                    if (!question) return;
+                    
+                    // 更新选项样式
+                    document.querySelectorAll(`#options-${qId} .option-item`).forEach(option => {
+                        const optId = option.getAttribute('data-option');
+                        const isUserSel = userAnswer.includes(optId);
+                        const isCorrectAns = question.answers.includes(optId);
+                        
+                        // 先清除所有状态类
+                        option.classList.remove('correct', 'incorrect');
+                        
+                        if (userAnswer.wasCorrect) {
+                            // 完全正确：正确选项标绿色
+                            if (isCorrectAns) {
+                                option.classList.add('correct');
+                            }
+                        } else {
+                            // 不正确：
+                            // 1. 用户选了但不是正确答案 → 红色
+                            if (isUserSel && !isCorrectAns) {
+                                option.classList.add('incorrect');
+                            }
+                            // 2. 用户选了且是正确答案 → 保留蓝色(selected)
+                            // 3. 正确答案但用户没选 → 无样式
+                        }
+                    });
+                }
+            });
+        }
+        
         // 选项点击事件 - 保留多选取消勾选功能
         function addOptionClickEvents() {
             document.querySelectorAll('.option-item').forEach(option => {
@@ -1401,15 +1567,29 @@
                         userAnswers[questionId].wasCorrect = false;
                     } else if (question.type.includes('多选')) {
                         // 多选题：切换选中状态（支持取消勾选）
-                        this.classList.toggle('selected');
-                        const optionIndex = userAnswers[questionId].indexOf(optionId);
-                        if (optionIndex > -1) {
-                            // 取消勾选
-                            userAnswers[questionId].splice(optionIndex, 1);
+                        const isCurrentlySelected = this.classList.contains('selected');
+                        
+                        // 先移除所有correct/incorrect样式
+                        document.querySelectorAll(`#options-${questionId} .option-item`).forEach(opt => {
+                            opt.classList.remove('correct', 'incorrect');
+                        });
+                        
+                        if (isCurrentlySelected) {
+                            // 取消勾选：移除selected类
+                            this.classList.remove('selected');
+                            const optionIndex = userAnswers[questionId].indexOf(optionId);
+                            if (optionIndex > -1) {
+                                userAnswers[questionId].splice(optionIndex, 1);
+                            }
                         } else {
-                            // 勾选
+                            // 勾选：添加selected类
+                            this.classList.add('selected');
                             userAnswers[questionId].push(optionId);
                         }
+                        
+                        userAnswers[questionId].checked = false;
+                        userAnswers[questionId].hasBeenCounted = false;
+                        userAnswers[questionId].wasCorrect = false;
                     }
                     
                     // 保存答案到本地存储
@@ -1443,33 +1623,39 @@
             userAnswers[questionId].wasCorrect = isCorrect;
             userAnswers[questionId].hasBeenCounted = true;
             
-            // 更新选项样式（仅在完全正确时显示）
-            if (isCorrect) {
-                document.querySelectorAll(`#options-${questionId} .option-item`).forEach(option => {
-                    const optId = option.getAttribute('data-option');
-                    const isUserSel = userSelected.includes(optId);
-                    const isCorrectAns = question.answers.includes(optId);
-                    
-                    option.classList.remove('correct', 'incorrect');
-                    
+            // 更新选项样式
+            document.querySelectorAll(`#options-${questionId} .option-item`).forEach(option => {
+                const optId = option.getAttribute('data-option');
+                const isUserSel = userSelected.includes(optId);
+                const isCorrectAns = question.answers.includes(optId);
+                
+                // 先清除所有状态类
+                option.classList.remove('correct', 'incorrect');
+                
+                if (isCorrect) {
+                    // 完全正确：正确选项标绿色
                     if (isCorrectAns) {
                         option.classList.add('correct');
-                    } else if (isUserSel) {
+                    }
+                } else {
+                    // 不正确：
+                    // 1. 用户选了但不是正确答案 → 红色
+                    if (isUserSel && !isCorrectAns) {
                         option.classList.add('incorrect');
                     }
-                });
-            }
+                    // 2. 用户选了且是正确答案 → 保留蓝色(selected)
+                    // 3. 正确答案但用户没选 → 无样式
+                }
+            });
             
-            // 简化多选题提示（不显示具体数量和错误选项提示）
+            // 简化提示
             const correctAnswer = question.answers.join('、');
             if (isCorrect) {
                 showFeedback('回答正确！', `正确答案：${correctAnswer}`, 'correct');
             } else {
                 if (question.type.includes('多选')) {
-                    // 多选题仅提示"答案不正确"，不显示具体原因
                     showFeedback('答案不正确', '请重新选择正确选项', 'incorrect');
                 } else {
-                    // 单选/判断错误
                     showFeedback('回答错误', `正确答案：${correctAnswer}`, 'incorrect');
                 }
             }
@@ -1533,6 +1719,9 @@
             const totalAnswered = Math.max(answeredCount, 1);
             const rate = originalQuestionBank.length > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
             titleRate.textContent = rate;
+            
+            // 保存统计数据
+            saveToLocalStorage();
         }
         
         // 显示反馈
@@ -1581,7 +1770,10 @@
             });
             
             // 仅看错题
-            btnWrong.addEventListener('click', filterWrongQuestions);
+            btnWrong.addEventListener('click', () => filterWrongQuestions(false));
+            
+            // 新增：仅看未回答
+            btnUnanswered.addEventListener('click', () => filterUnansweredQuestions(false));
         }
         
         // 初始化
