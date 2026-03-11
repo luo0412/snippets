@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>通用题库系统</title>
+    <!-- 仅保留必要CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.5;
+            padding: 8px 0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 8px;
+            width: 100%;
+        }
+        
+        /* 标题栏 - 紧凑设计 */
+        .title-bar {
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .title-main {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .title-sub {
+            font-size: 13px;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* 右上角功能按钮组 */
+        .title-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .title-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .title-btn-wrong {
+            background-color: #9b59b6;
+            color: #fff;
+        }
+        
+        .title-btn-reset {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        
+        /* Excel导入区域 */
+        .import-section {
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 12px 10px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            text-align: center;
+        }
+        
+        .import-section h2 {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        /* 导入按钮组 */
+        .import-btn-group {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: nowrap;
+        }
+        
+        .file-upload {
+            position: relative;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .file-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        /* 通用按钮样式 */
+        .btn {
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex: 1;
+            min-width: 90px;
+            white-space: nowrap;
+        }
+        
+        .upload-btn {
+            background-color: #3498db;
+            color: #fff;
+        }
+        
+        .template-btn {
+            background-color: #2ecc71;
+            color: #fff;
+        }
+        
+        .format-btn {
+            background-color: #9b59b6;
+            color: #fff;
+        }
+        
+        .import-tip {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #7f8c8d;
+            line-height: 1.4;
+        }
+        
+        /* 初始提示区域 */
+        .initial-tip {
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 20px 15px;
+            text-align: center;
+            margin: 10px 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        
+        .initial-tip i {
+            font-size: 32px;
+            color: #bdc3c7;
+            margin-bottom: 8px;
+        }
+        
+        .initial-tip h3 {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 6px;
+        }
+        
+        .initial-tip p {
+            font-size: 13px;
+            color: #7f8c8d;
+            line-height: 1.4;
+        }
+        
+        /* Swiper容器 */
+        .swiper {
+            width: 100%;
+            height: calc(100vh - 120px);
+            margin-bottom: 6px;
+            display: none;
+        }
+        
+        .swiper-slide {
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 12px 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            height: 100% !important;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .question-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .question-header {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .question-type {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .type-single {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .type-multi {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .type-judge {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .question-title {
+            font-size: 15px;
+            margin: 6px 0;
+            color: #2c3e50;
+            line-height: 1.5;
+            width: 100%;
+        }
+        
+        /* 选项容器 */
+        .options-container {
+            margin: 8px 0;
+            flex-grow: 1;
+            width: 100%;
+            overflow-y: auto;
+        }
+        
+        .option-item {
+            padding: 8px 6px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            width: 100%;
+            font-size: 14px;
+        }
+        
+        .option-item:hover {
+            background-color: #f8f9fa;
+            border-color: #ccc;
+        }
+        
+        .option-letter {
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            border-radius: 50%;
+            background-color: #ecf0f1;
+            color: #7f8c8d;
+            margin-right: 6px;
+            flex-shrink: 0;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .option-content {
+            flex-grow: 1;
+            line-height: 1.4;
+        }
+        
+        /* 选项状态样式 */
+        .option-item.selected {
+            border-color: #3498db;
+            background-color: #ebf5fb;
+        }
+        
+        .option-item.selected .option-letter {
+            background-color: #3498db;
+            color: #fff;
+        }
+        
+        .option-item.correct {
+            border-color: #27ae60;
+            background-color: #f1f8e9;
+        }
+        
+        .option-item.correct .option-letter {
+            background-color: #27ae60;
+            color: #fff;
+        }
+        
+        .option-item.incorrect {
+            border-color: #e74c3c;
+            background-color: #ffebee;
+        }
+        
+        .option-item.incorrect .option-letter {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        
+        /* 导航按钮组 */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+            width: 100%;
+        }
+        
+        .nav-btn {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-width: 80px;
+        }
+        
+        .btn-prev {
+            background-color: #ecf0f1;
+            color: #7f8c8d;
+        }
+        
+        .btn-next {
+            background-color: #3498db;
+            color: #fff;
+        }
+        
+        /* 页码显示 */
+        .pagination-bottom {
+            text-align: center;
+            margin-top: 4px;
+            padding: 4px 0;
+            font-size: 12px;
+            color: #7f8c8d;
+            display: none;
+        }
+        
+        .pagination-bottom span {
+            font-weight: 600;
+            color: #3498db;
+        }
+        
+        /* 反馈信息 */
+        .feedback {
+            margin-top: 8px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            display: none;
+            width: 100%;
+            line-height: 1.4;
+        }
+        
+        .feedback.correct {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            display: block;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .feedback.incorrect {
+            background-color: #ffebee;
+            color: #c62828;
+            display: block;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .feedback.info {
+            background-color: #ebf5fb;
+            color: #1976d2;
+            display: block;
+            border: 1px solid #bbdefb;
+        }
+        
+        /* 格式说明弹窗 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 10px;
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            border-radius: 6px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .close-modal {
+            font-size: 18px;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        
+        .format-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        
+        .format-table th, .format-table td {
+            border: 1px solid #ddd;
+            padding: 6px 4px;
+            text-align: left;
+        }
+        
+        .format-section {
+            margin: 10px 0;
+        }
+        
+        .format-section h3 {
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #2c3e50;
+        }
+        
+        .format-section ul {
+            padding-left: 15px;
+            line-height: 1.5;
+            font-size: 13px;
+        }
+        
+        /* H5适配 */
+        @media (max-width: 768px) {
+            body {
+                padding: 4px 0;
+            }
+            
+            .container {
+                padding: 4px;
+            }
+            
+            .title-bar {
+                flex-direction: row;
+                flex-wrap: nowrap;
+                font-size: 12px;
+            }
+            
+            .title-main {
+                font-size: 14px;
+            }
+            
+            .title-sub {
+                font-size: 12px;
+                gap: 6px;
+            }
+            
+            .title-actions {
+                gap: 4px;
+            }
+            
+            .title-btn {
+                padding: 3px 6px;
+                font-size: 11px;
+                min-width: 60px;
+            }
+            
+            .import-btn-group {
+                flex-wrap: nowrap;
+            }
+            
+            .btn {
+                font-size: 12px;
+                padding: 5px 6px;
+                min-width: 70px;
+            }
+            
+            .swiper {
+                height: calc(100vh - 100px);
+            }
+            
+            .nav-btn {
+                padding: 6px 8px;
+                font-size: 11px;
+                min-width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 标题栏 -->
+        <div class="title-bar" id="title-bar" style="display: none;">
+            <div class="title-main">通用题库系统</div>
+            <div class="title-sub">
+                <span>第 <span id="title-current">1</span> 题 / 共 <span id="title-total">0</span> 题</span>
+                <span>正确率：<span id="title-rate">0</span>%</span>
+            </div>
+            <!-- 右上角功能按钮 -->
+            <div class="title-actions">
+                <button class="title-btn title-btn-wrong" id="btn-wrong">
+                    <i class="fa fa-filter"></i> 仅看错题
+                </button>
+                <button class="title-btn title-btn-reset" id="btn-reset">
+                    <i class="fa fa-refresh"></i> 重置
+                </button>
+            </div>
+        </div>
+        
+        <!-- Excel导入区域 -->
+        <div class="import-section" id="import-section">
+            <h2>题库文件导入</h2>
+            <!-- 导入按钮组 -->
+            <div class="import-btn-group">
+                <div class="file-upload">
+                    <button class="btn upload-btn">
+                        <i class="fa fa-upload"></i> 选择文件
+                        <input type="file" class="file-input" id="excel-file" accept=".xls,.xlsx">
+                    </button>
+                </div>
+                <button class="btn template-btn" id="download-template">
+                    <i class="fa fa-download"></i> 下载模板
+                </button>
+                <button class="btn format-btn" id="show-format-doc">
+                    <i class="fa fa-book"></i> 格式说明
+                </button>
+            </div>
+            <p class="import-tip">
+                支持.xls/.xlsx | 选项格式：A-选项1|B-选项2 | 答案：A（单选）,A,B（多选）
+            </p>
+        </div>
+        
+        <!-- 初始提示区域 -->
+        <div class="initial-tip" id="initial-tip">
+            <i class="fa fa-file-excel-o"></i>
+            <h3>请导入题库文件</h3>
+            <p>点击上方按钮导入题库或下载模板</p>
+        </div>
+        
+        <!-- Swiper答题区 -->
+        <div class="swiper mySwiper" id="question-swiper">
+            <div class="swiper-wrapper" id="question-container">
+                <!-- 题目动态加载 -->
+            </div>
+            
+            <!-- 导航按钮组 -->
+            <div class="nav-buttons">
+                <button class="nav-btn btn-prev" id="btn-prev" disabled>
+                    <i class="fa fa-chevron-left"></i> 上一题
+                </button>
+                <button class="nav-btn btn-next" id="btn-next">
+                    下一题 <i class="fa fa-chevron-right"></i>
+                </button>
+            </div>
+            
+            <!-- 页码显示 -->
+            <div class="pagination-bottom" id="pagination-bottom">
+                当前：<span id="current-page">1</span> / <span id="total-pages">0</span>
+            </div>
+        </div>
+        
+        <!-- 反馈信息 -->
+        <div class="feedback" id="feedback">
+            <div class="feedback-content"></div>
+            <div class="feedback-info"></div>
+        </div>
+        
+        <!-- 格式说明弹窗 -->
+        <div class="modal" id="format-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">题库文件格式说明</div>
+                    <span class="close-modal" id="close-modal">&times;</span>
+                </div>
+                
+                <div class="format-section">
+                    <h3>一、字段说明</h3>
+                    <table class="format-table">
+                        <thead>
+                            <tr>
+                                <th>字段名</th>
+                                <th>类型</th>
+                                <th>示例</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>序号</td>
+                                <td>数字</td>
+                                <td>1, 2, 3</td>
+                            </tr>
+                            <tr>
+                                <td>题型</td>
+                                <td>文本</td>
+                                <td>单选题, 多选题, 判断题</td>
+                            </tr>
+                            <tr>
+                                <td>题干</td>
+                                <td>文本</td>
+                                <td>常用的数据结构有哪些？</td>
+                            </tr>
+                            <tr>
+                                <td>选项</td>
+                                <td>文本</td>
+                                <td>A-数组|B-链表|C-栈|D-队列</td>
+                            </tr>
+                            <tr>
+                                <td>答案</td>
+                                <td>文本</td>
+                                <td>A（单选）, A,B,C（多选）</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="format-section">
+                    <h3>二、注意事项</h3>
+                    <ul>
+                        <li>序号从1开始连续编号</li>
+                        <li>选项避免使用"|"字符</li>
+                        <li>答案与选项标识完全匹配</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let questionBank = [];
+        let originalQuestionBank = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let answeredCount = 0;
+        let correctCount = 0;
+        let showOnlyWrongQuestions = false;
+        let swiper = null;
+        
+        // DOM元素
+        const excelFileInput = document.getElementById('excel-file');
+        const downloadTemplateBtn = document.getElementById('download-template');
+        const showFormatDocBtn = document.getElementById('show-format-doc');
+        const formatModal = document.getElementById('format-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const initialTip = document.getElementById('initial-tip');
+        const titleBar = document.getElementById('title-bar');
+        const titleCurrent = document.getElementById('title-current');
+        const titleTotal = document.getElementById('title-total');
+        const titleRate = document.getElementById('title-rate');
+        const importSection = document.getElementById('import-section');
+        const questionSwiper = document.getElementById('question-swiper');
+        const paginationBottom = document.getElementById('pagination-bottom');
+        const questionContainer = document.getElementById('question-container');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnWrong = document.getElementById('btn-wrong');
+        const btnReset = document.getElementById('btn-reset');
+        const feedback = document.getElementById('feedback');
+        const feedbackContent = document.querySelector('.feedback-content');
+        const feedbackInfo = document.querySelector('.feedback-info');
+        const currentPageEl = document.getElementById('current-page');
+        const totalPagesEl = document.getElementById('total-pages');
+        
+        // ========== 本地存储功能 ==========
+        // 从localStorage加载数据
+        function loadFromLocalStorage() {
+            const savedQuestions = localStorage.getItem('questionBank');
+            const savedUserAnswers = localStorage.getItem('userAnswers');
+            const savedCurrentIndex = localStorage.getItem('currentQuestionIndex');
+            
+            if (savedQuestions) {
+                originalQuestionBank = JSON.parse(savedQuestions);
+                questionBank = [...originalQuestionBank];
+            }
+            
+            if (savedUserAnswers) {
+                userAnswers = JSON.parse(savedUserAnswers);
+            }
+            
+            if (savedCurrentIndex) {
+                currentQuestionIndex = parseInt(savedCurrentIndex);
+            }
+            
+            // 如果有本地数据，更新UI
+            if (originalQuestionBank.length > 0) {
+                updateUIAfterImport();
+                renderQuestions();
+                updateStats();
+            }
+        }
+        
+        // 保存数据到localStorage
+        function saveToLocalStorage() {
+            localStorage.setItem('questionBank', JSON.stringify(originalQuestionBank));
+            localStorage.setItem('userAnswers', JSON.stringify(userAnswers));
+            localStorage.setItem('currentQuestionIndex', currentQuestionIndex);
+        }
+        
+        // 清除localStorage数据
+        function clearLocalStorage() {
+            localStorage.removeItem('questionBank');
+            localStorage.removeItem('userAnswers');
+            localStorage.removeItem('currentQuestionIndex');
+        }
+        
+        // ========== 弹窗功能 ==========
+        showFormatDocBtn.addEventListener('click', function() {
+            formatModal.style.display = 'flex';
+        });
+        
+        closeModalBtn.addEventListener('click', function() {
+            formatModal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', function(e) {
+            if (e.target === formatModal) {
+                formatModal.style.display = 'none';
+            }
+        });
+        
+        // ========== Excel导入功能 ==========
+        excelFileInput.addEventListener('change', handleExcelUpload);
+        
+        // 处理Excel上传
+        function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // 重新导入时清除本地存储
+            clearLocalStorage();
+            
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (fileExtension !== 'xls' && fileExtension !== 'xlsx') {
+                showFeedback('错误', '请选择.xls或.xlsx格式文件', 'incorrect');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    const parsedQuestions = parseExcelData(jsonData);
+                    
+                    if (parsedQuestions.length === 0) {
+                        showFeedback('错误', '未找到有效题目数据', 'incorrect');
+                        return;
+                    }
+                    
+                    // 保存题库数据
+                    originalQuestionBank = parsedQuestions;
+                    questionBank = [...originalQuestionBank];
+                    userAnswers = {};
+                    currentQuestionIndex = 0;
+                    
+                    // 保存到本地存储
+                    saveToLocalStorage();
+                    
+                    // 导入成功后更新UI
+                    updateUIAfterImport();
+                    
+                    // 渲染题目
+                    renderQuestions();
+                    
+                    showFeedback('导入成功', `成功导入 ${parsedQuestions.length} 道题目`, 'correct');
+                    
+                } catch (error) {
+                    console.error('Excel解析错误:', error);
+                    showFeedback('错误', 'Excel文件解析失败', 'incorrect');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // 解析Excel数据
+        function parseExcelData(excelData) {
+            const parsedQuestions = [];
+            
+            excelData.forEach((row, index) => {
+                if (!row['序号'] || !row['题干'] || !row['选项'] || !row['答案']) return;
+                
+                // 解析选项
+                const options = [];
+                String(row['选项']).split('|').forEach(opt => {
+                    if (opt.includes('-')) {
+                        const [id, content] = opt.split('-', 2);
+                        if (id && content) {
+                            options.push({
+                                id: id.trim(),
+                                content: content.trim()
+                            });
+                        }
+                    }
+                });
+                
+                // 解析答案
+                let answers = [];
+                const answerStr = String(row['答案']).trim();
+                if (answerStr.includes(',') || answerStr.includes('，')) {
+                    answers = answerStr.split(/[,，]/).map(a => a.trim());
+                } else if (answerStr.length > 1) {
+                    answers = answerStr.split('');
+                } else {
+                    answers = [answerStr];
+                }
+                
+                // 处理题型
+                let questionType = row['题型'] || '单选题';
+                if (questionType.includes('多选')) questionType = '多选题';
+                else if (questionType.includes('判断')) questionType = '判断题';
+                else questionType = '单选题';
+                
+                // 处理分数
+                const score = row['试题分数'] ? (typeof row['试题分数'] === 'number' ? row['试题分数'] : parseFloat(row['试题分数'])) : 2.0;
+                
+                parsedQuestions.push({
+                    id: parseInt(row['序号']),
+                    type: questionType,
+                    title: row['题干'],
+                    options: options,
+                    answers: answers,
+                    score: isNaN(score) ? 2.0 : score
+                });
+            });
+            
+            return parsedQuestions;
+        }
+        
+        // 下载模板
+        downloadTemplateBtn.addEventListener('click', function() {
+            const templateData = [
+                {
+                    '序号': 1,
+                    '题型': '单选题',
+                    '题干': '常用的数据结构不包括？',
+                    '选项': 'A-数组|B-链表|C-栈|D-显示器',
+                    '答案': 'D',
+                    '试题分数': 2
+                },
+                {
+                    '序号': 2,
+                    '题型': '多选题',
+                    '题干': '常见的排序算法有？',
+                    '选项': 'A-冒泡排序|B-快速排序|C-插入排序|D-选择排序',
+                    '答案': 'A,B,C,D',
+                    '试题分数': 2
+                },
+                {
+                    '序号': 3,
+                    '题型': '判断题',
+                    '题干': '栈是一种先进先出的数据结构',
+                    '选项': 'A-正确|B-错误',
+                    '答案': 'B',
+                    '试题分数': 2
+                }
+            ];
+            
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "题库模板");
+            XLSX.writeFile(wb, "题库导入模板.xlsx");
+            
+            showFeedback('提示', '模板文件已下载', 'info');
+        });
+        
+        // 导入后更新UI
+        function updateUIAfterImport() {
+            // 隐藏导入区域和初始提示
+            importSection.style.display = 'none';
+            initialTip.style.display = 'none';
+            
+            // 显示标题栏、答题区、页码
+            titleBar.style.display = 'flex';
+            questionSwiper.style.display = 'block';
+            paginationBottom.style.display = 'block';
+            
+            // 更新统计信息
+            titleTotal.textContent = originalQuestionBank.length;
+            totalPagesEl.textContent = originalQuestionBank.length;
+            currentPageEl.textContent = currentQuestionIndex + 1;
+            titleCurrent.textContent = currentQuestionIndex + 1;
+            
+            updateStats();
+        }
+        
+        // ========== 题库核心功能 ==========
+        // 初始化Swiper
+        function initSwiper() {
+            if (swiper) swiper.destroy();
+            
+            swiper = new Swiper('#question-swiper', {
+                slidesPerView: 1,
+                spaceBetween: 8,
+                preventClicks: false,
+                preventClicksPropagation: false,
+                on: {
+                    slideChange: function() {
+                        currentQuestionIndex = this.activeIndex;
+                        // 保存当前题目索引到本地存储
+                        saveToLocalStorage();
+                        updateNavigationButtons();
+                        updatePagination();
+                        updateStats();
+                        feedback.style.display = 'none';
+                    }
+                }
+            });
+        }
+        
+        // 筛选错题
+        function filterWrongQuestions() {
+            if (questionBank.length === 0) {
+                showFeedback('提示', '请先导入题库', 'info');
+                return;
+            }
+            
+            showOnlyWrongQuestions = !showOnlyWrongQuestions;
+            
+            if (showOnlyWrongQuestions) {
+                const wrongQuestionIds = [];
+                Object.keys(userAnswers).forEach(questionId => {
+                    const qId = parseInt(questionId);
+                    if (userAnswers[questionId].hasBeenCounted && !userAnswers[questionId].wasCorrect) {
+                        wrongQuestionIds.push(qId);
+                    }
+                });
+                
+                if (wrongQuestionIds.length === 0) {
+                    showFeedback('提示', '暂无答错的题目', 'info');
+                    showOnlyWrongQuestions = false;
+                    return;
+                }
+                
+                questionBank = originalQuestionBank.filter(question => 
+                    wrongQuestionIds.includes(question.id)
+                );
+                
+                btnWrong.innerHTML = '<i class="fa fa-refresh"></i> 显示全部';
+                showFeedback('筛选完成', `共 ${questionBank.length} 道错题`, 'correct');
+            } else {
+                questionBank = [...originalQuestionBank];
+                btnWrong.innerHTML = '<i class="fa fa-filter"></i> 仅看错题';
+                showFeedback('已重置', '显示全部题目', 'info');
+            }
+            
+            currentQuestionIndex = 0;
+            // 保存筛选后的状态
+            saveToLocalStorage();
+            renderQuestions();
+            updatePagination();
+        }
+        
+        // 渲染题目
+        function renderQuestions() {
+            if (questionBank.length === 0) {
+                questionContainer.innerHTML = `
+                    <div class="swiper-slide">
+                        <div class="question-card">
+                            <div class="question-header">
+                                <span class="question-type type-single">提示</span>
+                            </div>
+                            <div class="question-title">暂无题目数据</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            questionContainer.innerHTML = '';
+            
+            // 渲染每道题目
+            questionBank.forEach((question, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'swiper-slide';
+                
+                // 题型样式
+                let typeClass = 'type-single';
+                if (question.type.includes('多选')) typeClass = 'type-multi';
+                else if (question.type.includes('判断')) typeClass = 'type-judge';
+                
+                // 构建选项HTML
+                let optionsHtml = '';
+                question.options.forEach(option => {
+                    const isSelected = userAnswers[question.id] && userAnswers[question.id].includes(option.id);
+                    const isCorrect = question.answers.includes(option.id);
+                    const isIncorrect = isSelected && !isCorrect;
+                    
+                    let optionClasses = 'option-item';
+                    if (isSelected) optionClasses += ' selected';
+                    if (isCorrect && userAnswers[question.id] && userAnswers[question.id].checked) optionClasses += ' correct';
+                    if (isIncorrect && userAnswers[question.id] && userAnswers[question.id].checked) optionClasses += ' incorrect';
+                    
+                    optionsHtml += `
+                        <div class="${optionClasses}" data-option="${option.id}" data-question="${question.id}">
+                            <div class="option-letter">${option.id}</div>
+                            <div class="option-content">${option.content}</div>
+                        </div>
+                    `;
+                });
+                
+                // 题目HTML
+                slide.innerHTML = `
+                    <div class="question-card">
+                        <div class="question-header">
+                            <span class="question-type ${typeClass}">${question.type} (${question.score}分)</span>
+                        </div>
+                        <div class="question-title">${question.title}</div>
+                        <div class="options-container" id="options-${question.id}">${optionsHtml}</div>
+                    </div>
+                `;
+                
+                questionContainer.appendChild(slide);
+            });
+            
+            // 初始化Swiper
+            initSwiper();
+            
+            // 添加选项点击事件
+            addOptionClickEvents();
+            
+            // 更新按钮和页码
+            updateNavigationButtons();
+            updatePagination();
+        }
+        
+        // 选项点击事件
+        function addOptionClickEvents() {
+            document.querySelectorAll('.option-item').forEach(option => {
+                option.addEventListener('click', function() {
+                    const questionId = parseInt(this.getAttribute('data-question'));
+                    const optionId = this.getAttribute('data-option');
+                    const question = questionBank.find(q => q.id === questionId);
+                    
+                    if (!question) return;
+                    
+                    // 初始化答案
+                    if (!userAnswers[questionId]) {
+                        userAnswers[questionId] = [];
+                        userAnswers[questionId].checked = false;
+                        userAnswers[questionId].hasBeenCounted = false;
+                        userAnswers[questionId].wasCorrect = false;
+                    }
+                    
+                    // 单选/多选逻辑
+                    if (question.type.includes('单选') || question.type.includes('判断')) {
+                        // 单选题：清空其他选项
+                        document.querySelectorAll(`#options-${questionId} .option-item`).forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        this.classList.add('selected');
+                        userAnswers[questionId] = [optionId];
+                        userAnswers[questionId].checked = false;
+                        userAnswers[questionId].hasBeenCounted = false;
+                        userAnswers[questionId].wasCorrect = false;
+                    } else if (question.type.includes('多选')) {
+                        // 多选题：切换选中状态
+                        this.classList.toggle('selected');
+                        if (this.classList.contains('selected')) {
+                            if (!userAnswers[questionId].includes(optionId)) {
+                                userAnswers[questionId].push(optionId);
+                            }
+                        } else {
+                            userAnswers[questionId] = userAnswers[questionId].filter(id => id !== optionId);
+                        }
+                    }
+                    
+                    // 保存答案到本地存储
+                    saveToLocalStorage();
+                    
+                    // 立即判题
+                    checkAnswerImmediately(questionId);
+                    updateStats();
+                });
+            });
+        }
+        
+        // 立即判题
+        function checkAnswerImmediately(questionId) {
+            const question = questionBank.find(q => q.id === questionId);
+            const userSelected = userAnswers[questionId] || [];
+            
+            if (userSelected.length === 0) {
+                feedback.style.display = 'none';
+                return;
+            }
+            
+            // 标记已检查
+            userAnswers[questionId].checked = true;
+            
+            // 比较答案
+            const userSorted = [...userSelected].sort();
+            const correctSorted = [...question.answers].sort();
+            const isCorrect = JSON.stringify(userSorted) === JSON.stringify(correctSorted);
+            
+            userAnswers[questionId].wasCorrect = isCorrect;
+            userAnswers[questionId].hasBeenCounted = true;
+            
+            // 更新选项样式
+            if (isCorrect || (question.type.includes('多选') && userSelected.length >= question.answers.length)) {
+                document.querySelectorAll(`#options-${questionId} .option-item`).forEach(option => {
+                    const optId = option.getAttribute('data-option');
+                    const isUserSel = userSelected.includes(optId);
+                    const isCorrectAns = question.answers.includes(optId);
+                    
+                    option.classList.remove('correct', 'incorrect');
+                    
+                    if (isCorrectAns) {
+                        option.classList.add('correct');
+                    } else if (isUserSel) {
+                        option.classList.add('incorrect');
+                    }
+                });
+            }
+            
+            // 优化多选题提示逻辑
+            const correctAnswer = question.answers.join('、');
+            if (isCorrect) {
+                showFeedback('回答正确！', `正确答案：${correctAnswer}`, 'correct');
+            } else {
+                if (question.type.includes('多选')) {
+                    // 多选提示细分
+                    const selectedCorrectCount = userSelected.filter(id => question.answers.includes(id)).length;
+                    const unselectedCorrectCount = question.answers.filter(id => !userSelected.includes(id)).length;
+                    const selectedIncorrectCount = userSelected.filter(id => !question.answers.includes(id)).length;
+                    
+                    if (selectedIncorrectCount > 0) {
+                        // 选了错误选项
+                        showFeedback('回答错误', `包含错误选项，正确答案：${correctAnswer}`, 'incorrect');
+                    } else if (unselectedCorrectCount > 0) {
+                        // 漏选正确选项
+                        showFeedback('答案不全', `还需要选择 ${unselectedCorrectCount} 个正确选项`, 'info');
+                    }
+                } else {
+                    // 单选/判断错误
+                    showFeedback('回答错误', `正确答案：${correctAnswer}`, 'incorrect');
+                }
+            }
+            
+            // 保存判题结果
+            saveToLocalStorage();
+        }
+        
+        // 更新导航按钮
+        function updateNavigationButtons() {
+            if (questionBank.length === 0) {
+                btnPrev.disabled = true;
+                btnNext.disabled = true;
+                return;
+            }
+            
+            btnPrev.disabled = currentQuestionIndex === 0;
+            btnNext.disabled = currentQuestionIndex === questionBank.length - 1;
+            
+            // 更新按钮文本
+            btnPrev.innerHTML = '<i class="fa fa-chevron-left"></i> 上一题';
+            btnNext.innerHTML = currentQuestionIndex === questionBank.length - 1 
+                ? '完成 <i class="fa fa-check"></i>' 
+                : '下一题 <i class="fa fa-chevron-right"></i>';
+        }
+        
+        // 更新页码
+        function updatePagination() {
+            if (questionBank.length === 0) {
+                currentPageEl.textContent = '0';
+                totalPagesEl.textContent = '0';
+                titleCurrent.textContent = '0';
+                titleTotal.textContent = '0';
+                return;
+            }
+            
+            currentPageEl.textContent = currentQuestionIndex + 1;
+            totalPagesEl.textContent = questionBank.length;
+            titleCurrent.textContent = currentQuestionIndex + 1;
+            titleTotal.textContent = questionBank.length;
+        }
+        
+        // 更新统计
+        function updateStats() {
+            let newAnsweredCount = 0;
+            let newCorrectCount = 0;
+            
+            Object.keys(userAnswers).forEach(questionId => {
+                if (userAnswers[questionId].hasBeenCounted) {
+                    newAnsweredCount++;
+                    if (userAnswers[questionId].wasCorrect) {
+                        newCorrectCount++;
+                    }
+                }
+            });
+            
+            answeredCount = newAnsweredCount;
+            correctCount = newCorrectCount;
+            
+            // 更新正确率
+            const totalAnswered = Math.max(answeredCount, 1);
+            const rate = originalQuestionBank.length > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+            titleRate.textContent = rate;
+        }
+        
+        // 显示反馈
+        function showFeedback(title, message, type = 'info') {
+            feedbackContent.innerHTML = `<i class="fa ${
+                type === 'correct' ? 'fa-check-circle' : type === 'incorrect' ? 'fa-times-circle' : 'fa-info-circle'
+            }"></i> <strong>${title}</strong>：${message}`;
+            
+            feedback.className = 'feedback';
+            feedback.classList.add(type);
+            feedback.style.display = 'block';
+            
+            // 自动隐藏提示
+            if (type === 'info') {
+                setTimeout(() => {
+                    feedback.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // 重置当前题目
+        function resetCurrentQuestion() {
+            if (questionBank.length === 0) return;
+            
+            const currentQuestion = questionBank[currentQuestionIndex];
+            const questionId = currentQuestion.id;
+            
+            // 清除当前题目答案
+            if (userAnswers[questionId]) delete userAnswers[questionId];
+            
+            // 重置选项样式
+            document.querySelectorAll(`#options-${questionId} .option-item`).forEach(option => {
+                option.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            // 保存重置结果
+            saveToLocalStorage();
+            
+            feedback.style.display = 'none';
+            updateStats();
+            showFeedback('已重置', '当前题目答案已清空', 'info');
+        }
+        
+        // 绑定按钮事件
+        function bindEvents() {
+            // 上一题
+            btnPrev.addEventListener('click', () => {
+                if (currentQuestionIndex > 0 && swiper) swiper.slidePrev();
+            });
+            
+            // 下一题
+            btnNext.addEventListener('click', () => {
+                if (questionBank.length === 0) {
+                    showFeedback('提示', '请先导入题库', 'info');
+                    return;
+                }
+                
+                if (currentQuestionIndex < questionBank.length - 1 && swiper) {
+                    swiper.slideNext();
+                } else {
+                    // 完成练习
+                    const finalScore = Math.round((correctCount / Math.max(answeredCount, 1)) * 100);
+                    showFeedback(
+                        '完成练习', 
+                        `总题数：${originalQuestionBank.length}道<br>已答题：${answeredCount}道<br>正确率：${finalScore}%`,
+                        'correct'
+                    );
+                }
+            });
+            
+            // 仅看错题
+            btnWrong.addEventListener('click', filterWrongQuestions);
+            
+            // 重置
+            btnReset.addEventListener('click', resetCurrentQuestion);
+        }
+        
+        // 初始化
+        function initApp() {
+            // 页面加载时从本地存储恢复数据
+            loadFromLocalStorage();
+            bindEvents();
+        }
+        
+        // 页面加载完成初始化
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
