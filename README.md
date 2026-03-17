@@ -3,7 +3,7 @@
 # 简单用例
 
 
-- https://luo0412.github.io/snippets?url=https://luo0412.github.io/snippets/demo.vue
+- https://luo0412.github.io/snippets?url=https://luo0412.github.io/snippets/demo.vue&isFullscreen=1
 
 # 代码片段
 
