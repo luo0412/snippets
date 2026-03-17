@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200, initial-scale=1.0">
+    <title>从夯到拉排行榜 - Vue3版</title>
+    <script src="https://cdn.staticfile.net/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.staticfile.net/vue/3.4.21/vue.global.prod.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #1a1a1a;
+            min-height: 100vh;
+            min-width: 1400px;
+            padding: 80px 20px 0px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 1200px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            min-height: 600px;
+        }
+
+        .ranking-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+        }
+
+        .tier {
+            display: flex;
+            align-items: stretch;
+            min-height: 120px;
+            border-bottom: 2px solid #404040;
+            transition: all 0.3s ease;
+        }
+
+        .tier.fixed-height {
+            height: 130px;
+            min-height: 130px;
+            max-height: 130px;
+        }
+
+        .tier:hover {
+            background-color: #3a3a3a;
+        }
+
+        .tier.drag-over {
+            background-color: #404040;
+        }
+
+        .tier-label {
+            width: 150px;
+            text-align: center;
+            font-size: 1.9em;
+            font-weight: 900;
+            color: white;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000,
+                0px -1px 0 #000,
+                0px 1px 0 #000,
+                -1px 0px 0 #000,
+                1px 0px 0 #000;
+            padding: 0px;
+            cursor: pointer;
+            outline: none;
+            border: none;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 100;
+        }
+
+        .tier-name {
+            font-weight: 900 !important;
+            outline: none;
+            min-width: 20px;
+        }
+
+        .tier-name:focus {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            padding: 0 5px;
+        }
+
+        .color-picker {
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 101;
+        }
+
+        .tier-label.editing .color-picker {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .delete-tier-btn {
+            position: absolute;
+            right: -75px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            background: #fff;
+            border: 2px solid #ff3742;
+            border-radius: 50%;
+            color: #ff3742;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            font-size: 26px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+        }
+
+        .manbo-link {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #3d3d5c;
+        }
+
+        .manbo-link a {
+            color: #7dbece;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .manbo-link a:hover {
+            text-decoration: underline;
+        }
+
+        .tier-label.editing .delete-tier-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .help-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #65a6bc;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .help-btn:hover {
+            background: #7dbece;
+            transform: scale(1.1);
+        }
+
+        .fixed-height-toggle {
+            position: fixed;
+            top: 20px;
+            right: 80px;
+            background: #2d2d2d;
+            border: 2px solid #65a6bc;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fixed-height-toggle:hover {
+            background: #3a3a3a;
+            border-color: #7dbece;
+        }
+
+        .fixed-height-toggle input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .help-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .help-modal.show {
+            display: flex;
+        }
+
+        .help-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            color: white;
+            position: relative;
+        }
+
+        .help-content h2 {
+            color: #7dbece;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .help-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .help-content li {
+            margin-bottom: 15px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .help-content li:before {
+            content: "•";
+            color: #7dbece;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .close-help {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .close-help:hover {
+            color: white;
+        }
+
+        .save-image-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .save-image-btn {
+            background: #444;
+            border: 2px solid #666;
+            color: #ccc;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .save-image-btn:hover {
+            background: #555;
+            border-color: #007bff;
+            color: #007bff;
+        }
+
+        .add-tier-btn {
+            background: #444;
+            border: 2px dashed #666;
+            color: #ccc;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+
+        .add-tier-btn:hover {
+            background: #555;
+            border-color: #888;
+            color: #fff;
+        }
+
+        .reset-tier-btn {
+            background: #dc3545;
+            border: 2px solid #c82333;
+            color: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        .reset-tier-btn:hover {
+            background: #c82333;
+            border-color: #bd2130;
+            color: #fff;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+            order: 1001;
+        }
+
+        .reset-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .reset-modal.show {
+            display: flex;
+        }
+
+        .reset-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
+            color: white;
+            position: relative;
+            text-align: center;
+        }
+
+        .reset-content h3 {
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+
+        .reset-content p {
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .reset-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .reset-confirm-btn {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .reset-confirm-btn:hover {
+            background: #c82333;
+        }
+
+        .reset-cancel-btn {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .reset-cancel-btn:hover {
+            background: #5a6268;
+        }
+
+        .tier-content {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 5px;
+            min-height: 130px;
+            align-items: center;
+        }
+
+        .tier.fixed-height .tier-content {
+            height: 120px;
+            min-height: 120px;
+            max-height: 120px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            transition: scrollbar-color 0.3s ease;
+        }
+
+        .tier.fixed-height .tier-content:hover {
+            scrollbar-color: #65a6bc #404040;
+        }
+
+        .tier.fixed-height .tier-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tier.fixed-height .tier-content::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 3px;
+        }
+
+        .tier.fixed-height .tier-content::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+
+        .tier.fixed-height .tier-content:hover::-webkit-scrollbar-track {
+            background: #404040;
+        }
+
+        .tier.fixed-height .tier-content:hover::-webkit-scrollbar-thumb {
+            background: #65a6bc;
+        }
+
+        .tier.fixed-height .tier-content:hover::-webkit-scrollbar-thumb:hover {
+            background: #7dbece;
+        }
+
+        .upload-btn {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed #666;
+            background: #404040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            order: 999;
+        }
+
+        .upload-btn:hover {
+            border-color: #007bff;
+            background: #4a4a4a;
+            color: #007bff;
+        }
+
+        .upload-btn.drag-over {
+            border-color: #007bff;
+            background: #4a4a4a;
+            color: #007bff;
+        }
+
+        .delete-zone {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed #dc3545;
+            background: #4a3a3a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: #dc3545;
+            transition: all 0.3s ease;
+            order: 1000;
+        }
+
+        .delete-zone.drag-over {
+            background: #dc3545;
+            color: white;
+        }
+
+        .image-item {
+            width: 120px;
+            height: 120px;
+            overflow: hidden;
+            cursor: grab;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            position: relative;
+            user-select: none;
+            -webkit-user-drag: none;
+            flex-shrink: 0;
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .image-item:active {
+            cursor: grabbing;
+        }
+
+        .image-item.dragging {
+            opacity: 0.3;
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-name-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 4px 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .image-item:hover .image-name-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .tier.fixed-height .image-item.single-row {
+            width: 120px;
+            height: 120px;
+        }
+
+        .tier.fixed-height .image-item.multi-row {
+            width: 70px;
+            height: 70px;
+        }
+
+        .tier.fixed-height .image-item.adaptive {
+            width: auto;
+            height: auto;
+            min-width: 70px;
+            min-height: 70px;
+            max-width: 120px;
+            max-height: 120px;
+        }
+
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 10px 0 5px 0;
+            justify-content: center;
+            background: #2d2d2d;
+        }
+
+        .drag-preview {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            width: 120px;
+            height: 120px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            transform: rotate(5deg);
+            opacity: 0.8;
+            display: none;
+        }
+
+        .drag-preview.show {
+            display: block;
+        }
+
+        .drag-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            display: none;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 60px;
+            z-index: 3000;
+            cursor: pointer;
+        }
+
+        .image-modal.show {
+            display: flex;
+        }
+
+        .image-modal img {
+            min-width: 800px;
+            min-height: 500px;
+            max-width: 800px;
+            max-height: 500px;
+            object-fit: contain;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            padding: 8px 0;
+            margin-top: auto;
+            position: relative;
+            z-index: 10;
+            background: #1a1a1a;
+        }
+
+        .footer a {
+            color: #999;
+            text-decoration: none;
+            padding-right: 15px;
+            border-right: 1px solid #666;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: white;
+        }
+
+        .toggle-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .toggle-container label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .toggle-container input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <button class="help-btn" @click="showHelpModal = true">?</button>
+
+        <label class="fixed-height-toggle">
+            <input type="checkbox" v-model="fixedHeight">
+            <span>固定评级高度</span>
+        </label>
+
+        <!-- 帮助弹窗 -->
+        <div class="help-modal" :class="{ show: showHelpModal }" @click.self="hideHelp">
+            <div class="help-content">
+                <button class="close-help" @click="hideHelp">×</button>
+                <h2>📝 使用说明</h2>
+                <ul>
+                    <li>添加图片：点击"+"按钮或拖拽图片到该按钮区域</li>
+                    <li>删除图片：将图片拖拽到"-"区域删除</li>
+                    <li>放大图片：点击图片可放大，再次点击任意区域恢复</li>
+                    <li>编辑评级：点击评级名称可编辑文字</li>
+                    <li>编辑颜色：点击评级名称后右侧颜色按钮可编辑颜色</li>
+                    <li>删除评级：点击评级名称后右侧删除按钮可删除评级</li>
+                    <li>创建新评级：点击底部"+添加评级"按钮创建新的评级</li>
+                </ul>
+                <div class="toggle-container">
+                    <label>
+                        <input type="checkbox" v-model="showImageNames">
+                        <span>显示图片名称</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" v-model="fixedHeight">
+                        <span>固定评级高度</span>
+                    </label>
+                </div>
+                <div class="save-image-container">
+                    <button class="save-image-btn" @click="saveAsImage">💾 保存为图片</button>
+                </div>
+                <div class="manbo-link">
+                    <p><a href="manbo.html" style="margin-right: 30px;" target="_blank">🎵 前往曼波配音生成器</a><a href="/">🏠 回到主站</a></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="ranking-container" ref="rankingContainer">
+                <div
+                    v-for="(tier, index) in tiers"
+                    :key="tier.id"
+                    class="tier"
+                    :data-tier-id="tier.id"
+                    :class="{ 'fixed-height': fixedHeight, 'drag-over': tier.dragOver }"
+                    @dragover.prevent="onTierDragOver($event, tier)"
+                    @dragleave="onTierDragLeave(tier)"
+                    @drop="onTierDrop($event, tier)"
+                >
+                    <div
+                        class="tier-label"
+                        :class="{ editing: editingTierId === tier.id }"
+                        :style="{ backgroundColor: tier.color }"
+                        @click="startEditTier(tier.id)"
+                    >
+                        <input
+                            type="color"
+                            class="color-picker"
+                            :value="tier.color"
+                            @input="updateTierColor(tier, $event)"
+                            title="编辑颜色"
+                            @click.stop
+                        >
+                        <button
+                            class="delete-tier-btn"
+                            @click.stop="deleteTier(tier.id)"
+                            title="删除该评级"
+                        >×</button>
+                        <span
+                            class="tier-name"
+                            contenteditable="true"
+                            @input="updateTierName(tier, $event)"
+                            @blur="editingTierId = null"
+                            @click.stop
+                            ref="tierNameRefs"
+                        >{{ tier.name }}</span>
+                    </div>
+                    <div class="tier-content" :class="getTierContentClass(tier)">
+                        <div
+                            v-for="image in tier.images"
+                            :key="image.id"
+                            class="image-item"
+                            :data-id="image.id"
+                            :class="getImageClass(tier)"
+                            :style="getImageStyle(tier)"
+                            @mousedown="startDrag($event, image, tier)"
+                        >
+                            <img :src="image.src" :alt="image.name">
+                            <div class="image-name-overlay" :style="{ display: showImageNames ? 'block' : 'none' }">
+                                {{ image.name }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="image-gallery">
+                <div
+                    v-for="image in unassignedImages"
+                    :key="image.id"
+                    class="image-item"
+                    :data-id="image.id"
+                    @mousedown="startDrag($event, image, null)"
+                >
+                    <img :src="image.src" :alt="image.name">
+                    <div class="image-name-overlay" :style="{ display: showImageNames ? 'block' : 'none' }">
+                        {{ image.name }}
+                    </div>
+                </div>
+                <div
+                    class="upload-btn"
+                    :class="{ 'drag-over': uploadDragOver }"
+                    @click="$refs.fileInput.click()"
+                    @dragover.prevent="uploadDragOver = true"
+                    @dragleave="uploadDragOver = false"
+                    @drop.prevent="onUploadDrop"
+                >+</div>
+                <div
+                    class="delete-zone"
+                    :class="{ 'drag-over': deleteDragOver }"
+                    @dragover.prevent="deleteDragOver = true"
+                    @dragleave="deleteDragOver = false"
+                    @drop="onDeleteDrop"
+                >-</div>
+                <div class="button-container">
+                    <div class="add-tier-btn" @click="addNewTier">+ 添加评级</div>
+                    <div class="reset-tier-btn" @click="showResetModal = true">↻ 重置排行榜</div>
+                </div>
+            </div>
+
+            <input
+                type="file"
+                ref="fileInput"
+                id="file-input"
+                accept="image/*"
+                multiple
+                @change="handleFiles"
+            >
+        </div>
+
+        <!-- 重置确认弹窗 -->
+        <div class="reset-modal" :class="{ show: showResetModal }" @click.self="showResetModal = false">
+            <div class="reset-content">
+                <h3>⚠️ 确认重置</h3>
+                <p>您确定要重置排行榜吗？<br>这将清除所有评级设置并移除所有图片，此操作无法撤销。</p>
+                <div class="reset-buttons">
+                    <button class="reset-confirm-btn" @click="confirmReset">确认重置</button>
+                    <button class="reset-cancel-btn" @click="showResetModal = false">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片放大弹窗 -->
+        <div class="image-modal" :class="{ show: showModal }" @click="showModal = false">
+            <img :src="modalImageSrc" alt="放大的图片">
+        </div>
+
+        <div class="footer">
+            <a href="https://hi.dayun.cool/contact" target="_blank">联系方式</a>
+            <span>© 2025 大沄</span>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // 状态
+                const tiers = ref([]);
+                const unassignedImages = ref([]);
+                const showImageNames = ref(false);
+                const fixedHeight = ref(false);
+                const showHelpModal = ref(false);
+                const showResetModal = ref(false);
+                const showModal = ref(false);
+                const modalImageSrc = ref('');
+                const editingTierId = ref(null);
+                const uploadDragOver = ref(false);
+                const deleteDragOver = ref(false);
+
+                const fileInput = ref(null);
+                const rankingContainer = ref(null);
+                const tierNameRefs = ref([]);
+
+                let imageCounter = 0;
+                let draggedImage = null;
+                let draggedFromTier = null;
+                let isDragging = false;
+                let hasMoved = false;  // 标记是否真正移动了
+                let startX = 0;
+                let startY = 0;
+                let dragPreview = null;
+                let db = null;
+
+                const DB_NAME = 'RankingAppDB_Vue3';
+                const DB_VERSION = 1;
+                const STORE_NAME = 'rankingState';
+
+                // 默认评级
+                const defaultTiers = [
+                    { id: 'tier-s', name: '夯', color: '#ff4757', images: [] },
+                    { id: 'tier-a', name: '顶级', color: '#ff9f43', images: [] },
+                    { id: 'tier-b', name: '人上人', color: '#3742fa', images: [] },
+                    { id: 'tier-c', name: 'NPC', color: '#2ed573', images: [] },
+                    { id: 'tier-d', name: '拉完了', color: '#747d8c', images: [] }
+                ];
+
+                // 初始化数据库
+                const initDB = () => {
+                    return new Promise((resolve, reject) => {
+                        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                        request.onerror = () => reject(request.error);
+                        request.onsuccess = () => {
+                            db = request.result;
+                            resolve(db);
+                        };
+                        request.onupgradeneeded = (event) => {
+                            const db = event.target.result;
+                            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                            }
+                        };
+                    });
+                };
+
+                // 保存状态
+                const saveState = async () => {
+                    if (!db) return;
+
+                    const state = {
+                        tiers: tiers.value.map(t => ({
+                            id: t.id,
+                            name: t.name,
+                            color: t.color,
+                            images: t.images.map(img => ({ src: img.src, name: img.name }))
+                        })),
+                        unassignedImages: unassignedImages.value.map(img => ({
+                            src: img.src,
+                            name: img.name
+                        })),
+                        showImageNames: showImageNames.value,
+                        fixedHeight: fixedHeight.value
+                    };
+
+                    try {
+                        const transaction = db.transaction([STORE_NAME], 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        store.put({ id: 1, data: state });
+                    } catch (e) {
+                        console.error('保存状态失败:', e);
+                    }
+                };
+
+                // 加载状态
+                const loadState = async () => {
+                    if (!db) return;
+
+                    return new Promise((resolve) => {
+                        const transaction = db.transaction([STORE_NAME], 'readonly');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.get(1);
+
+                        request.onsuccess = () => {
+                            if (request.result) {
+                                resolve(request.result.data);
+                            } else {
+                                resolve(null);
+                            }
+                        };
+                        request.onerror = () => resolve(null);
+                    });
+                };
+
+                // 恢复状态
+                const restoreState = async () => {
+                    const savedState = await loadState();
+
+                    if (savedState) {
+                        tiers.value = savedState.tiers.map(t => ({
+                            ...t,
+                            dragOver: false
+                        }));
+                        unassignedImages.value = savedState.unassignedImages.map((img, i) => ({
+                            ...img,
+                            id: `img-unassigned-${++imageCounter}`
+                        }));
+                        showImageNames.value = !!savedState.showImageNames;
+                        fixedHeight.value = !!savedState.fixedHeight;
+                    } else {
+                        resetToDefault();
+                    }
+                };
+
+                // 重置为默认
+                const resetToDefault = () => {
+                    tiers.value = defaultTiers.map((t, i) => ({
+                        ...t,
+                        id: `tier-${i}`,
+                        dragOver: false
+                    }));
+                    unassignedImages.value = [];
+                    imageCounter = 0;
+                };
+
+                // 图片压缩
+                const compressImage = (base64String) => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+
+                            let width = img.width;
+                            let height = img.height;
+                            const maxSize = 800;
+
+                            if (width > maxSize || height > maxSize) {
+                                if (width > height) {
+                                    height = (height / width) * maxSize;
+                                    width = maxSize;
+                                } else {
+                                    width = (width / height) * maxSize;
+                                    height = maxSize;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/jpeg', 0.7));
+                        };
+                        img.src = base64String;
+                    });
+                };
+
+                // 处理文件上传
+                const handleFiles = async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                const compressed = await compressImage(e.target.result);
+                                addImage(compressed, file.name);
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                    e.target.value = '';
+                };
+
+                // 处理上传区域拖放
+                const onUploadDrop = async (e) => {
+                    uploadDragOver.value = false;
+                    const files = Array.from(e.dataTransfer.files);
+                    for (const file of files) {
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                const compressed = await compressImage(e.target.result);
+                                addImage(compressed, file.name);
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                };
+
+                // 添加图片
+                const addImage = (src, filename = '') => {
+                    let displayName = filename || '图片';
+                    if (displayName && displayName !== '图片') {
+                        const lastDotIndex = displayName.lastIndexOf('.');
+                        if (lastDotIndex > 0) {
+                            displayName = displayName.substring(0, lastDotIndex);
+                        }
+                    }
+
+                    unassignedImages.value.push({
+                        id: `img-${++imageCounter}`,
+                        src,
+                        name: displayName
+                    });
+                    saveState();
+                };
+
+                // 显示图片弹窗
+                const showImageModal = (src) => {
+                    modalImageSrc.value = src;
+                    showModal.value = true;
+                };
+
+                // 隐藏帮助
+                const hideHelp = () => {
+                    showHelpModal.value = false;
+                    saveState();
+                };
+
+                // 开始编辑评级
+                const startEditTier = (id) => {
+                    editingTierId.value = id;
+                };
+
+                // 更新评级名称
+                const updateTierName = (tier, e) => {
+                    tier.name = e.target.textContent;
+                    saveState();
+                };
+
+                // 更新评级颜色
+                const updateTierColor = (tier, e) => {
+                    tier.color = e.target.value;
+                    saveState();
+                };
+
+                // 删除评级
+                const deleteTier = (id) => {
+                    const tier = tiers.value.find(t => t.id === id);
+                    if (tier) {
+                        // 将图片移回未分配
+                        unassignedImages.value.push(...tier.images);
+                        tiers.value = tiers.value.filter(t => t.id !== id);
+                        editingTierId.value = null;
+                        saveState();
+                    }
+                };
+
+                // 添加新评级
+                const addNewTier = () => {
+                    const tierCount = tiers.value.length + 1;
+                    tiers.value.push({
+                        id: `tier-new-${tierCount}`,
+                        name: `新评级${tierCount}`,
+                        color: '#808080',
+                        images: [],
+                        dragOver: false
+                    });
+                    saveState();
+                };
+
+                // 拖拽处理
+                const startDrag = (e, image, tier) => {
+                    if (e.button !== 0) return;
+
+                    // 阻止默认拖拽行为
+                    e.preventDefault();
+
+                    isDragging = true;
+                    hasMoved = false;
+                    draggedImage = image;
+                    draggedFromTier = tier;
+                    startX = e.clientX;
+                    startY = e.clientY;
+
+                    // 立即添加事件监听
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                };
+
+                const onMouseMove = (e) => {
+                    if (!isDragging || !draggedImage) return;
+
+                    const deltaX = Math.abs(e.clientX - startX);
+                    const deltaY = Math.abs(e.clientY - startY);
+
+                    // 超过阈值才开始真正拖拽
+                    if (!hasMoved && (deltaX > 5 || deltaY > 5)) {
+                        hasMoved = true;
+
+                        // 创建拖拽预览
+                        const src = draggedImage.src;
+                        dragPreview = document.createElement('div');
+                        dragPreview.className = 'drag-preview show';
+                        dragPreview.innerHTML = `<img src="${src}" alt="">`;
+                        dragPreview.style.left = (e.clientX - 60) + 'px';
+                        dragPreview.style.top = (e.clientY - 60) + 'px';
+                        document.body.appendChild(dragPreview);
+
+                        // 为当前拖拽的元素添加样式
+                        const imageItem = e.target.closest('.image-item');
+                        if (imageItem) {
+                            imageItem.classList.add('dragging');
+                        }
+                    }
+
+                    // 更新预览位置
+                    if (hasMoved && dragPreview) {
+                        dragPreview.style.left = (e.clientX - 60) + 'px';
+                        dragPreview.style.top = (e.clientY - 60) + 'px';
+                    }
+                };
+
+                const onMouseUp = (e) => {
+                    // 移除事件监听
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+
+                    // 如果没有真正移动（只是点击），则显示图片放大
+                    if (!hasMoved && draggedImage) {
+                        showImageModal(draggedImage.src);
+                        cleanupDrag();
+                        return;
+                    }
+
+                    if (!isDragging || !draggedImage) {
+                        cleanupDrag();
+                        return;
+                    }
+
+                    // 移除拖拽预览以便检测下方元素
+                    if (dragPreview) {
+                        dragPreview.remove();
+                        dragPreview = null;
+                    }
+
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    const elementBelow = document.elementFromPoint(x, y);
+
+                    if (!elementBelow) {
+                        cleanupDrag();
+                        return;
+                    }
+
+                    // 检查是否在删除区域
+                    const deleteZone = elementBelow.closest('.delete-zone');
+                    if (deleteZone) {
+                        removeImage(draggedImage, draggedFromTier);
+                        cleanupDrag();
+                        return;
+                    }
+
+                    // 检查是否在图片上
+                    const targetImageItem = elementBelow.closest('.image-item');
+                    if (targetImageItem) {
+                        const targetId = targetImageItem.dataset.id;
+                        if (targetId) {
+                            // 找到该图片所属的 tier
+                            const targetTierContent = targetImageItem.closest('.tier-content');
+                            const targetTierEl = targetTierContent?.closest('.tier');
+                            if (targetTierEl) {
+                                const targetTierId = targetTierEl.dataset.tierId;
+                                const targetTier = tiers.value.find(t => t.id === targetTierId);
+
+                                if (targetTier) {
+                                    const fromTierId = draggedFromTier ? draggedFromTier.id : null;
+                                    if (fromTierId === targetTierId) {
+                                        // 同一评级内排序
+                                        reorderWithinTier(targetTier, targetId);
+                                    } else {
+                                        // 跨评级移动
+                                        moveImage(draggedImage, draggedFromTier, targetTier);
+                                    }
+                                }
+                            }
+                        }
+                        cleanupDrag();
+                        return;
+                    }
+
+                    // 检查是否在 tier 内容区域（但不在图片上）
+                    const targetTierContent = elementBelow.closest('.tier-content');
+                    if (targetTierContent) {
+                        const targetTierEl = targetTierContent.closest('.tier');
+                        if (targetTierEl) {
+                            const targetTierId = targetTierEl.dataset.tierId;
+                            const targetTier = tiers.value.find(t => t.id === targetTierId);
+
+                            if (targetTier) {
+                                const fromTierId = draggedFromTier ? draggedFromTier.id : null;
+                                if (fromTierId !== targetTierId) {
+                                    moveImage(draggedImage, draggedFromTier, targetTier);
+                                }
+                            }
+                        }
+                    }
+
+                    cleanupDrag();
+                };
+
+                const createDragPreview = (element) => {
+                    if (dragPreview) {
+                        dragPreview.remove();
+                    }
+                    dragPreview = document.createElement('div');
+                    dragPreview.className = 'drag-preview';
+                    dragPreview.innerHTML = element.innerHTML;
+                    document.body.appendChild(dragPreview);
+                };
+
+                const cleanupDrag = () => {
+                    isDragging = false;
+                    hasMoved = false;
+
+                    // 清理所有拖拽样式
+                    document.querySelectorAll('.image-item.dragging').forEach(el => {
+                        el.classList.remove('dragging');
+                    });
+
+                    // 清理拖拽预览（检查是否已存在）
+                    if (dragPreview && dragPreview.parentNode) {
+                        dragPreview.remove();
+                    }
+                    dragPreview = null;
+
+                    // 清理所有 tier 的 dragOver 状态
+                    tiers.value.forEach(t => t.dragOver = false);
+
+                    // 重置拖拽相关变量
+                    draggedImage = null;
+                    draggedFromTier = null;
+                };
+
+                // 移动图片
+                const moveImage = (image, fromTier, toTier) => {
+                    // 从原评级移除
+                    if (fromTier) {
+                        fromTier.images = fromTier.images.filter(img => img.id !== image.id);
+                    } else {
+                        unassignedImages.value = unassignedImages.value.filter(img => img.id !== image.id);
+                    }
+
+                    // 添加到目标评级
+                    toTier.images.push(image);
+
+                    if (fixedHeight.value) {
+                        nextTick(() => adjustImageSizes(toTier));
+                    }
+
+                    saveState();
+                };
+
+                // 同一评级内排序
+                const reorderWithinTier = (tier, targetId) => {
+                    if (!targetId || !draggedImage) return;
+                    if (targetId === draggedImage.id) return;
+
+                    const images = [...tier.images];
+                    const draggedIndex = images.findIndex(img => img.id === draggedImage.id);
+                    const targetIndex = images.findIndex(img => img.id === targetId);
+
+                    if (draggedIndex === -1 || targetIndex === -1) return;
+
+                    // 移除拖拽的图片
+                    const [draggedImg] = images.splice(draggedIndex, 1);
+                    // 插入到目标位置
+                    images.splice(targetIndex, 0, draggedImg);
+
+                    // 触发响应式更新
+                    tier.images = images;
+
+                    saveState();
+                };
+
+                // 删除图片
+                const removeImage = (image, fromTier) => {
+                    if (fromTier) {
+                        fromTier.images = fromTier.images.filter(img => img.id !== image.id);
+                    } else {
+                        unassignedImages.value = unassignedImages.value.filter(img => img.id !== image.id);
+                    }
+                    saveState();
+                };
+
+                // 拖拽到评级
+                const onTierDragOver = (e, tier) => {
+                    if (isDragging) {
+                        tier.dragOver = true;
+                    }
+                };
+
+                const onTierDragLeave = (tier) => {
+                    tier.dragOver = false;
+                };
+
+                const onTierDrop = (e, tier) => {
+                    tier.dragOver = false;
+                    if (draggedImage) {
+                        moveImage(draggedImage, draggedFromTier, tier);
+                    }
+                };
+
+                // 删除区域拖放
+                const onDeleteDrop = (e) => {
+                    deleteDragOver.value = false;
+                    if (draggedImage) {
+                        removeImage(draggedImage, draggedFromTier);
+                    }
+                };
+
+                // 调整图片大小
+                const getTierContentClass = (tier) => {
+                    if (!fixedHeight.value) return '';
+                    return '';
+                };
+
+                const getImageClass = (tier) => {
+                    if (!fixedHeight.value) return '';
+
+                    const count = tier.images.length;
+                    const container = document.querySelector('.tier-content');
+                    if (!container) return 'single-row';
+
+                    const containerWidth = container.clientWidth - 10;
+                    const maxPerRow = Math.floor(containerWidth / 125);
+
+                    if (count <= maxPerRow) {
+                        return 'single-row';
+                    } else {
+                        return 'multi-row';
+                    }
+                };
+
+                const getImageStyle = (tier) => {
+                    if (!fixedHeight.value || tier.images.length === 0) return {};
+
+                    const container = document.querySelector('.tier-content');
+                    if (!container) return {};
+
+                    const containerWidth = container.clientWidth - 10;
+                    const count = tier.images.length;
+                    const maxPerRow = Math.floor(containerWidth / 125);
+
+                    if (count > maxPerRow) {
+                        const availableWidth = containerWidth - (count - 1) * 5;
+                        const calculatedWidth = Math.floor(availableWidth / count);
+
+                        if (calculatedWidth >= 70) {
+                            return {
+                                width: calculatedWidth + 'px',
+                                height: calculatedWidth + 'px'
+                            };
+                        } else {
+                            return {
+                                width: '70px',
+                                height: '70px'
+                            };
+                        }
+                    }
+
+                    return {};
+                };
+
+                const adjustImageSizes = (tier) => {
+                    // Trigger re-render
+                };
+
+                // 重新计算所有评级
+                const recalculateAllTierSizes = () => {
+                    tiers.value.forEach(tier => {
+                        adjustImageSizes(tier);
+                    });
+                };
+
+                // 保存为图片
+                const saveAsImage = async () => {
+                    showHelpModal.value = false;
+
+                    try {
+                        const canvas = await html2canvas(rankingContainer.value, {
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: '#1a1a1a',
+                            scrollX: 0,
+                            scrollY: 0
+                        });
+
+                        const imageDataUrl = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.href = imageDataUrl;
+                        link.download = '从夯到拉排行榜.png';
+                        link.click();
+                        window.open(imageDataUrl, '_blank');
+                    } catch (error) {
+                        console.error('截图失败:', error);
+                        alert('截图失败，请重试。');
+                    }
+                };
+
+                // 确认重置
+                const confirmReset = () => {
+                    resetToDefault();
+                    saveState();
+                    showResetModal.value = false;
+                };
+
+                // 监听设置变化
+                watch([showImageNames, fixedHeight], () => {
+                    saveState();
+                });
+
+                // 窗口大小变化
+                onMounted(async () => {
+                    await initDB();
+                    await restoreState();
+
+                    window.addEventListener('resize', () => {
+                        if (fixedHeight.value) {
+                            recalculateAllTierSizes();
+                        }
+                    });
+
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape') {
+                            showHelpModal.value = false;
+                            showResetModal.value = false;
+                            showModal.value = false;
+                        }
+                    });
+                });
+
+                return {
+                    tiers,
+                    unassignedImages,
+                    showImageNames,
+                    fixedHeight,
+                    showHelpModal,
+                    showResetModal,
+                    showModal,
+                    modalImageSrc,
+                    editingTierId,
+                    uploadDragOver,
+                    deleteDragOver,
+                    fileInput,
+                    rankingContainer,
+                    tierNameRefs,
+                    handleFiles,
+                    onUploadDrop,
+                    showImageModal,
+                    hideHelp,
+                    startEditTier,
+                    updateTierName,
+                    updateTierColor,
+                    deleteTier,
+                    addNewTier,
+                    startDrag,
+                    onTierDragOver,
+                    onTierDragLeave,
+                    onTierDrop,
+                    onDeleteDrop,
+                    getTierContentClass,
+                    getImageClass,
+                    getImageStyle,
+                    saveAsImage,
+                    confirmReset
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
