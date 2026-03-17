@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/splitpanes@3.1.5/dist/splitpanes.min.css">
-  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="static/css/splitpanes.min.css">
+  <link rel="stylesheet" href="static/css/font-awesome.min.css">
   <style>
     *,
     *::before,
@@ -32,20 +32,9 @@
       height: 100% !important;
       width: 100% !important;
     }
-    .splitpanes__splitter {
-      background-color: #ccc;
-      position: relative;
-    }
-    .splitpanes__splitter::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background-color: #999;
+    /* 使用默认主题 */
+    .splitpanes.default-theme .splitpanes__pane {
+      background-color: #f2f2f2;
     }
     /* 移动端 SplitPane 样式适配 */
     @media (max-width: 767px) {
@@ -313,14 +302,14 @@ export default {
   
   <div class="loading-tip" id="loadingTip">正在加载 Monaco Editor...</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/zh-cn.js"></script>
+  <script src="static/js/moment.min.js"></script>
+  <script src="static/js/moment.zh-cn.js"></script>
   <script src="static/js/vue.js"></script>
   <script src="static/js/vue-template-compiler.js"></script>
   <script src="static/js/antd.min.js"></script>
   <script src="static/js/element-ui.min.js"></script>
   
-  <script src="https://cdn.jsdelivr.net/npm/splitpanes@3.1.5/dist/splitpanes.umd.js"></script>
+  <script src="static/js/splitpanes.umd.js"></script>
   
   <script src="static/codemirror/codemirror.js"></script>
   <script src="static/codemirror/overlay.js"></script>
@@ -484,49 +473,65 @@ export default {
     
     async function initSplitPane() {
       const splitPanesLoaded = await checkSplitPanesAvailabilityWithRetry();
-      
+
       if (!splitPanesLoaded) {
         initFallbackSplitPane();
         return;
       }
-      
+
       const container = document.getElementById('app-container');
       const isMobile = window.innerWidth <= 767;
       currentLayout = isMobile ? 'vertical' : 'horizontal';
-      
-      container.innerHTML = `
-        <div class="splitpanes ${isMobile ? 'splitpanes--vertical' : 'splitpanes--horizontal'}">
-          <div class="splitpanes__pane" ${isMobile ? 'style="height: 50vh; min-height: 200px;"' : 'style="width: 50%;"'}>
-            <div id="monaco-editor-container"></div>
-            <div id="codemirror-container"></div>
-          </div>
-          <div class="splitpanes__splitter"></div>
-          <div class="splitpanes__pane">
-            <div id="app" class="preview-area"></div>
-          </div>
-        </div>
-      `;
-      
+
+      // 注册 Vue 组件
+      Vue.component('splitpanes', window.splitpanes.Splitpanes);
+      Vue.component('pane', window.splitpanes.Pane);
+
+      // 使用 Vue 方式挂载组件
+      const VueApp = Vue.extend({
+        template: `
+          <splitpanes :horizontal="${isMobile}" class="default-theme" style="height: 100%;">
+            <pane :size="${isMobile ? 50 : 50}" :min-size="20">
+              <div id="monaco-editor-container"></div>
+              <div id="codemirror-container"></div>
+            </pane>
+            <pane :size="${isMobile ? 50 : 50}" :min-size="20">
+              <div id="app" class="preview-area"></div>
+            </pane>
+          </splitpanes>
+        `,
+        mounted() {
+          // 监听 splitpanes 事件
+          this.$on('resize', () => {
+            if (editor && editor instanceof CodeMirror) {
+              editor.refresh();
+            }
+            if (monacoEditor) {
+              monacoEditor.layout();
+            }
+          });
+          this.$on('resized', () => {
+            if (editor && editor instanceof CodeMirror) {
+              editor.refresh();
+            }
+            if (monacoEditor) {
+              monacoEditor.layout();
+            }
+          });
+        }
+      });
+
       try {
-        splitPaneInstance = new window.splitpanes.Splitpanes(document.querySelector('.splitpanes'), {
-          resizerThickness: isMobile ? 8 : 8,
-          cursor: isMobile ? 'row-resize' : 'col-resize'
-        });
-        
-        splitPaneInstance.on('resize', () => {
-          if (editor && editor instanceof CodeMirror) {
-            editor.refresh();
-          }
-          if (monacoEditor) {
-            monacoEditor.layout();
-          }
-        });
+        container.innerHTML = '<div id="splitpanes-root"></div>';
+        splitPaneInstance = new VueApp().$mount('#splitpanes-root');
+
+        console.log('SplitPanes 初始化成功');
       } catch (error) {
         console.error('初始化SplitPanes失败:', error);
         initFallbackSplitPane();
         return;
       }
-      
+
       window.addEventListener('resize', debounce(function() {
         const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
         if (newLayout !== currentLayout) {
@@ -652,11 +657,11 @@ export default {
         isMonacoLoading = true;
         
         const script = document.createElement('script');
-        script.src = 'https://cdn.bootcdn.net/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js';
+        script.src = 'static/monaco/min/vs/loader.js';
         script.async = true;
-        
+
         script.onload = () => {
-          window.require.config({ paths: { 'vs': 'https://cdn.bootcdn.net/ajax/libs/monaco-editor/0.47.0/min/vs' } });
+          window.require.config({ paths: { 'vs': 'static/monaco/min/vs' } });
           
           window.require(['vs/editor/editor.main'], () => {
             isMonacoLoaded = true;
