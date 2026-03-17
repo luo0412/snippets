@@ -164,14 +164,25 @@
       padding: 0 12px;
       color: #fff;
       background-color: #52c41a;
+      border: none;
       border-radius: 6px;
-      cursor: default;
-      font-size: 12px;
+      cursor: pointer;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .run:hover {
+      background-color: #73d13d;
+      transform: scale(1.05);
+    }
+    .run.refreshing {
+      background-color: #faad14;
+    }
+    .run.refreshing .icon {
+      animation: spin 0.5s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
     .btn-item {
       width: 36px;
@@ -356,9 +367,11 @@ export default {
 
   <!-- 按钮组容器 -->
   <div class="btn-group">
-    <span class="run">✓ 自动刷新中</span>
+    <button class="run btn-item" id="runBtn">
+      <i class="fas fa-play icon"></i>
+    </button>
     <div class="editor-switch btn-item" id="editorSwitchBtn">
-      <i class="fas fa-edit icon"></i>
+      <i class="fas fa-code icon"></i>
     </div>
     <button class="fullscreen-btn btn-item" id="fullscreenBtn">
       <i class="fas fa-expand icon"></i>
@@ -512,6 +525,11 @@ export default {
     function initCodeMirror() {
       console.log('初始化CodeMirror编辑器');
 
+      const editorSwitchBtn = document.getElementById('editorSwitchBtn');
+      if (editorSwitchBtn) {
+        editorSwitchBtn.innerHTML = '<i class="fas fa-codepen icon"></i>';
+      }
+
       const codeMirrorContainer = document.getElementById('codemirror-container');
       const monacoContainer = document.getElementById('monaco-editor-container');
 
@@ -640,6 +658,11 @@ export default {
         return;
       }
 
+      const editorSwitchBtn = document.getElementById('editorSwitchBtn');
+      if (editorSwitchBtn) {
+        editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
+      }
+
       const container = document.getElementById('monaco-editor-container');
       const codeMirrorContainer = document.getElementById('codemirror-container');
       const codeTextarea = document.getElementById('code');
@@ -682,15 +705,28 @@ export default {
     }
 
     async function switchEditor() {
+      const editorSwitchBtn = document.getElementById('editorSwitchBtn');
       if (currentEditorType === 'codemirror') {
         try {
+          if (editorSwitchBtn) {
+            editorSwitchBtn.innerHTML = '<i class="fas fa-spinner icon"></i>';
+          }
           await loadMonacoEditor();
           initMonacoEditor();
+          if (editorSwitchBtn) {
+            editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
+          }
         } catch (error) {
           console.error('切换到Monaco Editor失败:', error);
+          if (editorSwitchBtn) {
+            editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
+          }
           alert('加载Monaco Editor失败，请检查网络或稍后再试');
         }
       } else {
+        if (editorSwitchBtn) {
+          editorSwitchBtn.innerHTML = '<i class="fas fa-codepen icon"></i>';
+        }
         initCodeMirror();
       }
     }
@@ -710,9 +746,19 @@ export default {
     }
 
     function handleEditorChange() {
+      const runBtn = document.getElementById('runBtn');
+      if (runBtn) {
+        runBtn.classList.add('refreshing');
+        runBtn.innerHTML = '<i class="fas fa-sync icon"></i>';
+      }
+
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         run();
+        if (runBtn) {
+          runBtn.classList.remove('refreshing');
+          runBtn.innerHTML = '<i class="fas fa-play icon"></i>';
+        }
       }, 500);
     }
 
@@ -840,6 +886,19 @@ export default {
 
       initSplitPane();
       initCodeMirror();
+
+      const runBtn = document.getElementById('runBtn');
+      if (runBtn) {
+        runBtn.addEventListener('click', () => {
+          runBtn.classList.add('refreshing');
+          runBtn.innerHTML = '<i class="fas fa-sync icon"></i>';
+          run();
+          setTimeout(() => {
+            runBtn.classList.remove('refreshing');
+            runBtn.innerHTML = '<i class="fas fa-play icon"></i>';
+          }, 500);
+        });
+      }
 
       if (editorSwitchBtn) {
         editorSwitchBtn.addEventListener('click', switchEditor);
