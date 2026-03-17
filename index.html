@@ -3,278 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Ant Design Vue Playground</title>
+  <title>Vue Playground</title>
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
   <link rel="stylesheet" href="static/css/font-awesome.min.css">
   <style>
-    *, *::before, *::after {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      height: 100vh;
-      overflow: hidden;
-      touch-action: pan-y;
-    }
-    #app-container {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    /* PC端水平布局 */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { height: 100vh; overflow: hidden; touch-action: pan-y; }
+    #app-container { height: 100vh; display: flex; flex-direction: column; }
+
+    /* 布局响应式：PC水平，移动垂直 */
     @media (min-width: 768px) {
-      #app-container {
-        flex-direction: row;
-      }
-      #editorPane {
-        width: 50%;
-        min-width: 200px;
-        max-width: 80%;
-      }
-      #previewPane {
-        flex: 1;
-        min-width: 200px;
-      }
+      #app-container { flex-direction: row; }
+      #editorPane { width: 50%; min-width: 200px; max-width: 80%; }
+      .splitter { width: 6px; cursor: col-resize; }
     }
-    /* 移动端垂直布局 */
     @media (max-width: 767px) {
-      #editorPane {
-        height: 50%;
-        min-height: 120px;
-        max-height: 80%;
-      }
-      #previewPane {
-        flex: 1;
-        min-height: 120px;
-      }
-      /* 移动端分割条更易触摸 */
-      .splitter {
-        height: 12px;
-        cursor: row-resize;
-      }
-      .splitter::after {
-        width: 32px;
-        height: 32px;
-      }
+      #editorPane { height: 50%; min-height: 120px; max-height: 80%; }
+      .splitter { height: 12px; cursor: row-resize; }
+      .splitter::after { width: 32px; height: 32px; }
+      .btn-group { gap: 6px; bottom: 12px; right: 12px; }
+      .btn-group > *, .btn-item { height: 32px; width: 32px; }
+      .run { font-size: 11px; padding: 0 8px; }
     }
-    #editorPane, #previewPane {
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
+
+    #editorPane, #previewPane { overflow: hidden; display: flex; flex-direction: column; }
+
     /* 分割条 */
-    .splitter {
-      flex-shrink: 0;
-      background-color: #e8e8e8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: row-resize;
-    }
-    .splitter:hover {
-      background-color: #1890ff;
-    }
-    /* PC水平分割条 */
-    @media (min-width: 768px) {
-      .splitter {
-        width: 6px;
-        cursor: col-resize;
-      }
-    }
-    /* 移动端垂直分割条 */
-    @media (max-width: 767px) {
-      .splitter {
-        height: 12px;
-        cursor: row-resize;
-      }
-      .splitter::after {
-        width: 32px;
-        height: 32px;
-      }
-    }
-    .splitter::after {
-      content: '';
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background-color: #ccc;
-      transition: background-color 0.2s;
-    }
-    .splitter:hover::after {
-      background-color: #fff;
-    }
-    /* CodeMirror 滚动优化 - 支持触摸滑动 */
-    #codemirror-container {
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-    }
-    #codemirror-container .CodeMirror {
-      height: 100% !important;
-      width: 100% !important;
-      font-family: Consolas, 'Courier New', monospace;
-      font-size: 14px;
-      touch-action: none;
-    }
-    #codemirror-container .CodeMirror-scroll {
-      height: 100% !important;
-      overflow-y: auto !important;
-      overflow-x: auto !important;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y pinch-zoom;
-    }
-    #codemirror-container .CodeMirror-vscrollbar,
-    #codemirror-container .CodeMirror-hscrollbar {
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    /* Monaco 编辑器容器 */
-    #monaco-editor-container {
-      flex: 1;
-      display: none;
-      overflow: hidden;
-    }
+    .splitter { flex-shrink: 0; background: #e8e8e8; display: flex; align-items: center; justify-content: center; }
+    .splitter:hover { background: #1890ff; }
+    .splitter::after { content: ''; width: 24px; height: 24px; border-radius: 50%; background: #ccc; transition: background 0.2s; }
+    .splitter:hover::after { background: #fff; }
+
+    /* 编辑器容器 */
+    #codemirror-container, #monaco-editor-container { flex: 1; overflow: hidden; position: relative; }
+    #monaco-editor-container { display: none; }
+    #codemirror-container .CodeMirror { height: 100% !important; font: 14px Consolas, monospace; touch-action: none; }
+    #codemirror-container .CodeMirror-scroll { height: 100% !important; overflow: auto; -webkit-overflow-scrolling: touch; }
+
     /* 预览区域 */
-    .preview-area {
-      flex: 1;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y;
-    }
-    #code {
-      display: none;
-    }
-    /* 按钮组容器 */
-    .btn-group {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 999;
-      display: flex;
-      gap: 8px;
-      align-items: stretch;
-    }
-    .btn-group > * {
-      height: 36px;
-    }
-    .run {
-      padding: 0 12px;
-      color: #fff;
-      background-color: #52c41a;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-    }
-    .run:hover {
-      background-color: #73d13d;
-      transform: scale(1.05);
-    }
-    .run.refreshing {
-      background-color: #faad14;
-    }
-    .run.refreshing .icon {
-      animation: spin 0.5s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .btn-item {
-      width: 36px;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-    }
-    .editor-switch {
-      background-color: #1890ff;
-    }
-    .editor-switch:hover {
-      background-color: #40a9ff;
-      transform: scale(1.05);
-    }
-    .fullscreen-btn {
-      background: #1890ff;
-    }
-    .fullscreen-btn:hover {
-      background: #40a9ff;
-      transform: scale(1.05);
-    }
-    .exit-fullscreen-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 999;
-      width: 36px;
-      height: 36px;
-      background: #ff4d4f;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-    }
-    .exit-fullscreen-btn:hover {
-      background: #ff7875;
-      transform: scale(1.05);
-    }
-    .icon {
-      font-size: 16px;
-    }
-    .loading-tip {
-      position: fixed;
-      bottom: 80px;
-      right: 20px;
-      padding: 4px 8px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      border-radius: 4px;
-      font-size: 12px;
-      z-index: 999;
-      display: none;
-    }
+    .preview-area { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+    #code { display: none; }
+
+    /* 按钮组 */
+    .btn-group { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; gap: 8px; }
+    .btn-group > * { height: 36px; }
+    .btn-item, .run { padding: 0 12px; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: all 0.2s; }
+    .btn-item { width: 36px; color: #fff; }
+    .run { color: #fff; background: #52c41a; }
+    .run:hover { background: #73d13d; transform: scale(1.05); }
+    .run.refreshing { background: #faad14; }
+    .run.refreshing .icon { animation: spin 0.5s linear infinite; }
+
+    .editor-switch, .fullscreen-btn { background: #1890ff; }
+    .editor-switch:hover, .fullscreen-btn:hover { background: #40a9ff; transform: scale(1.05); }
+    .exit-fullscreen-btn { position: fixed; bottom: 20px; right: 20px; z-index: 999; width: 36px; height: 36px; background: #ff4d4f; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .exit-fullscreen-btn:hover { background: #ff7875; transform: scale(1.05); }
+
+    .icon { font-size: 16px; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .loading-tip { position: fixed; bottom: 80px; right: 20px; padding: 4px 8px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 4px; font-size: 12px; z-index: 999; display: none; }
+
     /* 全屏预览 */
-    .preview-fullscreen {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      z-index: 998;
-      background: white;
-    }
-    /* 移动端适配 */
-    @media (max-width: 767px) {
-      .btn-group {
-        gap: 6px;
-        bottom: 12px;
-        right: 12px;
-      }
-      .btn-group > * {
-        height: 32px;
-      }
-      .btn-item {
-        width: 32px;
-      }
-      .run {
-        font-size: 11px;
-        padding: 0 8px;
-      }
-    }
+    .preview-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 998; background: #fff; }
   </style>
 </head>
 <body>
@@ -284,45 +77,29 @@
       <div id="codemirror-container"></div>
     </div>
     <div class="splitter" id="splitter"></div>
-    <div id="previewPane">
-      <div id="app" class="preview-area"></div>
-    </div>
+    <div id="previewPane"><div id="app" class="preview-area"></div></div>
   </div>
 
+  <!-- 初始代码模板 -->
   <textarea id="code"><template>
   <div class="page">
     <a-button type="primary" @click="visible = true">按钮</a-button>
     <el-button type="primary" @click="visible = true">按钮</el-button>
-    <el-date-picker placeholder="请选择日期(ElementUI)" v-model="date" style="margin: 0 10px;" />
-
-    <a-date-picker
-      placeholder="基础日期选择(AntD)"
-      v-model="antdDate"
-      style="margin: 0 10px;"
-      @change="handleDateChange"
-    />
-    <a-date-picker
-      placeholder="带快捷选项"
-      v-model="antdDate2"
-      style="margin: 0 10px;"
-      :disabled-date="disabledDate"
-      :preset-ranges="presetRanges"
-    />
-    <a-range-picker
-      placeholder="日期范围选择"
-      v-model="dateRange"
-      style="margin: 0 10px;"
-    />
-    <a-date-picker
-      placeholder="月份选择器"
-      v-model="monthDate"
-      style="margin: 0 10px;"
-      picker="month"
-    />
-
-    <a-modal v-model:visible="visible" title="Hello world">
-      <p>Try Ant Design Vue</p>
-      <div>已选日期: {{ antdDate ? antdDate.format('YYYY-MM-DD') : '未选择' }}</div>
+    <br><br>
+    <el-date-picker placeholder="请选择日期(ElementUI)" v-model="date" />
+    <a-date-picker placeholder="基础日期选择(AntD)" v-model="antdDate" style="margin: 0 10px;" @change="handleDateChange" />
+    <a-date-picker placeholder="带快捷选项" v-model="antdDate2" style="margin: 0 10px;" :disabled-date="disabledDate" :preset-ranges="presetRanges" />
+    <br><br>
+    <a-range-picker :placeholder="['开始日期', '结束日期']" v-model="dateRange" style="margin: 0 10px;" />
+    <a-month-picker placeholder="选择月份" v-model="monthDate" style="margin: 0 10px;" />
+    <a-week-picker placeholder="选择周" v-model="weekDate" style="margin: 0 10px;" />
+    <br><br>
+    <a-time-picker placeholder="选择时间" v-model="timeValue" style="margin: 0 10px;" />
+    <a-date-picker show-time placeholder="日期时间选择" v-model="dateTime" style="margin: 0 10px;" />
+    <br><br>
+    <a-modal v-model:visible="visible" title="你好世界">
+      <p>这是 Ant Design Vue 中文演示</p>
+      <div>已选日期: {{ antdDate ? antdDate.format('YYYY年MM月DD日') : '未选择' }}</div>
     </a-modal>
   </div>
 </template>
@@ -336,12 +113,17 @@ export default {
       antdDate2: null,
       dateRange: null,
       monthDate: null,
+      weekDate: null,
+      timeValue: null,
+      dateTime: null,
       visible: false,
       presetRanges: {
         '今天': [moment(), moment()],
-        '昨天': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-        '近7天': [moment().subtract(6, 'days'), moment()],
-        '近30天': [moment().subtract(29, 'days'), moment()]
+        '昨天': [moment().subtract(1,'days'), moment().subtract(1,'days')],
+        '近7天': [moment().subtract(6,'days'), moment()],
+        '近30天': [moment().subtract(29,'days'), moment()],
+        '本月': [moment().startOf('month'), moment().endOf('month')],
+        '本年': [moment().startOf('year'), moment().endOf('year')]
       }
     }
   },
@@ -357,29 +139,20 @@ export default {
 </script>
 
 <style>
-.page {
-  padding: 20px;
-}
-.ant-picker {
-  margin-bottom: 10px;
-}
+.page { padding: 20px; }
+.ant-picker, .el-date-editor { margin-bottom: 10px; margin-right: 10px; }
 </style></textarea>
 
-  <!-- 按钮组容器 -->
+  <!-- 按钮组 -->
   <div class="btn-group">
-    <button class="run btn-item" id="runBtn">
-      <i class="fas fa-play icon"></i>
-    </button>
-    <div class="editor-switch btn-item" id="editorSwitchBtn">
-      <i class="fas fa-code icon"></i>
-    </div>
-    <button class="fullscreen-btn btn-item" id="fullscreenBtn">
-      <i class="fas fa-expand icon"></i>
-    </button>
+    <button class="run btn-item" id="runBtn"><i class="fas fa-bolt icon"></i></button>
+    <div class="editor-switch btn-item" id="editorSwitchBtn"><i class="fas fa-laptop-code icon"></i></div>
+    <button class="fullscreen-btn btn-item" id="fullscreenBtn"><i class="fas fa-expand icon"></i></button>
   </div>
 
   <div class="loading-tip" id="loadingTip">正在加载 Monaco Editor...</div>
 
+  <!-- 依赖库 -->
   <script src="static/js/moment.min.js"></script>
   <script src="static/js/moment.zh-cn.js"></script>
   <script src="static/js/vue.js"></script>
@@ -387,6 +160,7 @@ export default {
   <script src="static/js/antd.min.js"></script>
   <script src="static/js/element-ui.min.js"></script>
 
+  <!-- CodeMirror 插件 -->
   <script src="static/codemirror/codemirror.js"></script>
   <script src="static/codemirror/overlay.js"></script>
   <script src="static/codemirror/matchbrackets.js"></script>
@@ -399,390 +173,305 @@ export default {
   <script src="static/codemirror/vue.js"></script>
 
   <script>
-    let editor = null;
+    // ==================== 状态管理 ====================
+    let editor = null;           // 当前编辑器实例
+    let monacoEditor = null;    // Monaco 编辑器实例
+    let currentEditor = 'codemirror';  // 当前编辑器类型
     let isMonacoLoaded = false;
     let isMonacoLoading = false;
-    let monacoEditor = null;
-    let currentEditorType = 'codemirror';
-    let debounceTimeout;
+    let debounceTimer = null;
     let isFullscreen = false;
-    let initialCode = '';
     let isDragging = false;
-    let startPos = 0;
-    let startSize = 0;
-    let containerSize = 0;
 
-    const loadingTip = document.getElementById('loadingTip');
-    const editorSwitchBtn = document.getElementById('editorSwitchBtn');
+    // DOM 缓存
+    const $ = id => document.getElementById(id);
+    const els = {
+      appContainer: $('app-container'),
+      editorPane: $('editorPane'),
+      previewPane: $('previewPane'),
+      splitter: $('splitter'),
+      code: $('code'),
+      app: $('app'),
+      runBtn: $('runBtn'),
+      editorSwitchBtn: $('editorSwitchBtn'),
+      fullscreenBtn: $('fullscreenBtn'),
+      loadingTip: $('loadingTip'),
+      codemirrorContainer: $('codemirror-container'),
+      monacoContainer: $('monaco-editor-container')
+    };
 
-    function initSplitPane() {
-      const container = document.getElementById('app-container');
-      const isMobile = window.innerWidth <= 767;
+    // ==================== 工具函数 ====================
+    // 防抖函数 - 实现难点：闭包保存定时器状态，多次调用只执行最后一次
+    const debounce = (fn, wait = 300) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fn, wait);
+    };
 
-      // 设置初始分割位置
-      const editorPane = document.getElementById('editorPane');
-      if (isMobile) {
-        editorPane.style.height = '50%';
+    // 获取当前编辑器内容 - 实现难点：兼容两种编辑器的API差异
+    const getCode = () => {
+      if (currentEditor === 'monaco' && monacoEditor) return monacoEditor.getValue();
+      return editor?.getValue?.() || els.code.value || '';
+    };
+
+    // 设置编辑器内容 - 实现难点：同上
+    const setCode = (content) => {
+      if (currentEditor === 'monaco' && monacoEditor) {
+        monacoEditor.setValue(content);
+      } else if (editor?.setValue) {
+        editor.setValue(content);
       } else {
-        editorPane.style.width = '50%';
+        els.code.value = content;
       }
+    };
 
-      setupSplitter();
-      setupResizeListener();
-    }
+    // 刷新编辑器尺寸
+    const refreshEditor = () => {
+      editor?.refresh?.();
+      monacoEditor?.layout?.();
+    };
 
-    function setupSplitter() {
-      const splitter = document.getElementById('splitter');
-      const editorPane = document.getElementById('editorPane');
+    // ==================== 分割面板 ====================
+    // 实现难点：处理鼠标和触摸两种事件，计算拖拽比例
+    const initSplitPane = () => {
       const isMobile = window.innerWidth <= 767;
+      els.editorPane.style[isMobile ? 'height' : 'width'] = '50%';
 
-      // 鼠标事件
-      splitter.addEventListener('mousedown', startDrag);
-
-      // 触摸事件 - 支持移动端
-      splitter.addEventListener('touchstart', startDrag, { passive: false });
-
-      function startDrag(e) {
+      const handleStart = (e) => {
         e.preventDefault();
         isDragging = true;
+        els.splitter.style.background = '#1890ff';
 
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const pos = e.touches ? e.touches[0] : e;
+        const isVertical = window.innerWidth <= 767;
+        const startPos = isVertical ? pos.clientY : pos.clientX;
+        const startSize = isVertical ? els.editorPane.offsetHeight : els.editorPane.offsetWidth;
+        const containerSize = isVertical ? els.appContainer.offsetHeight : els.appContainer.offsetWidth;
 
-        if (isMobile) {
-          startPos = clientY;
-          startSize = editorPane.offsetHeight;
-          containerSize = document.getElementById('app-container').offsetHeight;
-        } else {
-          startPos = clientX;
-          startSize = editorPane.offsetWidth;
-          containerSize = document.getElementById('app-container').offsetWidth;
-        }
-
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', stopDrag);
-        document.addEventListener('touchmove', handleDrag, { passive: false });
-        document.addEventListener('touchend', stopDrag);
-
-        splitter.style.backgroundColor = '#1890ff';
-      }
-
-      function handleDrag(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        if (isMobile) {
-          const deltaY = clientY - startPos;
-          const newHeight = Math.max(150, Math.min(startSize + deltaY, containerSize - 150));
-          editorPane.style.height = newHeight + 'px';
-        } else {
-          const deltaX = clientX - startPos;
-          const newWidth = Math.max(200, Math.min(startSize + deltaX, containerSize - 200));
-          editorPane.style.width = newWidth + 'px';
-        }
-
-        // 刷新编辑器尺寸
-        refreshEditor();
-      }
-
-      function stopDrag() {
-        isDragging = false;
-        splitter.style.backgroundColor = '#e8e8e8';
-
-        document.removeEventListener('mousemove', handleDrag);
-        document.removeEventListener('mouseup', stopDrag);
-        document.removeEventListener('touchmove', handleDrag);
-        document.removeEventListener('touchend', stopDrag);
-      }
-    }
-
-    function setupResizeListener() {
-      window.addEventListener('resize', debounce(function() {
-        refreshEditor();
-      }, 300));
-    }
-
-    function refreshEditor() {
-      if (editor && editor instanceof CodeMirror) {
-        editor.refresh();
-      }
-      if (monacoEditor) {
-        monacoEditor.layout();
-      }
-    }
-
-    function debounce(func, wait) {
-      let timeout;
-      return function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, arguments), wait);
-      };
-    }
-
-    function initCodeMirror() {
-      console.log('初始化CodeMirror编辑器');
-
-      const editorSwitchBtn = document.getElementById('editorSwitchBtn');
-      if (editorSwitchBtn) {
-        editorSwitchBtn.innerHTML = '<i class="fas fa-codepen icon"></i>';
-      }
-
-      const codeMirrorContainer = document.getElementById('codemirror-container');
-      const monacoContainer = document.getElementById('monaco-editor-container');
-
-      if (!codeMirrorContainer) {
-        console.error('CodeMirror初始化失败：codemirror-container不存在');
-        return;
-      }
-
-      if (currentEditorType === 'codemirror' && editor && editor instanceof CodeMirror) {
-        editor.refresh();
-        console.log('CodeMirror已初始化，仅刷新尺寸');
-        return;
-      }
-
-      let currentContent = getEditorContent() || initialCode;
-
-      if (monacoEditor) {
-        monacoEditor.dispose();
-        monacoEditor = null;
-      }
-
-      codeMirrorContainer.style.display = 'block';
-      if (monacoContainer) monacoContainer.style.display = 'none';
-
-      if (editor && editor.toTextArea) {
-        editor.toTextArea();
-        editor = null;
-      }
-
-      codeMirrorContainer.innerHTML = '';
-
-      const tempTextarea = document.createElement('textarea');
-      tempTextarea.id = 'temp-code-' + Date.now();
-      tempTextarea.value = currentContent;
-      codeMirrorContainer.appendChild(tempTextarea);
-
-      editor = CodeMirror.fromTextArea(tempTextarea, {
-        lineNumbers: true,
-        matchBrackets: true,
-        autoCloseBrackets: true,
-        autoCloseTags: true,
-        mode: { name: 'vue' },
-        theme: 'default',
-        indentUnit: 2,
-        tabSize: 2,
-        lineWrapping: true,
-        scrollbarStyle: 'native'
-      });
-
-      // 优化触摸滚动
-      const scrollContainer = codeMirrorContainer.querySelector('.CodeMirror-scroll');
-      if (scrollContainer) {
-        scrollContainer.style.touchAction = 'pan-y pinch-zoom';
-      }
-
-      if (currentContent) {
-        editor.setValue(currentContent);
-      }
-
-      editor.off('change', handleEditorChange);
-      editor.on('change', handleEditorChange);
-
-      setTimeout(() => {
-        editor.refresh();
-      }, 100);
-
-      currentEditorType = 'codemirror';
-
-      console.log('CodeMirror初始化完成');
-    }
-
-    function loadMonacoEditor() {
-      return new Promise((resolve, reject) => {
-        if (isMonacoLoading) {
-          const checkLoading = setInterval(() => {
-            if (window.monaco) {
-              clearInterval(checkLoading);
-              isMonacoLoaded = true;
-              resolve(true);
-            }
-          }, 100);
-          return;
-        }
-
-        if (window.monaco) {
-          isMonacoLoaded = true;
-          resolve(true);
-          return;
-        }
-
-        loadingTip.style.display = 'block';
-        isMonacoLoading = true;
-
-        const script = document.createElement('script');
-        script.src = 'static/monaco/min/vs/loader.js';
-        script.async = true;
-
-        script.onload = () => {
-          window.require.config({ paths: { 'vs': 'static/monaco/min/vs' } });
-
-          window.require(['vs/editor/editor.main'], () => {
-            isMonacoLoaded = true;
-            isMonacoLoading = false;
-            loadingTip.style.display = 'none';
-            resolve(true);
-          }, (err) => {
-            isMonacoLoading = false;
-            loadingTip.style.display = 'none';
-            reject(err);
-          });
+        const onMove = (e) => {
+          if (!isDragging) return;
+          e.preventDefault();
+          const curPos = e.touches ? e.touches[0] : e;
+          const cur = isVertical ? curPos.clientY : curPos.clientX;
+          const delta = cur - startPos;
+          const min = 150, max = containerSize - 150;
+          const newSize = Math.max(min, Math.min(startSize + delta, max));
+          els.editorPane.style[isVertical ? 'height' : 'width'] = newSize + 'px';
+          refreshEditor();
         };
 
-        script.onerror = (err) => {
+        const onEnd = () => {
+          isDragging = false;
+          els.splitter.style.background = '#e8e8e8';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onEnd);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+      };
+
+      els.splitter.addEventListener('mousedown', handleStart);
+      els.splitter.addEventListener('touchstart', handleStart, { passive: false });
+
+      window.addEventListener('resize', () => debounce(refreshEditor, 300));
+    };
+
+    // ==================== CodeMirror 编辑器 ====================
+    // 实现难点：创建临时 textarea 桥接 DOM 和 CodeMirror，配置 Vue 语法高亮
+    const initCodeMirror = () => {
+      if (currentEditor === 'codemirror' && editor) { refreshEditor(); return; }
+
+      if (monacoEditor) { monacoEditor.dispose(); monacoEditor = null; }
+      els.codemirrorContainer.style.display = 'block';
+      els.monacoContainer.style.display = 'none';
+
+      // 清理旧实例
+      if (editor?.toTextArea) { editor.toTextArea(); editor = null; }
+      els.codemirrorContainer.innerHTML = '';
+
+      const textarea = document.createElement('textarea');
+      textarea.value = getCode();
+      els.codemirrorContainer.appendChild(textarea);
+
+      editor = CodeMirror.fromTextArea(textarea, {
+        lineNumbers: true, matchBrackets: true, autoCloseBrackets: true,
+        autoCloseTags: true, mode: { name: 'vue' }, theme: 'default',
+        indentUnit: 2, tabSize: 2, lineWrapping: true, scrollbarStyle: 'native'
+      });
+
+      editor.on('change', handleChange);
+      currentEditor = 'codemirror';
+      els.editorSwitchBtn.innerHTML = '<i class="fas fa-laptop-code icon"></i>';
+
+      setTimeout(refreshEditor, 100);
+    };
+
+    // ==================== Monaco 编辑器 ====================
+    // 实现难点：动态加载 Monaco AMD 模块，配置 loader 和编辑器选项
+    const loadMonaco = () => new Promise((resolve, reject) => {
+      if (window.monaco) { resolve(); return; }
+      if (isMonacoLoading) {
+        const check = setInterval(() => {
+          if (window.monaco) { clearInterval(check); resolve(); }
+        }, 100);
+        return;
+      }
+
+      loadingTip.style.display = 'block';
+      isMonacoLoading = true;
+
+      const script = document.createElement('script');
+      script.src = 'static/monaco/min/vs/loader.js';
+      script.async = true;
+      script.onload = () => {
+        require.config({ paths: { vs: 'static/monaco/min/vs' } });
+        require(['vs/editor/editor.main'], () => {
+          isMonacoLoaded = true;
           isMonacoLoading = false;
           loadingTip.style.display = 'none';
-          reject(err);
-        };
+          resolve();
+        }, reject);
+      };
+      script.onerror = (e) => {
+        isMonacoLoading = false;
+        loadingTip.style.display = 'none';
+        reject(e);
+      };
+      document.head.appendChild(script);
+    });
 
-        document.head.appendChild(script);
+    const initMonaco = async () => {
+      if (currentEditor === 'monaco' && monacoEditor) { monacoEditor.layout(); return; }
+
+      await loadMonaco();
+
+      if (editor) { editor.toTextArea(); editor = null; }
+      els.codemirrorContainer.style.display = 'none';
+      els.monacoContainer.style.display = 'block';
+
+      if (monacoEditor) monacoEditor.dispose();
+
+      monacoEditor = monaco.editor.create(els.monacoContainer, {
+        value: getCode(), language: 'html', theme: 'vs-light',
+        minimap: { enabled: true }, scrollBeyondLastLine: false,
+        fontSize: 14, lineNumbers: 'on', autoClosingBrackets: 'always',
+        autoClosingTags: 'always', matchBrackets: 'always'
       });
-    }
 
-    function initMonacoEditor() {
-      if (currentEditorType === 'monaco' && monacoEditor) {
-        monacoEditor.layout();
-        return;
-      }
+      monacoEditor.onDidChangeModelContent(handleChange);
+      editor = monacoEditor;
+      currentEditor = 'monaco';
+      // 切换到 Monaco 后显示 code 图标
+      els.editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
+    };
 
-      const editorSwitchBtn = document.getElementById('editorSwitchBtn');
-      if (editorSwitchBtn) {
-        editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
-      }
-
-      const container = document.getElementById('monaco-editor-container');
-      const codeMirrorContainer = document.getElementById('codemirror-container');
-      const codeTextarea = document.getElementById('code');
-
-      if (!container) return;
-
-      let currentContent = getEditorContent();
-
-      container.style.display = 'block';
-      if (codeMirrorContainer) codeMirrorContainer.style.display = 'none';
-
-      if (monacoEditor) {
-        monacoEditor.dispose();
-      }
-
+    // ==================== 编辑器切换 ====================
+    const switchEditor = async () => {
+      els.editorSwitchBtn.innerHTML = '<i class="fas fa-spinner icon"></i>';
       try {
-        monacoEditor = monaco.editor.create(container, {
-          value: currentContent || codeTextarea.value,
-          language: 'html',
-          theme: 'vs-light',
-          minimap: { enabled: true },
-          scrollBeyondLastLine: false,
-          fontSize: 14,
-          lineNumbers: 'on',
-          autoClosingBrackets: 'always',
-          autoClosingTags: 'always',
-          matchBrackets: 'always'
-        });
-
-        monacoEditor.onDidChangeModelContent(handleEditorChange);
-
-        editor = monacoEditor;
-
-        currentEditorType = 'monaco';
-
-      } catch (error) {
-        console.error('初始化Monaco Editor失败:', error);
-        initCodeMirror();
-      }
-    }
-
-    async function switchEditor() {
-      const editorSwitchBtn = document.getElementById('editorSwitchBtn');
-      if (currentEditorType === 'codemirror') {
-        try {
-          if (editorSwitchBtn) {
-            editorSwitchBtn.innerHTML = '<i class="fas fa-spinner icon"></i>';
-          }
-          await loadMonacoEditor();
-          initMonacoEditor();
-          if (editorSwitchBtn) {
-            editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
-          }
-        } catch (error) {
-          console.error('切换到Monaco Editor失败:', error);
-          if (editorSwitchBtn) {
-            editorSwitchBtn.innerHTML = '<i class="fas fa-code icon"></i>';
-          }
-          alert('加载Monaco Editor失败，请检查网络或稍后再试');
-        }
-      } else {
-        if (editorSwitchBtn) {
-          editorSwitchBtn.innerHTML = '<i class="fas fa-codepen icon"></i>';
-        }
-        initCodeMirror();
-      }
-    }
-
-    function getEditorContent() {
-      try {
-        if (currentEditorType === 'monaco' && isMonacoLoaded && monacoEditor) {
-          return monacoEditor.getValue();
-        } else if (editor && editor.getValue) {
-          return editor.getValue();
-        }
-        return document.getElementById('code').value || '';
+        currentEditor === 'codemirror' ? await initMonaco() : initCodeMirror();
       } catch (e) {
-        console.error('获取编辑器内容失败:', e);
-        return '';
+        console.error('切换编辑器失败:', e);
+        alert('加载 Monaco Editor 失败，请检查网络');
+        initCodeMirror();
       }
-    }
+    };
 
-    function handleEditorChange() {
-      const runBtn = document.getElementById('runBtn');
-      if (runBtn) {
-        runBtn.classList.add('refreshing');
-        runBtn.innerHTML = '<i class="fas fa-sync icon"></i>';
-      }
+    // ==================== 代码运行 ====================
+    // 实现难点：Vue 模板编译 + 运行时组件创建 + 样式注入
+    const handleChange = () => {
+      els.runBtn.classList.add('refreshing');
+      els.runBtn.innerHTML = '<i class="fas fa-sync icon"></i>';
+      debounce(() => run(), 500);
+    };
 
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(() => {
-        run();
-        if (runBtn) {
-          runBtn.classList.remove('refreshing');
-          runBtn.innerHTML = '<i class="fas fa-play icon"></i>';
-        }
-      }, 500);
-    }
-
-    function run() {
-      const app = document.getElementById('app');
-      if (!app) return;
-
-      const codeContent = getEditorContent();
-
+    const run = () => {
+      const code = getCode();
       try {
-        const compiler = VueTemplateCompiler.parseComponent(codeContent);
-        const option = new Function(
-          compiler.script.content.replace('export default', 'return')
-        )();
+        // 编译 Vue SFC - 实现难点：解析 template/script/style
+        const compiler = VueTemplateCompiler.parseComponent(code);
+        const option = new Function(compiler.script.content.replace('export default', 'return'))();
         option.template = compiler.template.content;
 
-        window.moment = moment;
+        // 配置全局依赖 - 确保 moment 全局可用
+        window.moment = window.moment || moment;
         moment.locale('zh-cn');
-        Vue.use(antd);
 
-        const vueStyle = document.getElementById('vue-style');
-        if (vueStyle) {
-          document.head.removeChild(vueStyle);
-        }
+        // 配置 antd 使用中文 locale（与官方 zh_CN 结构一致，含日期时间选择器底部按钮）
+        const antdLocale = {
+          locale: 'zh-cn',
+          DatePicker: {
+            lang: {
+              locale: 'zh_CN',
+              placeholder: '请选择日期',
+              rangePlaceholder: ['开始日期', '结束日期'],
+              today: '今天',
+              now: '此刻',
+              ok: '确定',
+              timeSelect: '选择时间',
+              dateSelect: '选择日期',
+              weekSelect: '选择周',
+              clear: '清除',
+              month: '月',
+              year: '年',
+              monthSelect: '选择月份',
+              yearSelect: '选择年份',
+              previousMonth: '上个月',
+              nextMonth: '下个月',
+              monthFormat: 'YYYY年M月',
+              format: 'YYYY-MM-DD',
+              weekdayFormat: 'ddd',
+              selectYear: '选择年份',
+              selectMonth: '选择月份',
+            },
+            timePickerLocale: {
+              placeholder: '请选择时间',
+            },
+          },
+          TimePicker: {
+            placeholder: '请选择时间',
+            confirm: '确定',
+          },
+          Calendar: {
+            today: '今天',
+            now: '现在',
+            month: '月',
+            year: '年',
+            week: '周',
+            date: '日',
+            monthSelect: '选择月份',
+            yearSelect: '选择年份',
+            previousMonth: '上个月',
+            nextMonth: '下个月',
+          },
+          Table: {
+            filterTitle: '筛选',
+            filterConfirm: '确定',
+            filterReset: '重置',
+            selectAll: '全选',
+            selectInvert: '反选',
+            sortTitle: '排序',
+          },
+          Modal: {
+            okText: '确定',
+            cancelText: '取消',
+            justOkText: '知道了',
+          },
+          ConfirmDialog: {
+            okText: '确定',
+            cancelText: '取消',
+          },
+        };
+
+        Vue.use(antd, { locale: antdLocale });
+
+        // 移除旧样式，注入新样式
+        const oldStyle = document.getElementById('vue-style');
+        if (oldStyle) oldStyle.remove();
         if (compiler.styles[0]) {
           const style = document.createElement('style');
           style.id = 'vue-style';
@@ -790,137 +479,92 @@ export default {
           document.head.appendChild(style);
         }
 
+        // 用 a-locale-provider 包裹预览根组件，使 antd 组件能通过 provide 拿到中文 locale
+        const zhCN = antdLocale;
+        const Wrapper = Vue.extend({
+          template: '<a-locale-provider :locale="locale"><div ref="inner"></div></a-locale-provider>',
+          data() { return { locale: zhCN }; }
+        });
+        const wrapper = new Wrapper().$mount();
+        els.app.innerHTML = '';
+        els.app.appendChild(wrapper.$el);
         const component = new Vue(option).$mount();
-        app.innerHTML = '';
-        app.appendChild(component.$el);
-      } catch (error) {
-        console.error('代码运行出错:', error);
-        app.innerHTML = `<div style="padding: 20px; color: red;">代码运行出错: ${error.message}</div>`;
+        wrapper.$refs.inner.appendChild(component.$el);
+
+        els.runBtn.classList.remove('refreshing');
+        els.runBtn.innerHTML = '<i class="fas fa-bolt icon"></i>';
+      } catch (e) {
+        els.app.innerHTML = `<div style="padding:20px;color:red;">运行出错: ${e.message}</div>`;
       }
-    }
+    };
 
-    function toggleFullscreen() {
-      const app = document.getElementById('app');
-      const editorPane = document.getElementById('editorPane');
-      const splitter = document.getElementById('splitter');
-      const btnGroup = document.querySelector('.btn-group');
-
+    // ==================== 全屏功能 ====================
+    const toggleFullscreen = () => {
       if (!isFullscreen) {
-        // 进入全屏：隐藏编辑器，显示预览区全屏
-        editorPane.style.display = 'none';
-        splitter.style.display = 'none';
-        const previewPane = document.getElementById('previewPane');
-        previewPane.style.width = '100%';
-        previewPane.style.height = '100%';
-        previewPane.classList.add('preview-fullscreen');
-        btnGroup.style.display = 'none';
+        els.editorPane.style.display = 'none';
+        els.splitter.style.display = 'none';
+        els.previewPane.classList.add('preview-fullscreen');
+        document.querySelector('.btn-group').style.display = 'none';
 
         const exitBtn = document.createElement('button');
         exitBtn.className = 'exit-fullscreen-btn';
-        exitBtn.id = 'exitFullscreenBtn';
         exitBtn.innerHTML = '<i class="fas fa-compress icon"></i>';
+        exitBtn.onclick = toggleFullscreen;
         document.body.appendChild(exitBtn);
-        exitBtn.addEventListener('click', toggleFullscreen);
       } else {
-        // 退出全屏：恢复编辑器显示
-        editorPane.style.display = 'flex';
-        splitter.style.display = 'flex';
-        const previewPane = document.getElementById('previewPane');
-        previewPane.classList.remove('preview-fullscreen');
-        previewPane.style.width = '';
-        previewPane.style.height = '';
-        btnGroup.style.display = 'flex';
-
-        const exitBtn = document.getElementById('exitFullscreenBtn');
-        if (exitBtn) {
-          document.body.removeChild(exitBtn);
-        }
-
+        els.editorPane.style.display = 'flex';
+        els.splitter.style.display = 'flex';
+        els.previewPane.classList.remove('preview-fullscreen');
+        document.querySelector('.btn-group').style.display = 'flex';
+        $('exitFullscreenBtn')?.remove();
         refreshEditor();
       }
       isFullscreen = !isFullscreen;
-    }
+    };
 
-    async function loadFromUrl() {
-      const params = new URLSearchParams(window.location.search);
+    // ==================== URL ��数加载 ====================
+    // 实现难点：解析 URL 参数，支持 ?url=xxx 加载外部文件
+    const loadFromUrl = async () => {
+      const params = new URLSearchParams(location.search);
       const url = params.get('url');
-      const fullscreenParam = params.get('isFullscreen');
+      const isFullscreenParam = params.get('isFullscreen');
 
-      // 处理 isFullscreen 参数
-      if (fullscreenParam && (fullscreenParam === '1' || fullscreenParam.toLowerCase() === 'true')) {
-        setTimeout(() => {
-          toggleFullscreen();
-        }, 100);
+      if (isFullscreenParam === '1' || isFullscreenParam?.toLowerCase() === 'true') {
+        setTimeout(toggleFullscreen, 100);
       }
 
       if (url) {
         try {
-          const response = await fetch(url);
-          if (response.ok) {
-            const content = await response.text();
-            if (currentEditorType === 'monaco' && isMonacoLoaded && monacoEditor) {
-              monacoEditor.setValue(content);
-            } else if (editor && editor.setValue) {
-              editor.setValue(content);
-            } else {
-              document.getElementById('code').value = content;
-            }
-            setTimeout(() => run(), 100);
-          } else {
-            console.error('加载文件失败:', response.status);
-          }
-        } catch (error) {
-          console.error('加载文件出错:', error);
-        }
+          const res = await fetch(url);
+          if (res.ok) setCode(await res.text());
+        } catch (e) { console.error('加载文件失败:', e); }
       }
-    }
+    };
 
-    async function init() {
-      console.log('开始初始化应用');
-
-      const codeTextarea = document.getElementById('code');
-      if (codeTextarea && !initialCode) {
-        initialCode = codeTextarea.value;
-        console.log('初始代码已保存');
-      }
-
+    // ==================== 初始化 ====================
+    const init = () => {
       initSplitPane();
       initCodeMirror();
 
-      const runBtn = document.getElementById('runBtn');
-      if (runBtn) {
-        runBtn.addEventListener('click', () => {
-          runBtn.classList.add('refreshing');
-          runBtn.innerHTML = '<i class="fas fa-sync icon"></i>';
-          run();
-          setTimeout(() => {
-            runBtn.classList.remove('refreshing');
-            runBtn.innerHTML = '<i class="fas fa-play icon"></i>';
-          }, 500);
-        });
-      }
+      // 绑定按钮事件
+      els.runBtn.onclick = () => {
+        els.runBtn.classList.add('refreshing');
+        els.runBtn.innerHTML = '<i class="fas fa-sync icon"></i>';
+        run();
+        setTimeout(() => {
+          els.runBtn.classList.remove('refreshing');
+          els.runBtn.innerHTML = '<i class="fas fa-bolt icon"></i>';
+        }, 500);
+      };
 
-      if (editorSwitchBtn) {
-        editorSwitchBtn.addEventListener('click', switchEditor);
-      }
+      els.editorSwitchBtn.onclick = switchEditor;
+      els.fullscreenBtn.onclick = toggleFullscreen;
 
-      const fullscreenBtn = document.getElementById('fullscreenBtn');
-      if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
-      }
-
-      await loadFromUrl();
-
+      loadFromUrl();
       run();
+    };
 
-      console.log('应用初始化完成');
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-    } else {
-      init();
-    }
+    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
   </script>
 </body>
 </html>
