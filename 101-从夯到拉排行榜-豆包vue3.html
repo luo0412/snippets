@@ -8,8 +8,6 @@
     <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
     <!-- html2canvas CDN -->
     <script src="https://cdn.staticfile.net/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- 简化的IndexedDB封装 -->
-    <script src="https://unpkg.com/idb@7.1.1/build/umd.js"></script>
     <style>
         * {
             margin: 0;
@@ -400,6 +398,8 @@
             padding: 5px;
             min-height: 130px;
             align-items: center;
+            /* 关键：添加过渡让吸附更平滑 */
+            transition: all 0.1s ease-out;
         }
 
         .tier.fixed-height .tier-content {
@@ -491,11 +491,20 @@
             height: 120px;
             overflow: hidden;
             cursor: grab;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease-out; /* 加快过渡速度 */
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             position: relative;
             user-select: none;
             -webkit-user-drag: none;
+            /* 关键：添加动画让吸附更丝滑 */
+            will-change: transform, position;
+        }
+
+        /* 拖拽中的图片样式 */
+        .image-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.08);
+            z-index: 999;
         }
 
         .tier.fixed-height .image-item {
@@ -578,6 +587,8 @@
             transform: rotate(5deg);
             opacity: 0.8;
             display: none;
+            /* 硬件加速 */
+            backface-visibility: hidden;
         }
 
         .drag-preview img {
@@ -739,7 +750,10 @@
                             v-for="image in tier.images"
                             :key="image.id"
                             class="image-item"
-                            :class="getImageSizeClass(tier.images.length)"
+                            :class="[
+                                getImageSizeClass(tier.images.length),
+                                { dragging: isDragging && draggedImage?.id === image.id }
+                            ]"
                             @mousedown="startDrag(image, 'tier', index)"
                             @touchstart="startDrag(image, 'tier', index)"
                             @click="showImageModal(image.src)"
@@ -775,6 +789,7 @@
                     v-for="(image, index) in unassignedImages"
                     :key="image.id"
                     class="image-item"
+                    :class="{ dragging: isDragging && draggedImage?.id === image.id }"
                     @mousedown="startDrag(image, 'unassigned', index)"
                     @touchstart="startDrag(image, 'unassigned', index)"
                     @click="showImageModal(image.src)"
@@ -857,7 +872,7 @@
 
     <script>
         // Vue3 应用初始化
-        const { createApp, ref, reactive, watch, onMounted, onUnmounted } = Vue;
+        const { createApp, ref, reactive, watch, onMounted, onUnmounted, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -1115,6 +1130,11 @@
                         x: 0,
                         y: 0
                     };
+                    
+                    // 阻止点击事件触发
+                    setTimeout(() => {
+                        isDragging.value = false;
+                    }, 0);
                 };
 
                 const handleMouseMove = (e) => {
@@ -1123,8 +1143,8 @@
                     const deltaX = e.movementX;
                     const deltaY = e.movementY;
                     
-                    // 开始拖拽的阈值
-                    if ((Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) && !isDragging.value) {
+                    // 开始拖拽的阈值（降低阈值让拖拽更灵敏）
+                    if ((Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) && !isDragging.value) {
                         isDragging.value = true;
                     }
                     
@@ -1147,11 +1167,13 @@
                     }
                 };
 
-                const handleMouseUp = (e) => {
+                const handleMouseUp = async (e) => {
                     if (!isDragging.value || !draggedImage.value) {
+                        // 重置拖拽状态
                         draggedImage.value = null;
                         isDragging.value = false;
                         hoveredTierIndex.value = -1;
+                        dragPreview.value = null;
                         return;
                     }
                     
@@ -1170,20 +1192,32 @@
                     }
                     
                     // 处理放置目标
+                    let targetTierIndex = -1;
                     if (deleteZoneElement) {
-                        // 删除图片
+                        // 删除图片 - 不做任何操作，直接丢弃
                     } else if (tierElement) {
                         // 放到评级中
-                        const tierIndex = Array.from(rankingContainer.value.children).indexOf(tierElement);
-                        tiers[tierIndex].images.push(draggedImage.value);
-                        
-                        // 更新图片大小
-                        if (fixedHeight.value) {
-                            updateAllTierImageSizes();
-                        }
+                        targetTierIndex = Array.from(rankingContainer.value.children).indexOf(tierElement);
+                        tiers[targetTierIndex].images.push(draggedImage.value);
                     } else {
                         // 放回未分类
                         unassignedImages.push(draggedImage.value);
+                    }
+                    
+                    // 关键：使用nextTick确保DOM更新后立即调整布局
+                    await nextTick();
+                    
+                    // 更新图片大小（立即吸附）
+                    if (fixedHeight.value && targetTierIndex >= 0) {
+                        updateAllTierImageSizes();
+                        
+                        // 强制重绘，确保吸附效果立即生效
+                        const contentEl = tierContentRefs.value[targetTierIndex];
+                        if (contentEl) {
+                            contentEl.style.display = 'none';
+                            contentEl.offsetHeight; // 触发重绘
+                            contentEl.style.display = '';
+                        }
                     }
                     
                     // 重置拖拽状态
@@ -1311,6 +1345,8 @@
 
                 // 图片放大
                 const showImageModal = (src) => {
+                    // 如果正在拖拽，不触发放大
+                    if (isDragging.value) return;
                     imageModalSrc.value = src;
                 };
 
@@ -1392,6 +1428,7 @@
                     // 添加全局事件监听
                     document.addEventListener('mousemove', handleMouseMove);
                     document.addEventListener('mouseup', handleMouseUp);
+                    document.addEventListener('mouseleave', handleMouseUp); // 鼠标离开窗口也触发
                     
                     // 监听窗口大小变化
                     window.addEventListener('resize', updateAllTierImageSizes);
@@ -1402,6 +1439,13 @@
                             showHelp.value = false;
                             imageModalSrc.value = '';
                             showResetConfirm.value = false;
+                            // 同时取消拖拽
+                            if (isDragging.value) {
+                                isDragging.value = false;
+                                draggedImage.value = null;
+                                hoveredTierIndex.value = -1;
+                                dragPreview.value = null;
+                            }
                         }
                     });
                 });
@@ -1410,6 +1454,7 @@
                     // 移除事件监听
                     document.removeEventListener('mousemove', handleMouseMove);
                     document.removeEventListener('mouseup', handleMouseUp);
+                    document.removeEventListener('mouseleave', handleMouseUp);
                     window.removeEventListener('resize', updateAllTierImageSizes);
                 });
 
@@ -1456,7 +1501,8 @@
                     handleTierMouseEnter,
                     handleTierMouseLeave,
                     getImageSizeClass,
-                    rgbToHex
+                    rgbToHex,
+                    draggedImage
                 };
             }
         }).mount('#app');
