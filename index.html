@@ -357,6 +357,7 @@ export default {
   <script>
     let editor = null;
     let isMonacoLoaded = false;
+    let isMonacoLoading = false;
     let monacoEditor = null;
     let currentEditorType = 'codemirror';
     let debounceTimeout;
@@ -559,9 +560,6 @@ export default {
               clearInterval(checkLoading);
               isMonacoLoaded = true;
               resolve(true);
-            } else if (!isMonacoLoading) {
-              clearInterval(checkLoading);
-              reject(new Error('Monaco加载被取消'));
             }
           }, 100);
           return;
@@ -627,6 +625,108 @@ export default {
       }
 
       try {
+        // 注册 Vue 语言支持
+        if (!monaco.languages.getLanguages().some(lang => lang.id === 'vue')) {
+          monaco.languages.register({ id: 'vue' });
+
+          // Vue 的 monarch tokenizer 配置
+          const vueLanguage = {
+            defaultToken: '',
+            tokenPostfix: '.vue',
+            keywords: [
+              'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete',
+              'do', 'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof',
+              'new', 'return', 'switch', 'this', 'throw', 'try', 'typeof', 'var',
+              'void', 'while', 'with', 'const', 'let', 'export', 'import', 'from',
+              'extends', 'super', 'class', 'static', 'get', 'set', 'async', 'await',
+              'true', 'false', 'null', 'undefined', 'NaN', 'Infinity'
+            ],
+            directives: [
+              'v-if', 'v-else', 'v-else-if', 'v-for', 'v-show', 'v-bind', 'v-on',
+              'v-model', 'v-text', 'v-html', 'v-pre', 'v-once', 'v-slot', 'v-slot:',
+              'v-cloak', 'v-pre', ':', '@', 'v-bind:', 'v-on:'
+            ],
+            operators: [
+              '=', '>', '<', '!', '~', '?', ':',
+              '==', '<=', '>=', '!=', '&&', '||', '++', '--',
+              '+', '-', '*', '/', '&', '|', '^', '%', '<<', '>>', '>>>'
+            ],
+            symbols: /[=><!~?:&|+\-*\/\^%]+/,
+            tokenizer: {
+              root: [
+                [/<template>/, { token: 'tag', next: '@template' }],
+                [/<script>/, { token: 'tag', next: '@script' }],
+                [/<style>/, { token: 'tag', next: '@style' }],
+                [/<\/template>/, { token: 'tag' }],
+                [/<\/script>/, { token: 'tag' }],
+                [/<\/style>/, { token: 'tag' }],
+              ],
+              template: [
+                [/<\/template>/, { token: 'tag', next: '@pop' }],
+                [/<[a-zA-Z][a-zA-Z0-9\-]*/, 'tag'],
+                [/\/?>/, 'tag'],
+                [/"([^"\\]|\\.)*"/, 'string'],
+                [/'([^'\\]|\\.)*'/, 'string'],
+                [/\{:/, { token: 'delimiter.bracket', next: 'attributeValue' }],
+                [/v-bind:/, 'keyword'],
+                [/v-on:/, 'keyword'],
+                [/v-model/, 'keyword'],
+                [/@[a-zA-Z][a-zA-Z0-9\-]*/, 'keyword'],
+                [/:[a-zA-Z][a-zA-Z0-9\-]*/, 'keyword'],
+              ],
+              attributeValue: [
+                [/[^}]+/, 'string'],
+                [/}/, { token: 'delimiter.bracket', next: '@pop' }],
+              ],
+              script: [
+                [/<\/script>/, { token: 'tag', next: '@pop' }],
+                [/\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await)\b/, 'keyword'],
+                [/\b(data|methods|computed|watch|mounted|created|beforeCreate|beforeMount|updated|beforeUpdate|destroyed|beforeDestroy|props|emits|setup)\b/, 'keyword'],
+                [/"([^"\\]|\\.)*"/, 'string'],
+                [/'([^'\\]|\\.)*'/, 'string'],
+                [/\/\/.*$/, 'comment'],
+                [/\/\*/, 'comment', '@comment'],
+              ],
+              style: [
+                [/<\/style>/, { token: 'tag', next: '@pop' }],
+                [/[.#]?[a-zA-Z_][a-zA-Z0-9_\-]*/, 'tag.id'],
+                [/\{/, { token: 'delimiter.bracket', next: 'cssBody' }],
+              ],
+              cssBody: [
+                [/[^}]+/, 'string'],
+                [/}/, { token: 'delimiter.bracket', next: '@pop' }],
+              ],
+              comment: [
+                [/[^\/*]+/, 'comment'],
+                [/\*\//, 'comment', '@pop'],
+                [/[\/*]/, 'comment']
+              ],
+            }
+          };
+
+          monaco.languages.setMonarchTokensProvider('vue', vueLanguage);
+
+          // 配置 Vue 语言的智能提示
+          monaco.languages.setLanguageConfiguration('vue', {
+            comments: {
+              lineComment: '//',
+              blockComment: ['/*', '*/']
+            },
+            brackets: [
+              ['{', '}'],
+              ['[', ']'],
+              ['(', ')']
+            ],
+            autoClosingPairs: [
+              { open: '{', close: '}' },
+              { open: '[', close: ']' },
+              { open: '(', close: ')' },
+              { open: '"', close: '"' },
+              { open: "'", close: "'" }
+            ]
+          });
+        }
+
         monacoEditor = monaco.editor.create(container, {
           value: currentContent || codeTextarea.value,
           language: 'vue',
