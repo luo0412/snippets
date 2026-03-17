@@ -8,7 +8,7 @@
 # 代码片段
 
 - [101-从夯到拉排行榜-vue3.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜-vue3.html)
-- [101-从夯到拉排行榜-dayun@nice.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜-dayun@nice.html)
+- [`101-从夯到拉排行榜-dayun@nice.html`](https://luo0412.github.io/snippets/101-从夯到拉排行榜-dayun@nice.html)
 - [101-从夯到拉排行榜-豆包鞭策版.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜-豆包鞭策版.html)
 
 
@@ -38,7 +38,7 @@ https://github.com/dayun-cloud/tools/blob/main/build/ranking.html
 
 
 - [002-Mybatis挖空填充器-beetlsql版.html](https://luo0412.github.io/snippets/002-Mybatis挖空填充器-beetlsql版.html)
-- [001-CRUD代码生成器.html](https://luo0412.github.io/snippets/001-CRUD代码生成器.html)
+- [`001-CRUD代码生成器@nice.html`](https://luo0412.github.io/snippets/001-CRUD代码生成器@nice.html)
 
 
 ![](https://raw.githubusercontent.com/luo0412/static/main/20260211213533.png)
