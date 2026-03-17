@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200, initial-scale=1.0">
+    <title>从夯到拉排行榜 - Vue3 CDN版</title>
+    <!-- Vue3 CDN -->
+    <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <!-- html2canvas CDN -->
+    <script src="https://cdn.staticfile.net/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 简化的IndexedDB封装 -->
+    <script src="https://unpkg.com/idb@7.1.1/build/umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #1a1a1a;
+            min-height: 100vh;
+            min-width: 1400px;
+            padding: 80px 20px 0px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 1200px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            min-height: 600px;
+        }
+
+        .ranking-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+        }
+
+        .tier {
+            display: flex;
+            align-items: stretch;
+            min-height: 120px;
+            border-bottom: 2px solid #404040;
+            transition: all 0.3s ease;
+        }
+
+        .tier.fixed-height {
+            height: 130px;
+            min-height: 130px;
+            max-height: 130px;
+        }
+
+        .tier:hover, .tier.drag-over {
+            background-color: #3a3a3a;
+        }
+
+        .tier-label {
+            width: 150px;
+            text-align: center;
+            font-size: 1.9em;
+            font-weight: 900;
+            color: white;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000,
+                0px -1px 0 #000,
+                0px 1px 0 #000,
+                -1px 0px 0 #000,
+                1px 0px 0 #000;
+            padding: 0px;
+            cursor: pointer;
+            outline: none;
+            border: none;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 100;
+        }
+        
+        .tier-name {
+            font-weight: 900 !important;
+            outline: none;
+            min-width: 20px;
+        }
+
+        .tier-name:focus, .tier-name.editing {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            padding: 0 5px;
+        }
+
+        .color-picker {
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 101;
+        }
+
+        .tier-label:hover .color-picker, .tier-name.editing + .color-picker {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .delete-tier-btn {
+            position: absolute;
+            right: -75px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            background: #fff;
+            border: 2px solid #ff3742;
+            border-radius: 50%;
+            color: #ff3742;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            font-size: 26px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+        }
+
+        .tier-label:hover .delete-tier-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .manbo-link {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #3d3d5c;
+        }
+
+        .manbo-link a {
+            color: #7dbece;
+            text-decoration: none;
+            font-weight: 600;
+            margin-right: 30px;
+        }
+
+        .manbo-link a:hover {
+            text-decoration: underline;
+        }
+
+        .help-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #65a6bc;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .help-btn:hover {
+            background: #7dbece;
+            transform: scale(1.1);
+        }
+
+        .help-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .help-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            color: white;
+            position: relative;
+        }
+
+        .help-content h2 {
+            color: #7dbece;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .help-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .help-content li {
+            margin-bottom: 15px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .help-content li:before {
+            content: "•";
+            color: #7dbece;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .close-help {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .close-help:hover {
+            color: white;
+        }
+
+        .save-image-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .save-image-btn {
+            background: #444;
+            border: 2px solid #666;
+            color: #ccc;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .save-image-btn:hover {
+            background: #555;
+            border-color: #007bff;
+            color: #007bff;
+        }
+
+        .add-tier-btn {
+            background: #444;
+            border: 2px dashed #666;
+            color: #ccc;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+
+        .add-tier-btn:hover {
+            background: #555;
+            border-color: #888;
+            color: #fff;
+        }
+
+        .reset-tier-btn {
+            background: #dc3545;
+            border: 2px solid #c82333;
+            color: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        .reset-tier-btn:hover {
+            background: #c82333;
+            border-color: #bd2130;
+            color: #fff;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+            order: 1001;
+        }
+
+        .reset-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .reset-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
+            color: white;
+            position: relative;
+            text-align: center;
+        }
+
+        .reset-content h3 {
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+
+        .reset-content p {
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .reset-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .reset-confirm-btn {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .reset-confirm-btn:hover {
+            background: #c82333;
+        }
+
+        .reset-cancel-btn {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .reset-cancel-btn:hover {
+            background: #5a6268;
+        }
+
+        .tier-content {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 5px;
+            min-height: 130px;
+            align-items: center;
+        }
+
+        .tier.fixed-height .tier-content {
+            height: 120px;
+            min-height: 120px;
+            max-height: 120px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            transition: scrollbar-color 0.3s ease;
+        }
+
+        .tier.fixed-height .tier-content:hover {
+            scrollbar-color: #65a6bc #404040;
+        }
+
+        .tier.fixed-height .tier-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tier.fixed-height .tier-content::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 3px;
+        }
+
+        .tier.fixed-height .tier-content::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+
+        .tier.fixed-height .tier-content:hover::-webkit-scrollbar-track {
+            background: #404040;
+        }
+
+        .tier.fixed-height .tier-content:hover::-webkit-scrollbar-thumb {
+            background: #65a6bc;
+        }
+
+        .tier.fixed-height .tier-content:hover::-webkit-scrollbar-thumb:hover {
+            background: #7dbece;
+        }
+
+        .upload-btn {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed #666;
+            background: #404040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            order: 999;
+        }
+
+        .upload-btn:hover {
+            border-color: #007bff;
+            background: #4a4a4a;
+            color: #007bff;
+        }
+
+        .delete-zone {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed #dc3545;
+            background: #4a3a3a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: #dc3545;
+            transition: all 0.3s ease;
+            order: 1000;
+        }
+
+        .delete-zone.drag-over {
+            background: #dc3545;
+            color: white;
+        }
+
+        .image-item {
+            width: 120px;
+            height: 120px;
+            overflow: hidden;
+            cursor: grab;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            position: relative;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .tier.fixed-height .image-item {
+            flex-shrink: 0;
+        }
+
+        .tier.fixed-height .image-item.single-row {
+            width: 120px;
+            height: 120px;
+        }
+
+        .tier.fixed-height .image-item.multi-row {
+            width: 70px;
+            height: 70px;
+        }
+
+        .tier.fixed-height .image-item.adaptive {
+            width: auto;
+            height: auto;
+            min-width: 70px;
+            min-height: 70px;
+            max-width: 120px;
+            max-height: 120px;
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .image-item:active {
+            cursor: grabbing;
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-name-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 4px 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .image-item:hover .image-name-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 10px 0 5px 0;
+            justify-content: center;
+            background: #2d2d2d;
+        }
+
+        .drag-preview {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            width: 120px;
+            height: 120px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            transform: rotate(5deg);
+            opacity: 0.8;
+            display: none;
+        }
+
+        .drag-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            display: none;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 60px;
+            z-index: 3000;
+            cursor: pointer;
+        }
+
+        .image-modal img {
+            min-width: 800px;
+            min-height: 500px;
+            max-width: 800px;
+            max-height: 500px;
+            object-fit: contain;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            padding: 8px 0;
+            margin-top: auto;
+            position: relative;
+            z-index: 10;
+            background: #1a1a1a;
+        }
+
+        .contact-link {
+            color: #999;
+            text-decoration: none;
+            padding-right: 15px;
+            border-right: 1px solid #666;
+            transition: color 0.3s ease;
+            margin-right: 15px;
+        }
+
+        .contact-link:hover {
+            color: white;
+        }
+
+        .toggle-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 帮助按钮 -->
+        <button class="help-btn" @click="showHelp = true">?</button>
+
+        <!-- 帮助模态框 -->
+        <div 
+            v-if="showHelp" 
+            class="help-modal" 
+            :style="{ display: showHelp ? 'flex' : 'none' }"
+            @click.self="hideHelp"
+        >
+            <div class="help-content">
+                <button class="close-help" @click="hideHelp">×</button>
+                <h2>📝 使用说明</h2>
+                <ul>
+                    <li>添加图片：点击"+"按钮或拖拽图片到该按钮区域</li>
+                    <li>删除图片：将图片拖拽到"-"区域删除</li>
+                    <li>放大图片：点击图片可放大，再次点击任意区域恢复</li>
+                    <li>编辑评级：点击评级名称可编辑文字</li>
+                    <li>编辑颜色：点击评级名称后右侧颜色按钮可编辑颜色</li>
+                    <li>删除评级：点击评级名称后右侧删除按钮可删除评级</li>
+                    <li>创建新评级：点击底部"+添加评级"按钮创建新的评级</li>
+                </ul>
+                <div class="toggle-container">
+                    <label>
+                        <input 
+                            type="checkbox" 
+                            v-model="showImageNames"
+                            @change="updateImageNamesVisibility"
+                        >
+                        <span class="toggle-label">显示图片名称</span>
+                    </label>
+                    <label>
+                        <input 
+                            type="checkbox" 
+                            v-model="fixedHeight"
+                            @change="toggleFixedHeight"
+                        >
+                        <span class="toggle-label">固定评级高度</span>
+                    </label>
+                </div>
+                <div class="save-image-container">
+                    <button class="save-image-btn" @click="saveAsImage">💾 保存为图片</button>
+                </div>
+                <div class="manbo-link">
+                    <p>
+                        <a href="manbo.html" target="_blank">🎵 前往曼波配音生成器</a>
+                        <a href="/" target="_blank">🏠 回到主站</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主容器 -->
+        <div class="container">
+            <!-- 排行榜区域 -->
+            <div class="ranking-container" ref="rankingContainer">
+                <div 
+                    v-for="(tier, index) in tiers" 
+                    :key="tier.id"
+                    class="tier"
+                    :class="{ 'fixed-height': fixedHeight, 'drag-over': hoveredTierIndex === index && isDragging }"
+                    @mouseenter="handleTierMouseEnter(index)"
+                    @mouseleave="handleTierMouseLeave"
+                >
+                    <div 
+                        class="tier-label" 
+                        :style="{ backgroundColor: tier.color }"
+                        @click="activateTierEditing(index)"
+                    >
+                        <input 
+                            type="color" 
+                            class="color-picker"
+                            :value="rgbToHex(tier.color)"
+                            @change="updateTierColor(index, $event.target.value)"
+                        >
+                        <button 
+                            class="delete-tier-btn"
+                            @click.stop="deleteTier(index)"
+                            title="删除该评级"
+                        >×</button>
+                        <span 
+                            class="tier-name"
+                            contenteditable="true"
+                            @input="updateTierName(index, $event.target.textContent)"
+                            :class="{ editing: activeEditingTier === index }"
+                        >{{ tier.name }}</span>
+                    </div>
+                    <div class="tier-content" :ref="el => tierContentRefs[index] = el">
+                        <div
+                            v-for="image in tier.images"
+                            :key="image.id"
+                            class="image-item"
+                            :class="getImageSizeClass(tier.images.length)"
+                            @mousedown="startDrag(image, 'tier', index)"
+                            @touchstart="startDrag(image, 'tier', index)"
+                            @click="showImageModal(image.src)"
+                        >
+                            <img :src="image.src" alt="评级图片">
+                            <div 
+                                class="image-name-overlay"
+                                :style="{ display: showImageNames ? 'block' : 'none' }"
+                            >{{ image.name }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图片库区域 -->
+            <div class="image-gallery" ref="imageGallery">
+                <div 
+                    class="upload-btn"
+                    @click="triggerFileInput"
+                    @dragover.prevent
+                    @drop.prevent="handleDrop"
+                >+</div>
+                <div 
+                    class="delete-zone"
+                    ref="deleteZone"
+                    :class="{ 'drag-over': hoveredTierIndex === -2 && isDragging }"
+                    @dragover.prevent
+                    @drop.prevent="handleDeleteDrop"
+                >-</div>
+                
+                <!-- 未分类图片 -->
+                <div
+                    v-for="(image, index) in unassignedImages"
+                    :key="image.id"
+                    class="image-item"
+                    @mousedown="startDrag(image, 'unassigned', index)"
+                    @touchstart="startDrag(image, 'unassigned', index)"
+                    @click="showImageModal(image.src)"
+                >
+                    <img :src="image.src" alt="未分类图片">
+                    <div 
+                        class="image-name-overlay"
+                        :style="{ display: showImageNames ? 'block' : 'none' }"
+                    >{{ image.name }}</div>
+                </div>
+
+                <!-- 功能按钮 -->
+                <div class="button-container">
+                    <div class="add-tier-btn" @click="addNewTier">+ 添加评级</div>
+                    <div class="reset-tier-btn" @click="showResetConfirm = true">↻ 重置排行榜</div>
+                </div>
+                
+                <!-- 文件输入 -->
+                <input 
+                    type="file" 
+                    id="file-input" 
+                    accept="image/*" 
+                    multiple
+                    @change="handleFileChange"
+                    ref="fileInput"
+                >
+            </div>
+        </div>
+
+        <!-- 重置确认模态框 -->
+        <div 
+            v-if="showResetConfirm" 
+            class="reset-modal"
+            :style="{ display: showResetConfirm ? 'flex' : 'none' }"
+            @click.self="showResetConfirm = false"
+        >
+            <div class="reset-content">
+                <h3>⚠️ 确认重置</h3>
+                <p>您确定要重置排行榜吗？<br>这将清除所有评级设置并移除所有图片，此操作无法撤销。</p>
+                <div class="reset-buttons">
+                    <button class="reset-confirm-btn" @click="resetRanking">确认重置</button>
+                    <button class="reset-cancel-btn" @click="showResetConfirm = false">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片放大模态框 -->
+        <div 
+            v-if="imageModalSrc" 
+            class="image-modal"
+            :style="{ display: imageModalSrc ? 'flex' : 'none' }"
+            @click="hideImageModal"
+        >
+            <img :src="imageModalSrc" alt="放大的图片">
+        </div>
+
+        <!-- 拖拽预览 -->
+        <div 
+            v-if="dragPreview" 
+            class="drag-preview"
+            :style="{ 
+                left: dragPreview.x + 'px',
+                top: dragPreview.y + 'px',
+                display: isDragging ? 'block' : 'none'
+            }"
+        >
+            <img :src="dragPreview.src" alt="拖拽预览">
+        </div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            <a 
+                href="https://hi.dayun.cool/contact" 
+                target="_blank"
+                class="contact-link"
+            >联系方式</a>
+            <span>© 2025 大沄</span>
+        </div>
+    </div>
+
+    <script>
+        // Vue3 应用初始化
+        const { createApp, ref, reactive, watch, onMounted, onUnmounted } = Vue;
+
+        createApp({
+            setup() {
+                // ===== 状态管理 =====
+                // 基础状态
+                const showHelp = ref(false);
+                const showImageNames = ref(false);
+                const fixedHeight = ref(false);
+                const showResetConfirm = ref(false);
+                const imageModalSrc = ref('');
+                const activeEditingTier = ref(-1);
+                const imageCounter = ref(0);
+
+                // 拖拽相关状态
+                const isDragging = ref(false);
+                const draggedImage = ref(null);
+                const dragPreview = ref(null);
+                const draggedFromType = ref('');
+                const draggedFromIndex = ref(-1);
+                const hoveredTierIndex = ref(-1);
+
+                // 引用
+                const rankingContainer = ref(null);
+                const imageGallery = ref(null);
+                const fileInput = ref(null);
+                const deleteZone = ref(null);
+                const tierContentRefs = ref([]);
+
+                // 数据结构
+                const tiers = reactive([
+                    { id: 1, name: '夯', color: '#e74d5a', images: [] },
+                    { id: 2, name: '顶级', color: '#ff9f43', images: [] },
+                    { id: 3, name: '人上人', color: '#5a61e7', images: [] },
+                    { id: 4, name: 'NPC', color: '#2ed573', images: [] },
+                    { id: 5, name: '拉完了', color: '#747d8c', images: [] },
+                ]);
+
+                const unassignedImages = reactive([]);
+
+                // ===== IndexedDB 配置 =====
+                const DB_NAME = 'RankingAppDB';
+                const DB_VERSION = 1;
+                const STORE_NAME = 'rankingState';
+
+                // 初始化数据库 (简化版，不依赖外部库)
+                const initDB = () => {
+                    return new Promise((resolve, reject) => {
+                        const request = indexedDB.open(DB_NAME, DB_VERSION);
+                        
+                        request.onerror = () => reject(request.error);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                            }
+                        };
+                    });
+                };
+
+                // 保存状态到IndexedDB
+                const saveState = async () => {
+                    try {
+                        const db = await initDB();
+                        const transaction = db.transaction([STORE_NAME], 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        
+                        const state = {
+                            id: 1,
+                            tiers: JSON.parse(JSON.stringify(tiers)),
+                            unassignedImages: JSON.parse(JSON.stringify(unassignedImages)),
+                            showImageNames: showImageNames.value,
+                            fixedHeight: fixedHeight.value
+                        };
+                        
+                        await store.put(state);
+                        console.log('状态已保存');
+                    } catch (error) {
+                        console.error('保存状态失败:', error);
+                    }
+                };
+
+                // 加载状态
+                const loadState = async () => {
+                    try {
+                        const db = await initDB();
+                        const transaction = db.transaction([STORE_NAME], 'readonly');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const savedState = await store.get(1);
+                        
+                        if (savedState) {
+                            // 恢复数据
+                            tiers.splice(0, tiers.length, ...savedState.tiers);
+                            unassignedImages.splice(0, unassignedImages.length, ...savedState.unassignedImages);
+                            showImageNames.value = savedState.showImageNames;
+                            fixedHeight.value = savedState.fixedHeight;
+                            
+                            // 恢复图片计数器
+                            const allImages = [
+                                ...unassignedImages,
+                                ...tiers.flatMap(tier => tier.images)
+                            ];
+                            imageCounter.value = allImages.length;
+                            
+                            // 应用固定高度
+                            if (fixedHeight.value) {
+                                updateAllTierImageSizes();
+                            }
+                            
+                            console.log('状态已恢复');
+                        }
+                    } catch (error) {
+                        console.error('加载状态失败:', error);
+                    }
+                };
+
+                // ===== 工具函数 =====
+                // 图片压缩
+                const compressImage = (base64String) => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            // 限制最大尺寸
+                            let width = img.width;
+                            let height = img.height;
+                            const maxSize = 800;
+                            
+                            if (width > maxSize || height > maxSize) {
+                                if (width > height) {
+                                    height = (height / width) * maxSize;
+                                    width = maxSize;
+                                } else {
+                                    width = (width / height) * maxSize;
+                                    height = maxSize;
+                                }
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/jpeg', 0.7));
+                        };
+                        img.src = base64String;
+                    });
+                };
+
+                // RGB转十六进制
+                const rgbToHex = (rgb) => {
+                    if (!rgb || rgb === 'transparent') return '#808080';
+                    const rgbMatch = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                    if (!rgbMatch) return rgb;
+                    
+                    const toHex = (c) => {
+                        const hex = parseInt(c).toString(16);
+                        return hex.length === 1 ? '0' + hex : hex;
+                    };
+                    
+                    return '#' + toHex(rgbMatch[1]) + toHex(rgbMatch[2]) + toHex(rgbMatch[3]);
+                };
+
+                // 获取图片大小类
+                const getImageSizeClass = (imageCount) => {
+                    if (!fixedHeight.value) return '';
+                    
+                    const containerWidth = tierContentRefs.value[hoveredTierIndex.value]?.clientWidth || 0;
+                    const gap = 5;
+                    const maxImagesPerRow120 = Math.floor((containerWidth - 10) / (120 + gap));
+                    
+                    if (imageCount <= maxImagesPerRow120) {
+                        return 'single-row';
+                    }
+                    
+                    const availableWidth = (containerWidth - 10) - (imageCount - 1) * gap;
+                    const calculatedWidth = Math.floor(availableWidth / imageCount);
+                    
+                    return calculatedWidth >= 70 ? 'adaptive' : 'multi-row';
+                };
+
+                // 更新所有评级的图片大小
+                const updateAllTierImageSizes = () => {
+                    if (!fixedHeight.value) return;
+                    
+                    tierContentRefs.value.forEach((content, index) => {
+                        if (content) {
+                            const images = content.querySelectorAll('.image-item');
+                            const containerWidth = content.clientWidth - 10;
+                            const gap = 5;
+                            const maxImagesPerRow120 = Math.floor(containerWidth / (120 + gap));
+                            
+                            if (images.length > maxImagesPerRow120) {
+                                const availableWidth = containerWidth - (images.length - 1) * gap;
+                                const calculatedWidth = Math.floor(availableWidth / images.length);
+                                
+                                images.forEach(img => {
+                                    if (calculatedWidth >= 70) {
+                                        img.classList.remove('single-row', 'multi-row');
+                                        img.classList.add('adaptive');
+                                        img.style.width = `${calculatedWidth}px`;
+                                        img.style.height = `${calculatedWidth}px`;
+                                    } else {
+                                        img.classList.remove('single-row', 'adaptive');
+                                        img.classList.add('multi-row');
+                                        img.style.width = '70px';
+                                        img.style.height = '70px';
+                                    }
+                                });
+                            }
+                        }
+                    });
+                };
+
+                // ===== 事件处理函数 =====
+                // 文件处理
+                const triggerFileInput = () => {
+                    fileInput.value.click();
+                };
+
+                const handleFileChange = async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                const compressedSrc = await compressImage(e.target.result);
+                                const imageName = file.name.replace(/\.[^/.]+$/, "");
+                                
+                                unassignedImages.push({
+                                    id: `img-${++imageCounter.value}`,
+                                    src: compressedSrc,
+                                    name: imageName || '图片'
+                                });
+                                
+                                saveState();
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                    
+                    // 清空文件输入
+                    fileInput.value.value = '';
+                };
+
+                // 拖拽处理
+                const startDrag = (image, fromType, index = -1) => {
+                    draggedImage.value = image;
+                    draggedFromType.value = fromType;
+                    draggedFromIndex.value = index;
+                    
+                    // 创建拖拽预览
+                    dragPreview.value = {
+                        src: image.src,
+                        x: 0,
+                        y: 0
+                    };
+                };
+
+                const handleMouseMove = (e) => {
+                    if (!draggedImage.value) return;
+                    
+                    const deltaX = e.movementX;
+                    const deltaY = e.movementY;
+                    
+                    // 开始拖拽的阈值
+                    if ((Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) && !isDragging.value) {
+                        isDragging.value = true;
+                    }
+                    
+                    if (isDragging.value && dragPreview.value) {
+                        dragPreview.value.x = e.clientX - 60;
+                        dragPreview.value.y = e.clientY - 60;
+                        
+                        // 检测悬停的元素
+                        const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+                        const tierElement = elementBelow?.closest('.tier');
+                        
+                        if (tierElement) {
+                            const tierIndex = Array.from(rankingContainer.value.children).indexOf(tierElement);
+                            hoveredTierIndex.value = tierIndex;
+                        } else if (elementBelow?.closest('.delete-zone')) {
+                            hoveredTierIndex.value = -2; // 删除区域
+                        } else {
+                            hoveredTierIndex.value = -1; // 其他区域
+                        }
+                    }
+                };
+
+                const handleMouseUp = (e) => {
+                    if (!isDragging.value || !draggedImage.value) {
+                        draggedImage.value = null;
+                        isDragging.value = false;
+                        hoveredTierIndex.value = -1;
+                        return;
+                    }
+                    
+                    // 确定放置目标
+                    const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+                    const tierElement = elementBelow?.closest('.tier');
+                    const deleteZoneElement = elementBelow?.closest('.delete-zone');
+                    
+                    // 移除拖拽的图片
+                    if (draggedFromType.value === 'tier') {
+                        tiers[draggedFromIndex.value].images = tiers[draggedFromIndex.value].images.filter(
+                            img => img.id !== draggedImage.value.id
+                        );
+                    } else if (draggedFromType.value === 'unassigned') {
+                        unassignedImages.splice(draggedFromIndex.value, 1);
+                    }
+                    
+                    // 处理放置目标
+                    if (deleteZoneElement) {
+                        // 删除图片
+                    } else if (tierElement) {
+                        // 放到评级中
+                        const tierIndex = Array.from(rankingContainer.value.children).indexOf(tierElement);
+                        tiers[tierIndex].images.push(draggedImage.value);
+                        
+                        // 更新图片大小
+                        if (fixedHeight.value) {
+                            updateAllTierImageSizes();
+                        }
+                    } else {
+                        // 放回未分类
+                        unassignedImages.push(draggedImage.value);
+                    }
+                    
+                    // 重置拖拽状态
+                    isDragging.value = false;
+                    draggedImage.value = null;
+                    hoveredTierIndex.value = -1;
+                    dragPreview.value = null;
+                    
+                    // 保存状态
+                    saveState();
+                };
+
+                // 处理拖放上传
+                const handleDrop = async (e) => {
+                    e.preventDefault();
+                    const files = Array.from(e.dataTransfer.files);
+                    
+                    for (const file of files) {
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                const compressedSrc = await compressImage(e.target.result);
+                                const imageName = file.name.replace(/\.[^/.]+$/, "");
+                                
+                                unassignedImages.push({
+                                    id: `img-${++imageCounter.value}`,
+                                    src: compressedSrc,
+                                    name: imageName || '图片'
+                                });
+                                
+                                saveState();
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                };
+
+                // 处理删除区域拖放
+                const handleDeleteDrop = (e) => {
+                    e.preventDefault();
+                    if (draggedImage.value) {
+                        // 移除拖拽的图片
+                        if (draggedFromType.value === 'tier') {
+                            tiers[draggedFromIndex.value].images = tiers[draggedFromIndex.value].images.filter(
+                                img => img.id !== draggedImage.value.id
+                            );
+                        } else if (draggedFromType.value === 'unassigned') {
+                            unassignedImages.splice(draggedFromIndex.value, 1);
+                        }
+                        
+                        // 重置拖拽状态
+                        isDragging.value = false;
+                        draggedImage.value = null;
+                        hoveredTierIndex.value = -1;
+                        dragPreview.value = null;
+                        
+                        saveState();
+                    }
+                };
+
+                // 评级管理
+                const addNewTier = () => {
+                    const newTierId = tiers.length + 1;
+                    tiers.push({
+                        id: newTierId,
+                        name: `新评级${newTierId}`,
+                        color: '#808080',
+                        images: []
+                    });
+                    
+                    saveState();
+                };
+
+                const deleteTier = (index) => {
+                    // 将该评级的图片移回未分类
+                    const imagesToMove = tiers[index].images;
+                    unassignedImages.push(...imagesToMove);
+                    
+                    // 删除评级
+                    tiers.splice(index, 1);
+                    
+                    saveState();
+                };
+
+                const updateTierName = (index, name) => {
+                    tiers[index].name = name;
+                    saveState();
+                };
+
+                const updateTierColor = (index, color) => {
+                    tiers[index].color = color;
+                    saveState();
+                };
+
+                const activateTierEditing = (index) => {
+                    activeEditingTier.value = index;
+                };
+
+                // 固定高度切换
+                const toggleFixedHeight = () => {
+                    if (fixedHeight.value) {
+                        updateAllTierImageSizes();
+                    } else {
+                        // 恢复原始大小
+                        document.querySelectorAll('.image-item').forEach(img => {
+                            img.classList.remove('single-row', 'multi-row', 'adaptive');
+                            img.style.width = '120px';
+                            img.style.height = '120px';
+                        });
+                    }
+                    
+                    saveState();
+                };
+
+                // 图片名称显示切换
+                const updateImageNamesVisibility = () => {
+                    saveState();
+                };
+
+                // 帮助模态框
+                const hideHelp = () => {
+                    showHelp.value = false;
+                    saveState();
+                };
+
+                // 图片放大
+                const showImageModal = (src) => {
+                    imageModalSrc.value = src;
+                };
+
+                const hideImageModal = () => {
+                    imageModalSrc.value = '';
+                };
+
+                // 重置排行榜
+                const resetRanking = () => {
+                    // 重置评级
+                    tiers.splice(0, tiers.length,
+                        { id: 1, name: '夯', color: '#e74d5a', images: [] },
+                        { id: 2, name: '顶级', color: '#ff9f43', images: [] },
+                        { id: 3, name: '人上人', color: '#5a61e7', images: [] },
+                        { id: 4, name: 'NPC', color: '#2ed573', images: [] },
+                        { id: 5, name: '拉完了', color: '#747d8c', images: [] }
+                    );
+                    
+                    // 清空图片
+                    unassignedImages.splice(0, unassignedImages.length);
+                    imageCounter.value = 0;
+                    
+                    // 关闭确认框
+                    showResetConfirm.value = false;
+                    
+                    saveState();
+                };
+
+                // 保存为图片
+                const saveAsImage = async () => {
+                    if (!rankingContainer.value) return;
+                    
+                    try {
+                        const canvas = await html2canvas(rankingContainer.value, {
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: '#1a1a1a'
+                        });
+                        
+                        const imageDataUrl = canvas.toDataURL('image/png');
+                        const blob = await (await fetch(imageDataUrl)).blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        
+                        // 创建下载链接
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = blobUrl;
+                        downloadLink.download = '从夯到拉排行榜.png';
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                        
+                        // 打开预览
+                        window.open(blobUrl, '_blank');
+                    } catch (error) {
+                        console.error('截图失败:', error);
+                        alert('截图失败，请重试');
+                    }
+                };
+
+                // 处理评级鼠标进入/离开
+                const handleTierMouseEnter = (index) => {
+                    if (isDragging.value) {
+                        hoveredTierIndex.value = index;
+                    }
+                };
+
+                const handleTierMouseLeave = () => {
+                    if (isDragging.value) {
+                        hoveredTierIndex.value = -1;
+                    }
+                };
+
+                // ===== 生命周期 =====
+                onMounted(() => {
+                    // 加载保存的状态
+                    loadState();
+                    
+                    // 添加全局事件监听
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                    
+                    // 监听窗口大小变化
+                    window.addEventListener('resize', updateAllTierImageSizes);
+                    
+                    // ESC键关闭模态框
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape') {
+                            showHelp.value = false;
+                            imageModalSrc.value = '';
+                            showResetConfirm.value = false;
+                        }
+                    });
+                });
+
+                onUnmounted(() => {
+                    // 移除事件监听
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                    window.removeEventListener('resize', updateAllTierImageSizes);
+                });
+
+                // ===== 监听数据变化自动保存 =====
+                watch([tiers, unassignedImages, showImageNames, fixedHeight], () => {
+                    saveState();
+                }, { deep: true });
+
+                // 返回模板中使用的变量和方法
+                return {
+                    showHelp,
+                    showImageNames,
+                    fixedHeight,
+                    showResetConfirm,
+                    imageModalSrc,
+                    activeEditingTier,
+                    isDragging,
+                    dragPreview,
+                    hoveredTierIndex,
+                    tiers,
+                    unassignedImages,
+                    rankingContainer,
+                    imageGallery,
+                    fileInput,
+                    deleteZone,
+                    tierContentRefs,
+                    triggerFileInput,
+                    handleFileChange,
+                    startDrag,
+                    handleDrop,
+                    handleDeleteDrop,
+                    addNewTier,
+                    deleteTier,
+                    updateTierName,
+                    updateTierColor,
+                    activateTierEditing,
+                    toggleFixedHeight,
+                    updateImageNamesVisibility,
+                    hideHelp,
+                    showImageModal,
+                    hideImageModal,
+                    resetRanking,
+                    saveAsImage,
+                    handleTierMouseEnter,
+                    handleTierMouseLeave,
+                    getImageSizeClass,
+                    rgbToHex
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
