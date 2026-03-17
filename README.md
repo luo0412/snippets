@@ -7,7 +7,7 @@
 
 # 代码片段
 
-- [101-从夯到拉排行榜-vue3.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜-vue3.html)
+- [`101-从夯到拉排行榜-opus-vue3@nice.html`](https://luo0412.github.io/snippets/101-从夯到拉排行榜-opus-vue3@nice.html)
 - [`101-从夯到拉排行榜-dayun@nice.html`](https://luo0412.github.io/snippets/101-从夯到拉排行榜-dayun@nice.html)
 - [101-从夯到拉排行榜-豆包鞭策版.html](https://luo0412.github.io/snippets/101-从夯到拉排行榜-豆包鞭策版.html)
 

@@ -7,12 +7,9 @@
   <link rel="stylesheet" href="static/css/antd.min.css">
   <link rel="stylesheet" href="static/css/element-ui.min.css">
   <link rel="stylesheet" href="static/css/codemirror.css">
-  <link rel="stylesheet" href="static/css/splitpanes.min.css">
   <link rel="stylesheet" href="static/css/font-awesome.min.css">
   <style>
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
@@ -20,52 +17,124 @@
     body {
       height: 100vh;
       overflow: hidden;
+      touch-action: pan-y;
     }
     #app-container {
       height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    .splitpanes {
-      height: 100%;
+    /* PC端水平布局 */
+    @media (min-width: 768px) {
+      #app-container {
+        flex-direction: row;
+      }
+      #editorPane {
+        width: 50%;
+        min-width: 200px;
+        max-width: 80%;
+      }
+      #previewPane {
+        flex: 1;
+        min-width: 200px;
+      }
     }
-    .splitpanes__pane {
+    /* 移动端垂直布局 */
+    @media (max-width: 767px) {
+      #editorPane {
+        height: 50%;
+        min-height: 150px;
+        max-height: 70%;
+      }
+      #previewPane {
+        flex: 1;
+        min-height: 150px;
+      }
+    }
+    #editorPane, #previewPane {
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    /* 分割条 */
+    .splitter {
+      flex-shrink: 0;
+      background-color: #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: row-resize;
+    }
+    .splitter:hover {
+      background-color: #1890ff;
+    }
+    /* PC水平分割条 */
+    @media (min-width: 768px) {
+      .splitter {
+        width: 6px;
+        cursor: col-resize;
+      }
+    }
+    /* 移动端垂直分割条 */
+    @media (max-width: 767px) {
+      .splitter {
+        height: 6px;
+        cursor: row-resize;
+      }
+    }
+    .splitter::after {
+      content: '';
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: #ccc;
+      transition: background-color 0.2s;
+    }
+    .splitter:hover::after {
+      background-color: #fff;
+    }
+    /* CodeMirror 滚动优化 - 支持触摸滑动 */
+    #codemirror-container {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    #codemirror-container .CodeMirror {
       height: 100% !important;
       width: 100% !important;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 14px;
+      touch-action: none;
     }
-    /* 使用默认主题 */
-    .splitpanes.default-theme .splitpanes__pane {
-      background-color: #f2f2f2;
+    #codemirror-container .CodeMirror-scroll {
+      height: 100% !important;
+      overflow-y: auto !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y pinch-zoom;
     }
-    /* 移动端 SplitPane 样式适配 */
-    @media (max-width: 767px) {
-      .splitpanes--vertical > .splitpanes__splitter {
-        height: 8px !important;
-      }
-      .splitpanes--horizontal > .splitpanes__splitter {
-        width: 8px !important;
-      }
-      #editorPane,
-      .splitpanes__pane:first-child {
-        height: 50vh !important;
-        min-height: 200px !important;
-      }
-      #codemirror-container {
-        height: 100% !important;
-        width: 100% !important;
-        min-height: 200px;
-      }
-      .btn-group {
-        gap: 8px !important;
-      }
-      .btn-group .btn-item {
-        width: 32px !important;
-        height: 32px !important;
-      }
+    #codemirror-container .CodeMirror-vscrollbar,
+    #codemirror-container .CodeMirror-hscrollbar {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* Monaco 编辑器容器 */
+    #monaco-editor-container {
+      flex: 1;
+      display: none;
+      overflow: hidden;
+    }
+    /* 预览区域 */
+    .preview-area {
+      flex: 1;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
     }
     #code {
       display: none;
     }
-    /* 按钮组容器 - 固定在右下角 */
+    /* 按钮组容器 */
     .btn-group {
       position: fixed;
       bottom: 20px;
@@ -75,7 +144,6 @@
       gap: 10px;
       align-items: center;
     }
-    /* 刷新提示按钮 */
     .run {
       padding: 6px 12px;
       color: #fff;
@@ -85,7 +153,6 @@
       font-size: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
-    /* 通用圆形按钮样式 */
     .btn-item {
       width: 36px;
       height: 36px;
@@ -99,7 +166,6 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       transition: all 0.2s ease;
     }
-    /* 切换编辑器按钮 */
     .editor-switch {
       background-color: #1890ff;
     }
@@ -107,7 +173,6 @@
       background-color: #40a9ff;
       transform: scale(1.05);
     }
-    /* 全屏按钮 */
     .fullscreen-btn {
       background: #1890ff;
     }
@@ -115,7 +180,6 @@
       background: #40a9ff;
       transform: scale(1.05);
     }
-    /* 退出全屏按钮 - 固定在右下角 */
     .exit-fullscreen-btn {
       position: fixed;
       bottom: 20px;
@@ -138,63 +202,8 @@
       background: #ff7875;
       transform: scale(1.05);
     }
-    /* CodeMirror 核心样式修复 */
-    .CodeMirror {
-      font-family: consolas;
-      font-size: 14px;
-      height: 100% !important;
-      width: 100% !important;
-      min-height: 200px;
-    }
-    .CodeMirror-scroll {
-      height: 100% !important;
-    }
-    .CodeMirror-gutter,
-    .CodeMirror-gutters {
-      min-height: 100% !important;
-    }
-    #monaco-editor-container {
-      width: 100%;
-      height: 100%;
-      display: none;
-      min-height: 200px;
-    }
-    .preview-fullscreen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw !important;
-      height: 100vh !important;
-      z-index: 998;
-      background: white;
-    }
     .icon {
       font-size: 16px;
-    }
-    .preview-area {
-      height: 100%;
-      overflow: auto;
-    }
-    .fallback-splitter {
-      width: 8px;
-      height: 100%;
-      background-color: #ccc;
-      cursor: col-resize;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .fallback-splitter-vertical {
-      width: 100%;
-      height: 8px;
-      cursor: row-resize;
-    }
-    .fallback-splitter::after {
-      content: '';
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background-color: #999;
     }
     .loading-tip {
       position: fixed;
@@ -208,42 +217,67 @@
       z-index: 999;
       display: none;
     }
+    /* 移动端适配 */
+    @media (max-width: 767px) {
+      .btn-group {
+        gap: 8px;
+        bottom: 10px;
+        right: 10px;
+      }
+      .btn-group .btn-item {
+        width: 32px;
+        height: 32px;
+      }
+      .run {
+        font-size: 11px;
+        padding: 4px 8px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="app-container"></div>
-  
+  <div id="app-container">
+    <div id="editorPane">
+      <div id="monaco-editor-container"></div>
+      <div id="codemirror-container"></div>
+    </div>
+    <div class="splitter" id="splitter"></div>
+    <div id="previewPane">
+      <div id="app" class="preview-area"></div>
+    </div>
+  </div>
+
   <textarea id="code"><template>
   <div class="page">
     <a-button type="primary" @click="visible = true">按钮</a-button>
     <el-button type="primary" @click="visible = true">按钮</el-button>
     <el-date-picker placeholder="请选择日期(ElementUI)" v-model="date" style="margin: 0 10px;" />
-    
-    <a-date-picker 
-      placeholder="基础日期选择(AntD)" 
-      v-model="antdDate" 
+
+    <a-date-picker
+      placeholder="基础日期选择(AntD)"
+      v-model="antdDate"
       style="margin: 0 10px;"
       @change="handleDateChange"
     />
-    <a-date-picker 
-      placeholder="带快捷选项" 
-      v-model="antdDate2" 
+    <a-date-picker
+      placeholder="带快捷选项"
+      v-model="antdDate2"
       style="margin: 0 10px;"
       :disabled-date="disabledDate"
       :preset-ranges="presetRanges"
     />
-    <a-range-picker 
-      placeholder="日期范围选择" 
-      v-model="dateRange" 
+    <a-range-picker
+      placeholder="日期范围选择"
+      v-model="dateRange"
       style="margin: 0 10px;"
     />
-    <a-date-picker 
-      placeholder="月份选择器" 
-      v-model="monthDate" 
+    <a-date-picker
+      placeholder="月份选择器"
+      v-model="monthDate"
       style="margin: 0 10px;"
       picker="month"
     />
-    
+
     <a-modal v-model:visible="visible" title="Hello world">
       <p>Try Ant Design Vue</p>
       <div>已选日期: {{ antdDate ? antdDate.format('YYYY-MM-DD') : '未选择' }}</div>
@@ -289,7 +323,7 @@ export default {
 }
 </style></textarea>
 
-  <!-- 按钮组容器 - 固定在右下角 -->
+  <!-- 按钮组容器 -->
   <div class="btn-group">
     <span class="run">✓ 自动刷新中</span>
     <div class="editor-switch btn-item" id="editorSwitchBtn">
@@ -299,7 +333,7 @@ export default {
       <i class="fas fa-expand icon"></i>
     </button>
   </div>
-  
+
   <div class="loading-tip" id="loadingTip">正在加载 Monaco Editor...</div>
 
   <script src="static/js/moment.min.js"></script>
@@ -308,9 +342,7 @@ export default {
   <script src="static/js/vue-template-compiler.js"></script>
   <script src="static/js/antd.min.js"></script>
   <script src="static/js/element-ui.min.js"></script>
-  
-  <script src="static/js/splitpanes.umd.js"></script>
-  
+
   <script src="static/codemirror/codemirror.js"></script>
   <script src="static/codemirror/overlay.js"></script>
   <script src="static/codemirror/matchbrackets.js"></script>
@@ -329,231 +361,114 @@ export default {
     let currentEditorType = 'codemirror';
     let debounceTimeout;
     let isFullscreen = false;
-    let currentLayout = 'horizontal';
-    let splitPaneInstance = null;
-    let isSplitPanesAvailable = false;
-    let isMonacoLoading = false;
-    let splitPanesRetryCount = 0;
-    const MAX_SPLITPANES_RETRIES = 3;
-    const SPLITPANES_RETRY_DELAY = 1000;
     let initialCode = '';
-    
+    let isDragging = false;
+    let startPos = 0;
+    let startSize = 0;
+    let containerSize = 0;
+
     const loadingTip = document.getElementById('loadingTip');
     const editorSwitchBtn = document.getElementById('editorSwitchBtn');
-    
-    function checkSplitPanesAvailabilityWithRetry() {
-      return new Promise((resolve) => {
-        const check = () => {
-          try {
-            isSplitPanesAvailable = typeof window.splitpanes !== 'undefined';
-            
-            if (isSplitPanesAvailable) {
-              console.log('SplitPanes加载成功');
-              resolve(true);
-              return;
-            }
-            
-            splitPanesRetryCount++;
-            if (splitPanesRetryCount < MAX_SPLITPANES_RETRIES) {
-              console.log(`SplitPanes加载失败，${SPLITPANES_RETRY_DELAY}ms后重试 (${splitPanesRetryCount}/${MAX_SPLITPANES_RETRIES})`);
-              setTimeout(check, SPLITPANES_RETRY_DELAY);
-            } else {
-              console.warn('SplitPanes重试次数用尽，使用原生分割面板');
-              resolve(false);
-            }
-          } catch (e) {
-            splitPanesRetryCount++;
-            if (splitPanesRetryCount < MAX_SPLITPANES_RETRIES) {
-              setTimeout(check, SPLITPANES_RETRY_DELAY);
-            } else {
-              resolve(false);
-            }
-          }
-        };
-        
-        check();
-      });
-    }
-    
-    function initFallbackSplitPane() {
+
+    function initSplitPane() {
       const container = document.getElementById('app-container');
       const isMobile = window.innerWidth <= 767;
-      currentLayout = isMobile ? 'vertical' : 'horizontal';
-      
-      container.innerHTML = `
-        <div style="display: ${isMobile ? 'flex; flex-direction: column;' : 'flex;'}; height: 100%; width: 100%;">
-          <div style="${isMobile ? 'height: 50vh; min-height: 200px;' : 'width: 50%;'}" id="editorPane">
-            <div id="monaco-editor-container"></div>
-            <div id="codemirror-container"></div>
-          </div>
-          <div class="fallback-splitter ${isMobile ? 'fallback-splitter-vertical' : ''}" id="fallback-splitter"></div>
-          <div style="${isMobile ? 'flex: 1;' : 'flex: 1;'}">
-            <div id="app" class="preview-area"></div>
-          </div>
-        </div>
-      `;
-      
-      const splitter = document.getElementById('fallback-splitter');
+
+      // 设置初始分割位置
       const editorPane = document.getElementById('editorPane');
-      let isDragging = false;
-      let startX, startY, startWidth, startHeight;
-      
-      splitter.addEventListener('mousedown', (e) => {
+      if (isMobile) {
+        editorPane.style.height = '50%';
+      } else {
+        editorPane.style.width = '50%';
+      }
+
+      setupSplitter();
+      setupResizeListener();
+    }
+
+    function setupSplitter() {
+      const splitter = document.getElementById('splitter');
+      const editorPane = document.getElementById('editorPane');
+      const isMobile = window.innerWidth <= 767;
+
+      // 鼠标事件
+      splitter.addEventListener('mousedown', startDrag);
+
+      // 触摸事件 - 支持移动端
+      splitter.addEventListener('touchstart', startDrag, { passive: false });
+
+      function startDrag(e) {
+        e.preventDefault();
         isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        
-        startWidth = editorPane.offsetWidth;
-        startHeight = editorPane.offsetHeight;
-        
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        if (isMobile) {
+          startPos = clientY;
+          startSize = editorPane.offsetHeight;
+          containerSize = document.getElementById('app-container').offsetHeight;
+        } else {
+          startPos = clientX;
+          startSize = editorPane.offsetWidth;
+          containerSize = document.getElementById('app-container').offsetWidth;
+        }
+
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', stopDrag);
-        
-        e.preventDefault();
-      });
-      
+        document.addEventListener('touchmove', handleDrag, { passive: false });
+        document.addEventListener('touchend', stopDrag);
+
+        splitter.style.backgroundColor = '#1890ff';
+      }
+
       function handleDrag(e) {
         if (!isDragging) return;
-        
-        const container = document.getElementById('app-container');
-        
-        if (currentLayout === 'horizontal') {
-          const deltaX = e.clientX - startX;
-          const newWidth = startWidth + deltaX;
-          const containerWidth = container.offsetWidth;
-          
-          if (newWidth > 100 && newWidth < containerWidth - 100) {
-            editorPane.style.width = `${newWidth}px`;
-          }
+        e.preventDefault();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        if (isMobile) {
+          const deltaY = clientY - startPos;
+          const newHeight = Math.max(150, Math.min(startSize + deltaY, containerSize - 150));
+          editorPane.style.height = newHeight + 'px';
         } else {
-          const deltaY = e.clientY - startY;
-          const newHeight = startHeight + deltaY;
-          const containerHeight = container.offsetHeight;
-          
-          if (newHeight > 200 && newHeight < containerHeight - 100) {
-            editorPane.style.height = `${newHeight}px`;
-          }
+          const deltaX = clientX - startPos;
+          const newWidth = Math.max(200, Math.min(startSize + deltaX, containerSize - 200));
+          editorPane.style.width = newWidth + 'px';
         }
-        
-        if (editor && editor instanceof CodeMirror) {
-          editor.refresh();
-        }
-        if (monacoEditor) {
-          monacoEditor.layout();
-        }
+
+        // 刷新编辑器尺寸
+        refreshEditor();
       }
-      
+
       function stopDrag() {
         isDragging = false;
+        splitter.style.backgroundColor = '#e8e8e8';
+
         document.removeEventListener('mousemove', handleDrag);
         document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchmove', handleDrag);
+        document.removeEventListener('touchend', stopDrag);
       }
-      
+    }
+
+    function setupResizeListener() {
       window.addEventListener('resize', debounce(function() {
-        const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
-        if (newLayout !== currentLayout) {
-          currentLayout = newLayout;
-          initFallbackSplitPane();
-          if (currentEditorType === 'monaco' && isMonacoLoaded) {
-            initMonacoEditor();
-          } else {
-            initCodeMirror();
-          }
-          run();
-        } else {
-          if (editor && editor instanceof CodeMirror) {
-            editor.refresh();
-          }
-          if (monacoEditor) {
-            monacoEditor.layout();
-          }
-        }
+        refreshEditor();
       }, 300));
     }
-    
-    async function initSplitPane() {
-      const splitPanesLoaded = await checkSplitPanesAvailabilityWithRetry();
 
-      if (!splitPanesLoaded) {
-        initFallbackSplitPane();
-        return;
+    function refreshEditor() {
+      if (editor && editor instanceof CodeMirror) {
+        editor.refresh();
       }
-
-      const container = document.getElementById('app-container');
-      const isMobile = window.innerWidth <= 767;
-      currentLayout = isMobile ? 'vertical' : 'horizontal';
-
-      // 注册 Vue 组件
-      Vue.component('splitpanes', window.splitpanes.Splitpanes);
-      Vue.component('pane', window.splitpanes.Pane);
-
-      // 使用 Vue 方式挂载组件
-      const VueApp = Vue.extend({
-        template: `
-          <splitpanes :horizontal="${isMobile}" class="default-theme" style="height: 100%;">
-            <pane :size="${isMobile ? 50 : 50}" :min-size="20">
-              <div id="monaco-editor-container"></div>
-              <div id="codemirror-container"></div>
-            </pane>
-            <pane :size="${isMobile ? 50 : 50}" :min-size="20">
-              <div id="app" class="preview-area"></div>
-            </pane>
-          </splitpanes>
-        `,
-        mounted() {
-          // 监听 splitpanes 事件
-          this.$on('resize', () => {
-            if (editor && editor instanceof CodeMirror) {
-              editor.refresh();
-            }
-            if (monacoEditor) {
-              monacoEditor.layout();
-            }
-          });
-          this.$on('resized', () => {
-            if (editor && editor instanceof CodeMirror) {
-              editor.refresh();
-            }
-            if (monacoEditor) {
-              monacoEditor.layout();
-            }
-          });
-        }
-      });
-
-      try {
-        container.innerHTML = '<div id="splitpanes-root"></div>';
-        splitPaneInstance = new VueApp().$mount('#splitpanes-root');
-
-        console.log('SplitPanes 初始化成功');
-      } catch (error) {
-        console.error('初始化SplitPanes失败:', error);
-        initFallbackSplitPane();
-        return;
+      if (monacoEditor) {
+        monacoEditor.layout();
       }
-
-      window.addEventListener('resize', debounce(function() {
-        const newLayout = window.innerWidth <= 767 ? 'vertical' : 'horizontal';
-        if (newLayout !== currentLayout) {
-          currentLayout = newLayout;
-          initSplitPane();
-          if (currentEditorType === 'monaco' && isMonacoLoaded) {
-            initMonacoEditor();
-          } else {
-            initCodeMirror();
-          }
-          run();
-        } else {
-          if (editor && editor instanceof CodeMirror) {
-            editor.refresh();
-          }
-          if (monacoEditor) {
-            monacoEditor.layout();
-          }
-        }
-      }, 300));
     }
-    
+
     function debounce(func, wait) {
       let timeout;
       return function() {
@@ -561,46 +476,46 @@ export default {
         timeout = setTimeout(() => func.apply(this, arguments), wait);
       };
     }
-    
+
     function initCodeMirror() {
       console.log('初始化CodeMirror编辑器');
-      
+
       const codeMirrorContainer = document.getElementById('codemirror-container');
       const monacoContainer = document.getElementById('monaco-editor-container');
-      
+
       if (!codeMirrorContainer) {
         console.error('CodeMirror初始化失败：codemirror-container不存在');
         return;
       }
-      
+
       if (currentEditorType === 'codemirror' && editor && editor instanceof CodeMirror) {
         editor.refresh();
         console.log('CodeMirror已初始化，仅刷新尺寸');
         return;
       }
-      
+
       let currentContent = getEditorContent() || initialCode;
-      
+
       if (monacoEditor) {
         monacoEditor.dispose();
         monacoEditor = null;
       }
-      
+
       codeMirrorContainer.style.display = 'block';
       if (monacoContainer) monacoContainer.style.display = 'none';
-      
+
       if (editor && editor.toTextArea) {
         editor.toTextArea();
         editor = null;
       }
-      
+
       codeMirrorContainer.innerHTML = '';
-      
+
       const tempTextarea = document.createElement('textarea');
       tempTextarea.id = 'temp-code-' + Date.now();
       tempTextarea.value = currentContent;
       codeMirrorContainer.appendChild(tempTextarea);
-      
+
       editor = CodeMirror.fromTextArea(tempTextarea, {
         lineNumbers: true,
         matchBrackets: true,
@@ -611,26 +526,31 @@ export default {
         indentUnit: 2,
         tabSize: 2,
         lineWrapping: true,
-        touchEvents: true,
         scrollbarStyle: 'native'
       });
-      
+
+      // 优化触摸滚动
+      const scrollContainer = codeMirrorContainer.querySelector('.CodeMirror-scroll');
+      if (scrollContainer) {
+        scrollContainer.style.touchAction = 'pan-y pinch-zoom';
+      }
+
       if (currentContent) {
         editor.setValue(currentContent);
       }
-      
+
       editor.off('change', handleEditorChange);
       editor.on('change', handleEditorChange);
-      
+
       setTimeout(() => {
         editor.refresh();
       }, 100);
-      
+
       currentEditorType = 'codemirror';
-      
+
       console.log('CodeMirror初始化完成');
     }
-    
+
     function loadMonacoEditor() {
       return new Promise((resolve, reject) => {
         if (isMonacoLoading) {
@@ -646,23 +566,23 @@ export default {
           }, 100);
           return;
         }
-        
+
         if (window.monaco) {
           isMonacoLoaded = true;
           resolve(true);
           return;
         }
-        
+
         loadingTip.style.display = 'block';
         isMonacoLoading = true;
-        
+
         const script = document.createElement('script');
         script.src = 'static/monaco/min/vs/loader.js';
         script.async = true;
 
         script.onload = () => {
           window.require.config({ paths: { 'vs': 'static/monaco/min/vs' } });
-          
+
           window.require(['vs/editor/editor.main'], () => {
             isMonacoLoaded = true;
             isMonacoLoading = false;
@@ -674,38 +594,38 @@ export default {
             reject(err);
           });
         };
-        
+
         script.onerror = (err) => {
           isMonacoLoading = false;
           loadingTip.style.display = 'none';
           reject(err);
         };
-        
+
         document.head.appendChild(script);
       });
     }
-    
+
     function initMonacoEditor() {
       if (currentEditorType === 'monaco' && monacoEditor) {
         monacoEditor.layout();
         return;
       }
-      
+
       const container = document.getElementById('monaco-editor-container');
       const codeMirrorContainer = document.getElementById('codemirror-container');
       const codeTextarea = document.getElementById('code');
-      
+
       if (!container) return;
-      
+
       let currentContent = getEditorContent();
-      
+
       container.style.display = 'block';
       if (codeMirrorContainer) codeMirrorContainer.style.display = 'none';
-      
+
       if (monacoEditor) {
         monacoEditor.dispose();
       }
-      
+
       try {
         monacoEditor = monaco.editor.create(container, {
           value: currentContent || codeTextarea.value,
@@ -719,25 +639,19 @@ export default {
           autoClosingTags: 'always',
           matchBrackets: 'always'
         });
-        
+
         monacoEditor.onDidChangeModelContent(handleEditorChange);
-        
-        window.addEventListener('resize', () => {
-          if (monacoEditor) {
-            monacoEditor.layout();
-          }
-        });
-        
+
         editor = monacoEditor;
-        
+
         currentEditorType = 'monaco';
-        
+
       } catch (error) {
         console.error('初始化Monaco Editor失败:', error);
         initCodeMirror();
       }
     }
-    
+
     async function switchEditor() {
       if (currentEditorType === 'codemirror') {
         try {
@@ -751,7 +665,7 @@ export default {
         initCodeMirror();
       }
     }
-    
+
     function getEditorContent() {
       try {
         if (currentEditorType === 'monaco' && isMonacoLoaded && monacoEditor) {
@@ -765,20 +679,20 @@ export default {
         return '';
       }
     }
-    
+
     function handleEditorChange() {
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         run();
       }, 500);
     }
-    
+
     function run() {
       const app = document.getElementById('app');
       if (!app) return;
-      
+
       const codeContent = getEditorContent();
-      
+
       try {
         const compiler = VueTemplateCompiler.parseComponent(codeContent);
         const option = new Function(
@@ -809,19 +723,18 @@ export default {
         app.innerHTML = `<div style="padding: 20px; color: red;">代码运行出错: ${error.message}</div>`;
       }
     }
-    
+
     function toggleFullscreen() {
       const app = document.getElementById('app');
       if (!app) return;
-      
+
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       const btnGroup = document.querySelector('.btn-group');
-      
+
       if (!isFullscreen) {
         app.classList.add('preview-fullscreen');
         btnGroup.style.display = 'none';
-        
-        // 创建退出全屏按钮，固定在右下角
+
         const exitBtn = document.createElement('button');
         exitBtn.className = 'exit-fullscreen-btn';
         exitBtn.id = 'exitFullscreenBtn';
@@ -831,7 +744,7 @@ export default {
       } else {
         app.classList.remove('preview-fullscreen');
         btnGroup.style.display = 'flex';
-        
+
         const exitBtn = document.getElementById('exitFullscreenBtn');
         if (exitBtn) {
           document.body.removeChild(exitBtn);
@@ -839,11 +752,11 @@ export default {
       }
       isFullscreen = !isFullscreen;
     }
-    
+
     async function loadFromUrl() {
       const params = new URLSearchParams(window.location.search);
       const url = params.get('url');
-      
+
       if (url) {
         try {
           const response = await fetch(url);
@@ -865,36 +778,35 @@ export default {
         }
       }
     }
-    
+
     async function init() {
       console.log('开始初始化应用');
-      
+
       const codeTextarea = document.getElementById('code');
       if (codeTextarea && !initialCode) {
         initialCode = codeTextarea.value;
         console.log('初始代码已保存');
       }
-      
-      await initSplitPane();
-      
+
+      initSplitPane();
       initCodeMirror();
-      
+
       if (editorSwitchBtn) {
         editorSwitchBtn.addEventListener('click', switchEditor);
       }
-      
+
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleFullscreen);
       }
-      
+
       await loadFromUrl();
-      
+
       run();
-      
+
       console.log('应用初始化完成');
     }
-    
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {
