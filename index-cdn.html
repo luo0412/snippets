@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vue Playground (CDN)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { height: 100vh; overflow: hidden; touch-action: pan-y; }
+    #app-container { height: 100vh; display: flex; flex-direction: column; }
+
+    /* 布局响应式：PC水平，移动垂直 */
+    @media (min-width: 768px) {
+      #app-container { flex-direction: row; }
+      #editorPane { width: 50%; min-width: 200px; max-width: 80%; }
+      .splitter { width: 6px; cursor: col-resize; }
+    }
+    @media (max-width: 767px) {
+      #editorPane { height: 50%; min-height: 120px; max-height: 80%; }
+      .splitter { height: 12px; cursor: row-resize; }
+      .splitter::after { width: 32px; height: 32px; }
+      .btn-group { gap: 6px; bottom: 12px; right: 12px; }
+      .btn-group > *, .btn-item { height: 32px; width: 32px; }
+      .run { font-size: 11px; padding: 0 8px; }
+    }
+
+    #editorPane, #previewPane { overflow: hidden; display: flex; flex-direction: column; }
+
+    /* 分割条 */
+    .splitter { flex-shrink: 0; background: #e8e8e8; display: flex; align-items: center; justify-content: center; }
+    .splitter:hover { background: #1890ff; }
+    .splitter::after { content: ''; width: 24px; height: 24px; border-radius: 50%; background: #ccc; transition: background 0.2s; }
+    .splitter:hover::after { background: #fff; }
+
+    /* 编辑器容器 */
+    #codemirror-container, #monaco-editor-container { flex: 1; overflow: hidden; position: relative; }
+    #monaco-editor-container { display: none; }
+    #codemirror-container .CodeMirror { height: 100% !important; font: 14px Consolas, monospace; touch-action: none; }
+    #codemirror-container .CodeMirror-scroll { height: 100% !important; overflow: auto; -webkit-overflow-scrolling: touch; }
+
+    /* 预览区域 */
+    .preview-area { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+    #code { display: none; }
+
+    /* 按钮组 */
+    .btn-group { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; gap: 8px; }
+    .btn-group > * { height: 36px; }
+    .btn-item, .run { padding: 0 12px; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: all 0.2s; }
+    .btn-item { width: 36px; color: #fff; }
+    .run { color: #fff; background: #52c41a; }
+    .run:hover { background: #73d13d; transform: scale(1.05); }
+    .run.refreshing { background: #faad14; }
+    .run.refreshing .icon { animation: spin 0.5s linear infinite; }
+
+    .editor-switch, .fullscreen-btn { background: #1890ff; }
+    .editor-switch:hover, .fullscreen-btn:hover { background: #40a9ff; transform: scale(1.05); }
+    .exit-fullscreen-btn { position: fixed; bottom: 20px; right: 20px; z-index: 999; width: 36px; height: 36px; background: #ff4d4f; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .exit-fullscreen-btn:hover { background: #ff7875; transform: scale(1.05); }
+
+    .icon { font-size: 16px; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .loading-tip { position: fixed; bottom: 80px; right: 20px; padding: 4px 8px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 4px; font-size: 12px; z-index: 999; display: none; }
+
+    /* 全屏预览 */
+    .preview-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 998; background: #fff; }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <div id="editorPane">
+      <div id="monaco-editor-container"></div>
+      <div id="codemirror-container"></div>
+    </div>
+    <div class="splitter" id="splitter"></div>
+    <div id="previewPane"><div id="app" class="preview-area"></div></div>
+  </div>
+
+  <!-- 初始代码模板 -->
+  <textarea id="code"><template>
+  <div class="page">
+    <a-button type="primary" @click="visible = true">按钮</a-button>
+    <el-button type="primary" @click="visible = true">按钮</el-button>
+    <br><br>
+    <el-date-picker placeholder="请选择日期(ElementUI)" v-model="date" />
+    <a-date-picker placeholder="基础日期选择(AntD)" v-model="antdDate" style="margin: 0 10px;" @change="handleDateChange" />
+    <a-date-picker placeholder="带快捷选项" v-model="antdDate2" style="margin: 0 10px;" :disabled-date="disabledDate" :preset-ranges="presetRanges" />
+    <br><br>
+    <a-range-picker :placeholder="['开始日期', '结束日期']" v-model="dateRange" style="margin: 0 10px;" />
+    <a-month-picker placeholder="选择月份" v-model="monthDate" style="margin: 0 10px;" />
+    <a-week-picker placeholder="选择周" v-model="weekDate" style="margin: 0 10px;" />
+    <br><br>
+    <a-time-picker placeholder="选择时间" v-model="timeValue" style="margin: 0 10px;" />
+    <a-date-picker show-time placeholder="日期时间选择" v-model="dateTime" style="margin: 0 10px;" />
+    <br><br>
+    <a-modal v-model:visible="visible" title="你好世界">
+      <p>这是 Ant Design Vue 中文演示</p>
+      <div>已选日期: {{ antdDate ? antdDate.format('YYYY年MM月DD日') : '未选择' }}</div>
+    </a-modal>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      date: null,
+      antdDate: null,
+      antdDate2: null,
+      dateRange: null,
+      monthDate: null,
+      weekDate: null,
+      timeValue: null,
+      dateTime: null,
+      visible: false,
+      presetRanges: {
+        '今天': [moment(), moment()],
+        '昨天': [moment().subtract(1,'days'), moment().subtract(1,'days')],
+        '近7天': [moment().subtract(6,'days'), moment()],
+        '近30天': [moment().subtract(29,'days'), moment()],
+        '本月': [moment().startOf('month'), moment().endOf('month')],
+        '本年': [moment().startOf('year'), moment().endOf('year')]
+      }
+    }
+  },
+  methods: {
+    handleDateChange(date, dateString) {
+      console.log('选中日期:', date, '日期字符串:', dateString);
+    },
+    disabledDate(current) {
+      return current && current > moment().endOf('day');
+    }
+  }
+}
+</script>
+
+<style>
+.page { padding: 20px; }
+.ant-picker, .el-date-editor { margin-bottom: 10px; margin-right: 10px; }
+</style></textarea>
+
+  <!-- 按钮组 -->
+  <div class="btn-group">
+    <button class="run btn-item" id="runBtn"><i class="fa fa-bolt icon"></i></button>
+    <div class="editor-switch btn-item" id="editorSwitchBtn"><i class="fa fa-laptop-code icon"></i></div>
+    <button class="fullscreen-btn btn-item" id="fullscreenBtn"><i class="fa fa-expand icon"></i></button>
+  </div>
+
+  <div class="loading-tip" id="loadingTip">正在加载 Monaco Editor...</div>
+
+  <!-- CDN 依赖库 -->
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/zh-cn.js"></script>
+  <script>
+    // 立即设置 moment locale 为中文，确保 antd 加载时已是最优语言环境
+    moment.locale('zh-cn');
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue-template-compiler@2.6.14/browser.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ant-design-vue@1.7.8/dist/antd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+
+  <!-- CodeMirror 插件 (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/overlay.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/matchbrackets.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closebrackets.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closetag.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/css/css.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/htmlmixed/htmlmixed.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/vue/vue.js"></script>
+
+  <script>
+    // ==================== 状态管理 ====================
+    let editor = null;           // 当前编辑器实例
+    let monacoEditor = null;    // Monaco 编辑器实例
+    let currentEditor = 'codemirror';  // 当前编辑器类型
+    let isMonacoLoaded = false;
+    let isMonacoLoading = false;
+    let debounceTimer = null;
+    let isFullscreen = false;
+    let isDragging = false;
+
+    // DOM 缓存
+    const $ = id => document.getElementById(id);
+    const els = {
+      appContainer: $('app-container'),
+      editorPane: $('editorPane'),
+      previewPane: $('previewPane'),
+      splitter: $('splitter'),
+      code: $('code'),
+      app: $('app'),
+      runBtn: $('runBtn'),
+      editorSwitchBtn: $('editorSwitchBtn'),
+      fullscreenBtn: $('fullscreenBtn'),
+      loadingTip: $('loadingTip'),
+      codemirrorContainer: $('codemirror-container'),
+      monacoContainer: $('monaco-editor-container')
+    };
+
+    // ==================== 工具函数 ====================
+    const debounce = (fn, wait = 300) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fn, wait);
+    };
+
+    const getCode = () => {
+      if (currentEditor === 'monaco' && monacoEditor) return monacoEditor.getValue();
+      return editor?.getValue?.() || els.code.value || '';
+    };
+
+    const setCode = (content) => {
+      if (currentEditor === 'monaco' && monacoEditor) {
+        monacoEditor.setValue(content);
+      } else if (editor?.setValue) {
+        editor.setValue(content);
+      } else {
+        els.code.value = content;
+      }
+    };
+
+    const refreshEditor = () => {
+      editor?.refresh?.();
+      monacoEditor?.layout?.();
+    };
+
+    // ==================== 分割面板 ====================
+    const initSplitPane = () => {
+      const isMobile = window.innerWidth <= 767;
+      els.editorPane.style[isMobile ? 'height' : 'width'] = '50%';
+
+      const handleStart = (e) => {
+        e.preventDefault();
+        isDragging = true;
+        els.splitter.style.background = '#1890ff';
+
+        const pos = e.touches ? e.touches[0] : e;
+        const isVertical = window.innerWidth <= 767;
+        const startPos = isVertical ? pos.clientY : pos.clientX;
+        const startSize = isVertical ? els.editorPane.offsetHeight : els.editorPane.offsetWidth;
+        const containerSize = isVertical ? els.appContainer.offsetHeight : els.appContainer.offsetWidth;
+
+        const onMove = (e) => {
+          if (!isDragging) return;
+          e.preventDefault();
+          const curPos = e.touches ? e.touches[0] : e;
+          const cur = isVertical ? curPos.clientY : curPos.clientX;
+          const delta = cur - startPos;
+          const min = 150, max = containerSize - 150;
+          const newSize = Math.max(min, Math.min(startSize + delta, max));
+          els.editorPane.style[isVertical ? 'height' : 'width'] = newSize + 'px';
+          refreshEditor();
+        };
+
+        const onEnd = () => {
+          isDragging = false;
+          els.splitter.style.background = '#e8e8e8';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onEnd);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+      };
+
+      els.splitter.addEventListener('mousedown', handleStart);
+      els.splitter.addEventListener('touchstart', handleStart, { passive: false });
+
+      window.addEventListener('resize', () => debounce(refreshEditor, 300));
+    };
+
+    // ==================== CodeMirror 编辑器 ====================
+    const initCodeMirror = () => {
+      if (currentEditor === 'codemirror' && editor) { refreshEditor(); return; }
+
+      if (monacoEditor) { monacoEditor.dispose(); monacoEditor = null; }
+      els.codemirrorContainer.style.display = 'block';
+      els.monacoContainer.style.display = 'none';
+
+      if (editor?.toTextArea) { editor.toTextArea(); editor = null; }
+      els.codemirrorContainer.innerHTML = '';
+
+      const textarea = document.createElement('textarea');
+      textarea.value = getCode();
+      els.codemirrorContainer.appendChild(textarea);
+
+      editor = CodeMirror.fromTextArea(textarea, {
+        lineNumbers: true, matchBrackets: true, autoCloseBrackets: true,
+        autoCloseTags: true, mode: { name: 'vue' }, theme: 'default',
+        indentUnit: 2, tabSize: 2, lineWrapping: true, scrollbarStyle: 'native'
+      });
+
+      editor.on('change', handleChange);
+      currentEditor = 'codemirror';
+      els.editorSwitchBtn.innerHTML = '<i class="fa fa-laptop-code icon"></i>';
+
+      setTimeout(refreshEditor, 100);
+    };
+
+    // ==================== Monaco 编辑器 ====================
+    const loadMonaco = () => new Promise((resolve, reject) => {
+      if (window.monaco) { resolve(); return; }
+      if (isMonacoLoading) {
+        const check = setInterval(() => {
+          if (window.monaco) { clearInterval(check); resolve(); }
+        }, 100);
+        return;
+      }
+
+      loadingTip.style.display = 'block';
+      isMonacoLoading = true;
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
+      script.async = true;
+      script.onload = () => {
+        require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+        require(['vs/editor/editor.main'], () => {
+          isMonacoLoaded = true;
+          isMonacoLoading = false;
+          loadingTip.style.display = 'none';
+          resolve();
+        }, reject);
+      };
+      script.onerror = (e) => {
+        isMonacoLoading = false;
+        loadingTip.style.display = 'none';
+        reject(e);
+      };
+      document.head.appendChild(script);
+    });
+
+    const initMonaco = async () => {
+      if (currentEditor === 'monaco' && monacoEditor) { monacoEditor.layout(); return; }
+
+      await loadMonaco();
+
+      if (editor) { editor.toTextArea(); editor = null; }
+      els.codemirrorContainer.style.display = 'none';
+      els.monacoContainer.style.display = 'block';
+
+      if (monacoEditor) monacoEditor.dispose();
+
+      monacoEditor = monaco.editor.create(els.monacoContainer, {
+        value: getCode(), language: 'html', theme: 'vs-light',
+        minimap: { enabled: true }, scrollBeyondLastLine: false,
+        fontSize: 14, lineNumbers: 'on', autoClosingBrackets: 'always',
+        autoClosingTags: 'always', matchBrackets: 'always'
+      });
+
+      monacoEditor.onDidChangeModelContent(handleChange);
+      editor = monacoEditor;
+      currentEditor = 'monaco';
+      els.editorSwitchBtn.innerHTML = '<i class="fa fa-code icon"></i>';
+    };
+
+    // ==================== 编辑器切换 ====================
+    const switchEditor = async () => {
+      els.editorSwitchBtn.innerHTML = '<i class="fa fa-spinner icon"></i>';
+      try {
+        currentEditor === 'codemirror' ? await initMonaco() : initCodeMirror();
+      } catch (e) {
+        console.error('切换编辑器失败:', e);
+        alert('加载 Monaco Editor 失败，请检查网络');
+        initCodeMirror();
+      }
+    };
+
+    // ==================== 代码运行 ====================
+    const handleChange = () => {
+      els.runBtn.classList.add('refreshing');
+      els.runBtn.innerHTML = '<i class="fa fa-sync icon"></i>';
+      debounce(() => run(), 500);
+    };
+
+    const run = () => {
+      const code = getCode();
+      try {
+        const compiler = VueTemplateCompiler.parseComponent(code);
+        const option = new Function(compiler.script.content.replace('export default', 'return'))();
+        option.template = compiler.template.content;
+
+        // 配置全局依赖 - 确保 moment 全局可用，并强制使用中文
+        window.moment = window.moment || moment;
+        moment.locale('zh-cn');
+
+        // 强制修改 moment 的全局 locale 设置
+        if (moment.locale() !== 'zh-cn') {
+          moment.locale('zh-cn');
+        }
+        if (typeof moment.lang === 'function') {
+          moment.lang('zh-cn');
+        }
+
+        // 配置 antd 使用中文 locale（与官方 zh_CN 结构一致）
+        const antdLocale = {
+          locale: 'zh-cn',
+          DatePicker: {
+            lang: {
+              locale: 'zh_CN',
+              placeholder: '请选择日期',
+              rangePlaceholder: ['开始日期', '结束日期'],
+              today: '今天',
+              now: '此刻',
+              ok: '确定',
+              timeSelect: '选择时间',
+              dateSelect: '选择日期',
+              weekSelect: '选择周',
+              clear: '清除',
+              month: '月',
+              year: '年',
+              monthSelect: '选择月份',
+              yearSelect: '选择年份',
+              previousMonth: '上个月',
+              nextMonth: '下个月',
+              monthFormat: 'YYYY年M月',
+              format: 'YYYY-MM-DD',
+              weekdayFormat: 'ddd',
+              selectYear: '选择年份',
+              selectMonth: '选择月份',
+            },
+            timePickerLocale: {
+              placeholder: '请选择时间',
+            },
+          },
+          TimePicker: {
+            placeholder: '请选择时间',
+            confirm: '确定',
+          },
+          Calendar: {
+            today: '今天',
+            now: '现在',
+            month: '月',
+            year: '年',
+            week: '周',
+            date: '日',
+            monthSelect: '选择月份',
+            yearSelect: '选择年份',
+            previousMonth: '上个月',
+            nextMonth: '下个月',
+          },
+          Table: {
+            filterTitle: '筛选',
+            filterConfirm: '确定',
+            filterReset: '重置',
+            selectAll: '全选',
+            selectInvert: '反选',
+            sortTitle: '排序',
+          },
+          Modal: {
+            okText: '确定',
+            cancelText: '取消',
+            justOkText: '知道了',
+          },
+          ConfirmDialog: {
+            okText: '确定',
+            cancelText: '取消',
+          },
+        };
+
+        Vue.use(antd, { locale: antdLocale });
+
+        // 移除旧样式，注入新样式
+        const oldStyle = document.getElementById('vue-style');
+        if (oldStyle) oldStyle.remove();
+        if (compiler.styles[0]) {
+          const style = document.createElement('style');
+          style.id = 'vue-style';
+          style.innerHTML = compiler.styles[0].content;
+          document.head.appendChild(style);
+        }
+
+        // 用 a-locale-provider 包裹预览根组件
+        const zhCN = antdLocale;
+        const Wrapper = Vue.extend({
+          template: '<a-locale-provider :locale="locale"><div ref="inner"></div></a-locale-provider>',
+          data() { return { locale: zhCN }; }
+        });
+        const wrapper = new Wrapper().$mount();
+        els.app.innerHTML = '';
+        els.app.appendChild(wrapper.$el);
+        const component = new Vue(option).$mount();
+        wrapper.$refs.inner.appendChild(component.$el);
+
+        // 强制设置 antd 日期选择器的 locale
+        const applyPickerLocale = () => {
+          const applyToVm = (vm) => {
+            if (!vm) return;
+            if (vm.$options && vm.$options.pickerV2Locale) {
+              vm.$options.pickerV2Locale = antdLocale.DatePicker.lang;
+            }
+            if (vm.lang !== undefined) vm.lang = antdLocale.DatePicker.lang;
+            if (vm.timePickerLocale !== undefined) vm.timePickerLocale = antdLocale.TimePicker;
+            if (vm.pickerLocale !== undefined) vm.pickerLocale = antdLocale.DatePicker.lang;
+            vm.$children && vm.$children.forEach(applyToVm);
+          };
+
+          applyToVm(component);
+          document.querySelectorAll('.ant-picker, .ant-time-picker').forEach(el => {
+            const vm = el.__vueParentComponent;
+            if (vm) applyToVm(vm);
+          });
+        };
+
+        component.$nextTick(() => applyPickerLocale());
+        setTimeout(applyPickerLocale, 100);
+        setTimeout(applyPickerLocale, 500);
+
+        els.runBtn.classList.remove('refreshing');
+        els.runBtn.innerHTML = '<i class="fa fa-bolt icon"></i>';
+      } catch (e) {
+        els.app.innerHTML = `<div style="padding:20px;color:red;">运行出错: ${e.message}</div>`;
+      }
+    };
+
+    // ==================== 全屏功能 ====================
+    const toggleFullscreen = () => {
+      if (!isFullscreen) {
+        els.editorPane.style.display = 'none';
+        els.splitter.style.display = 'none';
+        els.previewPane.classList.add('preview-fullscreen');
+        document.querySelector('.btn-group').style.display = 'none';
+
+        const exitBtn = document.createElement('button');
+        exitBtn.className = 'exit-fullscreen-btn';
+        exitBtn.innerHTML = '<i class="fa fa-compress icon"></i>';
+        exitBtn.onclick = toggleFullscreen;
+        document.body.appendChild(exitBtn);
+      } else {
+        els.editorPane.style.display = 'flex';
+        els.splitter.style.display = 'flex';
+        els.previewPane.classList.remove('preview-fullscreen');
+        document.querySelector('.btn-group').style.display = 'flex';
+        $('exitFullscreenBtn')?.remove();
+        refreshEditor();
+      }
+      isFullscreen = !isFullscreen;
+    };
+
+    // ==================== URL 参数加载 ====================
+    const loadFromUrl = async () => {
+      const params = new URLSearchParams(location.search);
+      const url = params.get('url');
+      const isFullscreenParam = params.get('isFullscreen');
+
+      if (isFullscreenParam === '1' || isFullscreenParam?.toLowerCase() === 'true') {
+        setTimeout(toggleFullscreen, 100);
+      }
+
+      if (url) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) setCode(await res.text());
+        } catch (e) { console.error('加载文件失败:', e); }
+      }
+    };
+
+    // ==================== 初始化 ====================
+    const init = () => {
+      initSplitPane();
+      initCodeMirror();
+
+      els.runBtn.onclick = () => {
+        els.runBtn.classList.add('refreshing');
+        els.runBtn.innerHTML = '<i class="fa fa-sync icon"></i>';
+        run();
+        setTimeout(() => {
+          els.runBtn.classList.remove('refreshing');
+          els.runBtn.innerHTML = '<i class="fa fa-bolt icon"></i>';
+        }, 500);
+      };
+
+      els.editorSwitchBtn.onclick = switchEditor;
+      els.fullscreenBtn.onclick = toggleFullscreen;
+
+      loadFromUrl();
+      run();
+    };
+
+    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
+  </script>
+</body>
+</html>
