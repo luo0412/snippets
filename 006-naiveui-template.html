@@ -1,68 +1,112 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>Fixed: Vue 3 + Naive UI + JSX</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/naive-ui"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        body { padding: 100px; display: flex; justify-content: center; font-family: sans-serif; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Naive UI + Vue3 CDN 演示</title>
+  <link rel="stylesheet" href="https://unpkg.com/vfonts/Lato.css">
+  <link rel="stylesheet" href="https://unpkg.com/vfonts/FiraCode.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/naive-ui"></script>
+  <style>
+    body { padding: 24px; background-color: #f5f5f7; }
+    .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 8px; }
+    .section { margin-bottom: 24px; }
+    .label { margin-bottom: 8px; font-weight: bold; display: block; }
+  </style>
 </head>
 <body>
-    <div id="app"></div>
+  <div id="app">
+    <n-config-provider>
+      <div class="container">
+        <n-gradient-text type="info" :size="24" style="margin-bottom: 20px;">
+          Naive UI 常用组件演示
+        </n-gradient-text>
 
-    <script type="text/babel">
-        /** @jsx Vue.h */
-        /** @jsxFrag Vue.Fragment */
+        <n-grid :x-gap="12" :cols="2" class="section">
+          <n-gi>
+            <span class="label">输入框 (Input)</span>
+            <n-input v-model:value="form.name" type="text" placeholder="请输入姓名" />
+          </n-gi>
+          <n-gi>
+            <span class="label">选择器 (Select)</span>
+            <n-select v-model:value="form.city" :options="cityOptions" placeholder="请选择城市" />
+          </n-gi>
+        </n-grid>
 
-        const { createApp, defineComponent } = Vue;
-        const { NButton, NDialogProvider, useDialog, NConfigProvider, NText } = window.naive;
+        <div class="section">
+          <span class="label">日期选择 (Date Picker)</span>
+          <n-date-picker v-model:value="form.date" type="date" clearable />
+        </div>
 
-        const DialogTrigger = defineComponent({
-            setup() {
-                const dialog = useDialog();
+        <div class="section">
+          <span class="label">表格展示 (Table)</span>
+          <n-data-table
+            :columns="columns"
+            :data="tableData"
+            :pagination="pagination"
+            :bordered="false"
+          />
+        </div>
 
-                const handleConfirm = () => {
-                    dialog.warning({
-                        title: 'JSX Content',
-                        // content as a render function returning JSX
-                        content: () => (
-                            <div style={{ color: 'red', padding: '10px', border: '1px solid red' }}>
-                                <NText type="success">This is JSX content without React errors!</NText>
+        <div class="section" style="text-align: right;">
+          <n-button type="primary" @click="handleSubmit">提交当前数据</n-button>
+        </div>
+      </div>
+      
+      <n-message-provider>
+        <content-with-message />
+      </n-message-provider>
+    </n-config-provider>
+  </div>
 
-                                <NButton>xxxx</NButton>
-                            </div>
-                        ),
-                        positiveText: 'Check Console',
-                        onPositiveClick: () => console.log('Fixed!')
-                    });
-                };
+  <script>
+    const { createApp, ref, reactive } = Vue;
 
-                return () => (
-                    <NButton type="primary" onClick={handleConfirm}>
-                        Open Imperative JSX Dialog
-                    </NButton>
-                );
-            }
+    const app = createApp({
+      setup() {
+        const form = reactive({
+          name: '',
+          city: null,
+          date: null
         });
 
-        const App = defineComponent({
-            setup() {
-                return () => (
-                    <NConfigProvider>
-                        <NDialogProvider>
-                            <DialogTrigger />
-                        </NDialogProvider>
-                    </NConfigProvider>
-                );
-            }
-        });
+        const cityOptions = [
+          { label: '北京', value: 'beijing' },
+          { label: '上海', value: 'shanghai' },
+          { label: '广州', value: 'guangzhou' }
+        ];
 
-        const app = createApp(App);
-        app.use(window.naive);
-        app.mount('#app');
-    </script>
+        const columns = [
+          { title: '属性', key: 'prop' },
+          { title: '当前值', key: 'value' }
+        ];
+
+        // 动态计算表格数据，演示双向绑定
+        const tableData = Vue.computed(() => [
+          { prop: '姓名', value: form.name || '未填写' },
+          { prop: '城市', value: form.city || '未选择' },
+          { prop: '时间戳', value: form.date || '未选择' }
+        ]);
+
+        const handleSubmit = () => {
+          alert(`提交数据：${JSON.stringify(form)}`);
+        };
+
+        return {
+          form,
+          cityOptions,
+          columns,
+          tableData,
+          handleSubmit,
+          pagination: { pageSize: 5 }
+        };
+      }
+    });
+
+    // 注册所有 Naive UI 组件
+    app.use(naive);
+    app.mount('#app');
+  </script>
 </body>
 </html>
