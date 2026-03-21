@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fixed: Vue 3 + Naive UI + JSX</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/naive-ui"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { padding: 100px; display: flex; justify-content: center; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script type="text/babel">
+        /** @jsx Vue.h */
+        /** @jsxFrag Vue.Fragment */
+
+        const { createApp, defineComponent } = Vue;
+        const { NButton, NDialogProvider, useDialog, NConfigProvider, NText } = window.naive;
+
+        const DialogTrigger = defineComponent({
+            setup() {
+                const dialog = useDialog();
+
+                const handleConfirm = () => {
+                    dialog.warning({
+                        title: 'JSX Content',
+                        // content as a render function returning JSX
+                        content: () => (
+                            <div style={{ color: 'red', padding: '10px', border: '1px solid red' }}>
+                                <NText type="success">This is JSX content without React errors!</NText>
+
+                                <NButton>xxxx</NButton>
+                            </div>
+                        ),
+                        positiveText: 'Check Console',
+                        onPositiveClick: () => console.log('Fixed!')
+                    });
+                };
+
+                return () => (
+                    <NButton type="primary" onClick={handleConfirm}>
+                        Open Imperative JSX Dialog
+                    </NButton>
+                );
+            }
+        });
+
+        const App = defineComponent({
+            setup() {
+                return () => (
+                    <NConfigProvider>
+                        <NDialogProvider>
+                            <DialogTrigger />
+                        </NDialogProvider>
+                    </NConfigProvider>
+                );
+            }
+        });
+
+        const app = createApp(App);
+        app.use(window.naive);
+        app.mount('#app');
+    </script>
+</body>
+</html>
