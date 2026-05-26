@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vx-table 二次封装示例</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vxe-table@3.6.13/lib/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    .page-header { background: #fff; padding: 0 24px; border-bottom: 1px solid #e8e8e8; height: 56px; display: flex; align-items: center; }
+    .page-header h1 { font-size: 16px; font-weight: 600; color: #1f2329; }
+    .page-header .tag { margin-left: 12px; background: #e6f7ff; color: #1890ff; font-size: 12px; padding: 2px 8px; border-radius: 3px; }
+
+    .main-container { max-width: 1280px; margin: 24px auto; padding: 0 24px; }
+
+    .section { background: #fff; border-radius: 4px; margin-bottom: 16px; }
+    .section-title { padding: 16px 20px; border-bottom: 1px solid #e8e8e8; font-size: 15px; font-weight: 600; color: #1f2329; display: flex; align-items: center; gap: 8px; }
+    .section-title::before { content: ''; width: 4px; height: 16px; background: #1890ff; border-radius: 2px; }
+    .section-body { padding: 20px; }
+
+    .demo-row { margin-bottom: 20px; }
+    .demo-row:last-child { margin-bottom: 0; }
+    .demo-label { font-size: 13px; color: #646a73; margin-bottom: 10px; }
+
+    .vxe-table { font-size: 13px; }
+
+    .toolbar { padding: 12px 16px; background: #fafafa; border-bottom: 1px solid #e8e8e8; display: flex; gap: 12px; align-items: center; }
+
+    .custom-status { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+    .custom-status.active { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+    .custom-status.inactive { background: #fff1f0; color: #ff4d4f; border: 1px solid #ffa39e; }
+
+    .expand-info { padding: 8px 12px; background: #fafafa; border-radius: 4px; font-size: 12px; color: #646a73; line-height: 1.6; }
+
+    ::v-deep .vxe-footer--column { background-color: #f5f7fa !important; }
+    ::v-deep .vxe-header--column { background-color: #f5f7fa !important; }
+    ::v-deep .vxe-table--header { background-color: #f5f7fa; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="page-header">
+      <h1>vx-table 二次封装示例</h1>
+      <span class="tag">vxe-table@3.6.13 + element-ui@2.15.14 + Vue@2.7</span>
+    </div>
+
+    <div class="main-container">
+
+      <!-- 1. 只读模式 -->
+      <div class="section">
+        <div class="section-title">只读模式</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">基础表格，序号 + 格式化金额（formatter）</div>
+            <vxe-table :data="readonlyData" :columns="readonlyColumns" border show-seq></vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 合计 / 总合计 -->
+      <div class="section">
+        <div class="section-title">合计 / 总合计</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">show-footer + footer-method，当前页合计 + 总合计行</div>
+            <vxe-table
+              :data="totalData"
+              :columns="totalColumns"
+              border
+              show-seq
+              show-footer
+              :footer-method="footerMethod">
+            </vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 编辑模式 -->
+      <div class="section">
+        <div class="section-title">编辑模式</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">单击单元格进入编辑，Tab 键切换；姓名字段配置了必填验证</div>
+            <div class="toolbar">
+              <el-button type="primary" size="small" @click="validateTable">触发表格验证</el-button>
+              <el-button size="small" @click="resetTable">重置表格</el-button>
+            </div>
+            <vxe-table
+              ref="editTableRef"
+              :data="editData"
+              :columns="editColumns"
+              border
+              show-seq
+              :edit-config="{ trigger: 'click', mode: 'cell' }"
+              :valid-rules="validRules">
+            </vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 带分页 -->
+      <div class="section">
+        <div class="section-title">带分页</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">vxe-table + Element UI Pagination（前端分页示例）</div>
+            <vxe-table :data="pagerTableData" :columns="readonlyColumns" border show-seq></vxe-table>
+            <div class="page-box">
+              <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="pagination.currentPage"
+                :page-sizes="[5, 10, 20, 50]"
+                :page-size="pagination.pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="pagination.total">
+              </el-pagination>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. 复选框 -->
+      <div class="section">
+        <div class="section-title">复选框</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">多选 + 全选 + selection-change 回调</div>
+            <div class="toolbar">
+              <el-button type="primary" size="small" @click="getSelectRows">获取选中行</el-button>
+              <span style="font-size:13px;color:#646a73;margin-left:8px;">已选 {{ checkedRows.length }} 条</span>
+            </div>
+            <vxe-table
+              ref="checkboxTableRef"
+              :data="checkboxData"
+              :columns="checkboxColumns"
+              border
+              show-seq
+              show-checkbox
+              @select-change="handleSelectChange">
+            </vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. 复选框逻辑禁用 -->
+      <div class="section">
+        <div class="section-title">复选框逻辑禁用</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">status !== 1 的行自动禁用复选框（:select-config.checkMethod）</div>
+            <vxe-table
+              :data="checkboxDisableData"
+              :columns="checkboxColumns"
+              border
+              show-seq
+              show-checkbox
+              :select-config="{ checkMethod: handleSelectDisabled }">
+            </vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. 复选框自定义 -->
+      <div class="section">
+        <div class="section-title">复选框自定义</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">通过 slots 自定义状态列渲染</div>
+            <vxe-table
+              :data="checkboxCustomData"
+              :columns="checkboxCustomColumns"
+              border
+              show-seq
+              show-checkbox>
+            </vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. 展开行 -->
+      <div class="section">
+        <div class="section-title">展开行</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">show-expand + 默认 slot 自定义展开内容</div>
+            <vxe-table
+              :data="expandData"
+              :columns="expandColumns"
+              border
+              show-seq
+              show-expand
+              :expand-config="{ accordion: false }">
+              <template #default="{ row }">
+                <div class="expand-info">
+                  <strong>详细信息：</strong> 姓名 {{ row.name }}，年龄 {{ row.age }} 岁，
+                  余额 {{ formatMoney(row.amount) }} 元，当前状态：{{ row.statusName }}。
+                </div>
+              </template>
+            </vxe-table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. 多表头 -->
+      <div class="section">
+        <div class="section-title">多表头</div>
+        <div class="section-body">
+          <div class="demo-row">
+            <div class="demo-label">通过 children 配置实现多级表头合并</div>
+            <vxe-table :data="multiHeaderData" :columns="multiHeaderColumns" border show-seq></vxe-table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xe-utils@3.5.7/dist/xe-utils.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vxe-table@3.6.13/lib/index.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+
+  <script>
+    // ============================================================
+    // 工具函数（从 vx-table 源码 src/utils/index.js 提取）
+    // ============================================================
+    function baseNumFormat(num, decimals, type, zeroFill) {
+      if (num === undefined || num === null || num === '' || num === 'undefined' || isNaN(num)) return '';
+      const number = Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals);
+      return type === 'n' ? number : numberFormat(number, decimals, zeroFill);
+    }
+
+    function numberFormat(num, decimals, zeroFill, decPoint, thousandsSep) {
+      const number = ('' + num).replace(/[^0-9+-Ee.]/g, '');
+      const roundtag = 'round';
+      const n = !isFinite(+number) ? 0 : +number;
+      const prec = !isFinite(+decimals) ? 2 : Math.abs(decimals);
+      const sep = thousandsSep === undefined ? ',' : thousandsSep;
+      const dec = decPoint === undefined ? '.' : decPoint;
+      let s = [];
+      const toFixedFix = (n2, prec2) => {
+        const k = Math.pow(10, prec2);
+        return parseFloat(Math[roundtag](parseFloat((n2 * k).toFixed(prec2 * 2))).toFixed(prec2 * 2)) / k;
+      };
+      s = prec ? toFixedFix(n, prec).toString().split('.') : [Math.round(n).toString()];
+      const re = /(-?\d+)(\d{3})/;
+      while (re.test(s[0])) s[0] = s[0].replace(re, '$1' + sep + '$2');
+      if (zeroFill) {
+        if ((s[1] || '').length < prec) { s[1] = s[1] || ''; s[1] += new Array(prec - s[1].length + 1).join('0'); }
+      }
+      return s.join(dec);
+    }
+
+    function formatMoney(val, digits) {
+      digits = digits === undefined ? 2 : digits;
+      if (val === undefined || val === null || val === '' || isNaN(val)) return '';
+      return '￥' + baseNumFormat(val, digits, 's');
+    }
+
+    function formatStatus(status) {
+      if (status === 1) {
+        return '<span class="custom-status active">正常</span>';
+      } else {
+        return '<span class="custom-status inactive">冻结</span>';
+      }
+    }
+
+    // ============================================================
+    // 注册 vxe-table 和 element-ui
+    // 注意：UMD 暴露的是 VXETable（不是 vxe）
+    // ============================================================
+    Vue.use(VXETable);
+
+    // ============================================================
+    // App
+    // ============================================================
+    new Vue({
+      el: '#app',
+      data() {
+        return {
+          // ----- 只读 -----
+          readonlyData: [
+            { id: 1, name: '张三', age: 28, amount: 8568.88 },
+            { id: 2, name: '李四', age: 35, amount: 12340.50 },
+            { id: 3, name: '王五', age: 22, amount: 560.20 },
+          ],
+          readonlyColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            { field: 'name', title: '姓名', width: 120 },
+            { field: 'age', title: '年龄', width: 100 },
+            { field: 'amount', title: '余额', width: 160, formatter: this.formatterAmount },
+          ],
+
+          // ----- 合计 -----
+          totalData: [
+            { name: '张三', age: 28, amount: 8568.88 },
+            { name: '李四', age: 35, amount: 12340.50 },
+            { name: '王五', age: 22, amount: 560.20 },
+          ],
+          totalColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            { field: 'name', title: '姓名', width: 120 },
+            { field: 'age', title: '年龄', width: 100 },
+            { field: 'amount', title: '余额' },
+          ],
+
+          // ----- 编辑 -----
+          validRules: {
+            name: [{ required: true, message: '请输入姓名', trigger: 'change' }],
+            age: [
+              { required: true, message: '请输入年龄', trigger: 'change' },
+              { type: 'number', message: '年龄必须为数字', trigger: 'change' }
+            ],
+          },
+          editData: [
+            { id: 1, name: '张三', age: 28, amount: 8568.88, status: 1, statusName: '正常' },
+            { id: 2, name: '李四', age: 35, amount: 12340.50, status: 0, statusName: '冻结' },
+            { id: 3, name: '', age: 22, amount: 560.20, status: 1, statusName: '正常' },
+          ],
+          editColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            {
+              field: 'name', title: '姓名', width: 150,
+              editRender: { name: 'input', attrs: { placeholder: '单击编辑' } },
+            },
+            {
+              field: 'age', title: '年龄', width: 120,
+              editRender: { name: 'input', attrs: { type: 'number', placeholder: '单击编辑' } },
+            },
+            {
+              field: 'amount', title: '余额', width: 160,
+              formatter: this.formatterAmount,
+            },
+            {
+              field: 'statusName', title: '状态', width: 120,
+              formatter: this.formatterStatusName,
+            },
+          ],
+
+          // ----- 分页 -----
+          pagination: { total: 25, currentPage: 1, pageSize: 10 },
+          allPagerData: Array.from({ length: 25 }, (_, i) => ({
+            id: i + 1, name: '测试' + (i + 1), age: 20 + i, amount: (i + 1) * 1000
+          })),
+          pagerTableData: [],
+
+          // ----- 复选框 -----
+          checkedRows: [],
+          checkboxData: [
+            { id: 1, name: '张三', age: 28, amount: 8568.88 },
+            { id: 2, name: '李四', age: 35, amount: 12340.50 },
+            { id: 3, name: '王五', age: 22, amount: 560.20 },
+          ],
+          checkboxColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            { type: 'checkbox', title: '选择', width: 60 },
+            { field: 'name', title: '姓名', width: 120 },
+            { field: 'age', title: '年龄', width: 100 },
+            { field: 'amount', title: '余额', formatter: this.formatterAmount },
+          ],
+
+          // ----- 复选框禁用 -----
+          checkboxDisableData: [
+            { id: 1, name: '张三', age: 28, amount: 8568.88, status: 1 },
+            { id: 2, name: '李四', age: 35, amount: 12340.50, status: 0 },
+            { id: 3, name: '王五', age: 22, amount: 560.20, status: 0 },
+          ],
+
+          // ----- 复选框自定义 -----
+          checkboxCustomData: [
+            { id: 1, name: '张三', age: 28, amount: 8568.88, status: 1 },
+            { id: 2, name: '李四', age: 35, amount: 12340.50, status: 0 },
+            { id: 3, name: '王五', age: 22, amount: 560.20, status: 1 },
+          ],
+          checkboxCustomColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            { type: 'checkbox', title: '选择', width: 60 },
+            { field: 'name', title: '姓名', width: 120 },
+            { field: 'age', title: '年龄', width: 100 },
+            { field: 'amount', title: '余额', width: 160, formatter: this.formatterAmount },
+            { field: 'status', title: '状态', width: 120, formatter: this.formatterStatus },
+          ],
+
+          // ----- 展开 -----
+          expandData: [
+            { id: 1, name: '张三', age: 28, amount: 8568.88, statusName: '正常' },
+            { id: 2, name: '李四', age: 35, amount: 12340.50, statusName: '正常' },
+            { id: 3, name: '王五', age: 22, amount: 560.20, statusName: '正常' },
+          ],
+          expandColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            { type: 'expand', title: '展开', width: 80 },
+            { field: 'name', title: '姓名', width: 120 },
+            { field: 'age', title: '年龄', width: 100 },
+            { field: 'amount', title: '余额', width: 160, formatter: this.formatterAmount },
+          ],
+
+          // ----- 多表头 -----
+          multiHeaderData: [
+            { name: '张三', provinceName: '上海', cityName: '上海', age: 28, amount: 8568.88 },
+            { name: '李四', provinceName: '北京', cityName: '北京', age: 35, amount: 12340.50 },
+          ],
+          multiHeaderColumns: [
+            { type: 'seq', title: '序号', width: 60 },
+            { field: 'name', title: '姓名', width: 120 },
+            {
+              title: '地址',
+              children: [
+                { field: 'provinceName', title: '省', width: 120 },
+                { field: 'cityName', title: '市', width: 120 },
+              ]
+            },
+            { field: 'age', title: '年龄', width: 100 },
+            { field: 'amount', title: '余额', width: 160, formatter: this.formatterAmount },
+          ],
+        };
+      },
+      created() {
+        this.initPagerData();
+      },
+      methods: {
+        // ------- formatter -------
+
+        formatterAmount({ cellValue }) {
+          return formatMoney(cellValue, 2);
+        },
+
+        formatterStatusName({ cellValue }) {
+          return cellValue || '';
+        },
+
+        formatterStatus({ cellValue }) {
+          return formatStatus(cellValue);
+        },
+
+        // ------- 分页 -------
+        initPagerData() {
+          const { currentPage, pageSize } = this.pagination;
+          const start = (currentPage - 1) * pageSize;
+          this.pagerTableData = this.allPagerData.slice(start, start + pageSize);
+        },
+
+        handleSizeChange(pageSize) {
+          this.pagination.pageSize = pageSize;
+          this.pagination.currentPage = 1;
+          this.initPagerData();
+        },
+
+        handleCurrentChange(currentPage) {
+          this.pagination.currentPage = currentPage;
+          this.initPagerData();
+        },
+
+        // ------- 合计 -------
+        footerMethod({ columns, data }) {
+          const sums = [];
+          const allTotal = this.totalData.reduce((s, r) => s + (r.amount || 0), 0);
+          const pageTotal = data.reduce((s, r) => s + (r.amount || 0), 0);
+
+          columns.forEach((column, columnIndex) => {
+            if (columnIndex === 0) {
+              sums.push('合计');
+            } else if (columnIndex === 1) {
+              sums.push('');
+            } else if (column.property === 'amount') {
+              sums.push(formatMoney(pageTotal, 2));
+            } else {
+              sums.push('');
+            }
+          });
+
+          const allSums = [];
+          columns.forEach((column, columnIndex) => {
+            if (columnIndex === 0) {
+              allSums.push('总合计');
+            } else if (columnIndex === 1) {
+              allSums.push('');
+            } else if (column.property === 'amount') {
+              allSums.push(formatMoney(allTotal, 2));
+            } else {
+              allSums.push('');
+            }
+          });
+
+          return [sums, allSums];
+        },
+
+        // ------- 编辑 -------
+        async validateTable() {
+          const table = this.$refs.editTableRef;
+          if (!table) return;
+          try {
+            await table.fullValidate(true);
+            ElementUI.Message.success('验证通过！');
+          } catch (errMap) {
+            ElementUI.Message.error('验证失败，请检查输入');
+          }
+        },
+
+        resetTable() {
+          this.editData = [
+            { id: 1, name: '张三', age: 28, amount: 8568.88, status: 1, statusName: '正常' },
+            { id: 2, name: '李四', age: 35, amount: 12340.50, status: 0, statusName: '冻结' },
+            { id: 3, name: '', age: 22, amount: 560.20, status: 1, statusName: '正常' },
+          ];
+          ElementUI.Message.info('已重置');
+        },
+
+        // ------- 复选框 -------
+        handleSelectChange({ selection }) {
+          this.checkedRows = selection;
+        },
+
+        getSelectRows() {
+          const rows = this.$refs.checkboxTableRef.getCheckboxRecords();
+          ElementUI.Message.success('已选中 ' + rows.length + ' 条');
+        },
+
+        // ------- 复选框禁用 -------
+        handleSelectDisabled({ row }) {
+          return row.status === 1;
+        },
+      },
+    });
+  </script>
+</body>
+</html>
